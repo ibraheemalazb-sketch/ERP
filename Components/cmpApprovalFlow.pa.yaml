@@ -1,0 +1,451 @@
+ComponentDefinitions:
+  cmpApprovalFlow:
+    DefinitionType: CanvasComponent
+    Description: Approval timeline. Set the instance Width and Height. Rows use that width. Pass Items, or leave the default for the open purchase request.
+    AccessAppScope: true
+    CustomProperties:
+      EmptyText:
+        PropertyKind: Input
+        DisplayName: EmptyText
+        Description: Shown when Items has no rows.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "لا توجد خطوات اعتماد", "No approval steps yet")
+      Items:
+        PropertyKind: Input
+        DisplayName: Items
+        Description: ApprovalHistory rows. Columns used are Sequence, Decision, Approver, Requester, DecisionDate, and AssignedDate.
+        DataType: Table
+        Default: |-
+          =SortByColumns(
+              Filter(
+                  ApprovalHistory,
+                  And(
+                      RequestType.Value = "Purchase Request",
+                      RequestNumber = varCurrentPR.PRNumber
+                  )
+              ),
+              "Sequence",
+              SortOrder.Ascending
+          )
+      Title:
+        PropertyKind: Input
+        DisplayName: Title
+        Description: Heading above the timeline.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "مسار الاعتماد", "Approval flow")
+    Properties:
+      Height: =400
+      Width: =330
+    Children:
+      - conAfRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            BorderColor: =fxThemeColor("Border")
+            BorderThickness: =1
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =12
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =12
+            RadiusBottomLeft: =gblTheme.Radius.Large
+            RadiusBottomRight: =gblTheme.Radius.Large
+            RadiusTopLeft: =gblTheme.Radius.Large
+            RadiusTopRight: =gblTheme.Radius.Large
+            Width: =Parent.Width
+          Children:
+            - lblAfTitle:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("TextPrimary")
+                  Font: =gblTheme.Typography.FontFamily
+                  FontWeight: =gblTheme.FontWeights.Medium
+                  Height: =22
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =4
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =12
+                  Text: =cmpApprovalFlow.Title
+                  Width: =Parent.Width
+                  Wrap: =false
+            - lblAfEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("TextMuted")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =32
+                  LayoutMinWidth: =0
+                  PaddingLeft: =4
+                  Size: =gblTheme.Typography.BodySmall
+                  Text: =cmpApprovalFlow.EmptyText
+                  Visible: =CountRows(cmpApprovalFlow.Items) = 0
+                  Width: =Parent.Width
+            - galAfSteps:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Items: =cmpApprovalFlow.Items
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  TemplatePadding: =0
+                  TemplateSize: =84
+                  Visible: =CountRows(cmpApprovalFlow.Items) > 0
+                  Width: =Parent.Width
+                Children:
+                  - conAfRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - conAfRail:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =Parent.Height
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              LayoutMinHeight: =0
+                              Width: =28
+                            Children:
+                              - conAfLineTop:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: |-
+                                      =If(
+                                          ThisItem.Sequence <= 0,
+                                          Color.Transparent,
+                                          fxToneInk(
+                                              Switch(
+                                                  ThisItem.Decision.Value,
+                                                  "Approved", "approved",
+                                                  "Rejected", "rejected",
+                                                  "Pending", "pending",
+                                                  "Returned", "pending",
+                                                  "neutral"
+                                              )
+                                          )
+                                      )
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =8
+                                    LayoutMinWidth: =0
+                                    Width: =2
+                              - conAfBadge:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: |-
+                                      =fxToneInk(
+                                          If(
+                                              ThisItem.Sequence <= 0,
+                                              "info",
+                                              Switch(
+                                                  ThisItem.Decision.Value,
+                                                  "Approved", "approved",
+                                                  "Rejected", "rejected",
+                                                  "Pending", "pending",
+                                                  "Returned", "pending",
+                                                  "neutral"
+                                              )
+                                          )
+                                      )
+                                    FillPortions: =0
+                                    Height: =28
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Round
+                                    RadiusBottomRight: =gblTheme.Radius.Round
+                                    RadiusTopLeft: =gblTheme.Radius.Round
+                                    RadiusTopRight: =gblTheme.Radius.Round
+                                    Width: =28
+                                  Children:
+                                    - lblAfBadge:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxThemeColor("TextOnPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =Parent.Height
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =10
+                                          Text: |-
+                                            =If(
+                                                ThisItem.Sequence <= 0,
+                                                "✓",
+                                                Switch(
+                                                    ThisItem.Decision.Value,
+                                                    "Approved", "✓",
+                                                    "Rejected", "!",
+                                                    "Returned", "↻",
+                                                    "Cancelled", "×",
+                                                    Text(ThisItem.Sequence)
+                                                )
+                                            )
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                              - conAfLineBot:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: |-
+                                      =If(
+                                          ThisItem.Sequence = Max(cmpApprovalFlow.Items, Sequence),
+                                          Color.Transparent,
+                                          If(
+                                              Or(
+                                                  ThisItem.Decision.Value = "Pending",
+                                                  ThisItem.Decision.Value = "Cancelled"
+                                              ),
+                                              fxThemeColor("Border"),
+                                              fxToneInk(
+                                                  Switch(
+                                                      ThisItem.Decision.Value,
+                                                      "Approved", "approved",
+                                                      "Rejected", "rejected",
+                                                      "Returned", "pending",
+                                                      "neutral"
+                                                  )
+                                              )
+                                          )
+                                      )
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =8
+                                    LayoutMinWidth: =0
+                                    Width: =2
+                        - conAfBody:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =Parent.Height
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - conAfName:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =20
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - lblAfName:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FillPortions: =1
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: |-
+                                            =If(
+                                                ThisItem.Sequence <= 0,
+                                                Coalesce(ThisItem.Requester.Value, Coalesce(ThisItem.Approver.Value, If(gblLanguage = "Arabic", "غير محدد", "Unassigned"))),
+                                                Coalesce(ThisItem.Approver.Value, If(gblLanguage = "Arabic", "غير محدد", "Unassigned"))
+                                            )
+                                          Wrap: =false
+                                    - lblAfSeq:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Right
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =18
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =10
+                                          Text: =If(ThisItem.Sequence <= 0, "REQ", "S" & Text(ThisItem.Sequence))
+                                          Width: =32
+                                          Wrap: =false
+                              - lblAfRole:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: |-
+                                      =If(
+                                          ThisItem.Sequence <= 0,
+                                          If(gblLanguage = "Arabic", "مقدم الطلب", "Requester"),
+                                          Switch(
+                                              ThisItem.Sequence,
+                                              1, If(gblLanguage = "Arabic", "المشرف", "Supervisor"),
+                                              2, If(gblLanguage = "Arabic", "مدير المشروع", "Project Manager"),
+                                              3, If(gblLanguage = "Arabic", "مسؤول المالية", "Finance Officer"),
+                                              If(gblLanguage = "Arabic", "المعتمد", "Approver")
+                                          )
+                                      )
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - conAfMeta:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =22
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conAfChip:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: |-
+                                            =fxToneFill(
+                                                If(
+                                                    ThisItem.Sequence <= 0,
+                                                    "info",
+                                                    Switch(
+                                                        ThisItem.Decision.Value,
+                                                        "Approved", "approved",
+                                                        "Rejected", "rejected",
+                                                        "Pending", "pending",
+                                                        "Returned", "pending",
+                                                        "neutral"
+                                                    )
+                                                )
+                                            )
+                                          FillPortions: =0
+                                          Height: =20
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutJustifyContent: =LayoutJustifyContent.Center
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          RadiusBottomLeft: =gblTheme.Radius.Round
+                                          RadiusBottomRight: =gblTheme.Radius.Round
+                                          RadiusTopLeft: =gblTheme.Radius.Round
+                                          RadiusTopRight: =gblTheme.Radius.Round
+                                          Width: =Min(108, Max(64, Parent.Width * 0.42))
+                                        Children:
+                                          - lblAfChip:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Center
+                                                Color: |-
+                                                  =fxToneInk(
+                                                      If(
+                                                          ThisItem.Sequence <= 0,
+                                                          "info",
+                                                          Switch(
+                                                              ThisItem.Decision.Value,
+                                                              "Approved", "approved",
+                                                              "Rejected", "rejected",
+                                                              "Pending", "pending",
+                                                              "Returned", "pending",
+                                                              "neutral"
+                                                          )
+                                                      )
+                                                  )
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =Parent.Height
+                                                PaddingBottom: =0
+                                                PaddingLeft: =6
+                                                PaddingRight: =6
+                                                PaddingTop: =0
+                                                Size: =10
+                                                Text: |-
+                                                  =If(
+                                                      ThisItem.Sequence <= 0,
+                                                      If(gblLanguage = "Arabic", "تم الإرسال", "Submitted"),
+                                                      Switch(
+                                                          ThisItem.Decision.Value,
+                                                          "Approved", If(gblLanguage = "Arabic", "تمت الموافقة", "Approved"),
+                                                          "Rejected", If(gblLanguage = "Arabic", "مرفوض", "Rejected"),
+                                                          "Pending", If(gblLanguage = "Arabic", "قيد الانتظار", "Pending"),
+                                                          "Returned", If(gblLanguage = "Arabic", "معاد", "Returned"),
+                                                          "Cancelled", If(gblLanguage = "Arabic", "ملغى", "Cancelled"),
+                                                          Coalesce(ThisItem.Decision.Value, "—")
+                                                      )
+                                                  )
+                                                Width: =Parent.Width
+                                                Wrap: =false
+                                    - lblAfWhen:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          FillPortions: =1
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =10
+                                          Text: |-
+                                            =If(
+                                                Not(IsBlank(ThisItem.DecisionDate)),
+                                                Text(ThisItem.DecisionDate, "dd mmm yyyy") & "  " & Text(ThisItem.DecisionDate, "hh:mm AM/PM"),
+                                                If(
+                                                    Not(IsBlank(ThisItem.AssignedDate)),
+                                                    Text(ThisItem.AssignedDate, "dd mmm yyyy") & "  " & Text(ThisItem.AssignedDate, "hh:mm AM/PM"),
+                                                    "—"
+                                                )
+                                            )
+                                          Wrap: =false

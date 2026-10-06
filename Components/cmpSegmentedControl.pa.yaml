@@ -1,0 +1,396 @@
+ComponentDefinitions:
+  cmpSegmentedControl:
+    DefinitionType: CanvasComponent
+    Description: Segmented choice. Set the instance Width and Height. Segments share that box, so a label cannot force the control wider than its parent.
+    AccessAppScope: true
+    CustomProperties:
+      DefaultValue:
+        PropertyKind: Input
+        DisplayName: DefaultValue
+        Description: Selected value until the user picks another option.
+        DataType: Text
+        Default: ="list"
+      Disabled:
+        PropertyKind: Input
+        DisplayName: Disabled
+        Description: Disable the whole control.
+        DataType: Boolean
+        Default: =false
+      DisplayMode:
+        PropertyKind: Input
+        DisplayName: DisplayMode
+        Description: Text, Icons, or Both.
+        DataType: Text
+        Default: ="Both"
+      EqualWidth:
+        PropertyKind: Input
+        DisplayName: EqualWidth
+        Description: Icons mode only. False keeps each segment square. Every other mode shares the instance width.
+        DataType: Boolean
+        Default: =true
+      IconPosition:
+        PropertyKind: Input
+        DisplayName: IconPosition
+        Description: When DisplayMode is Both, Left or Top.
+        DataType: Text
+        Default: ="Left"
+      OnChange:
+        PropertyKind: Event
+        DisplayName: OnChange
+        Description: Fires after the selected value changes.
+        ReturnType: None
+        Default: =false
+      Options:
+        PropertyKind: Input
+        DisplayName: Options
+        Description: Rows with Value, Label, and Icon. Icon is an fxSvg name such as List, Grid, or Table.
+        DataType: Table
+        Default: |-
+          =Table(
+              {Value: "list", Label: "List", Icon: "List"},
+              {Value: "grid", Label: "Grid", Icon: "Grid"},
+              {Value: "table", Label: "Table", Icon: "Table"}
+          )
+      SelectedValue:
+        PropertyKind: Output
+        DisplayName: SelectedValue
+        Description: Currently selected option value.
+        DataType: Text
+      Size:
+        PropertyKind: Input
+        DisplayName: Size
+        Description: Small, Medium, or Large.
+        DataType: Text
+        Default: ="Medium"
+      Theme:
+        PropertyKind: Input
+        DisplayName: Theme
+        Description: Light or Dark. Leave it on the app theme unless this control should ignore gblTheme.Mode.
+        DataType: Text
+        Default: =gblTheme.Mode
+    Properties:
+      Height: |-
+        =If(
+            And(
+                cmpSegmentedControl.DisplayMode = "Both",
+                cmpSegmentedControl.IconPosition = "Top"
+            ),
+            Switch(cmpSegmentedControl.Size, "Small", 48, "Medium", 56, "Large", 64, 56),
+            Switch(cmpSegmentedControl.Size, "Small", 32, "Medium", 40, "Large", 48, 40)
+        )
+      OnReset: =Set(_scSelected, "")
+      SelectedValue: |-
+        =If(
+            IsBlank(_scSelected),
+            cmpSegmentedControl.DefaultValue,
+            _scSelected
+        )
+      Width: =240
+    Children:
+      - cntScTrack:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            BorderColor: |-
+              =If(
+                  cmpSegmentedControl.Theme = "Dark",
+                  gblTheme.Dark.Colors.Border,
+                  If(
+                      cmpSegmentedControl.Theme = "Light",
+                      gblTheme.Light.Colors.Border,
+                      fxThemeColor("Border")
+                  )
+              )
+            BorderThickness: =1
+            DropShadow: =DropShadow.None
+            Fill: |-
+              =If(
+                  cmpSegmentedControl.Theme = "Dark",
+                  gblTheme.Dark.Colors.SurfaceHover,
+                  If(
+                      cmpSegmentedControl.Theme = "Light",
+                      gblTheme.Light.Colors.SurfaceHover,
+                      fxThemeColor("SurfaceHover")
+                  )
+              )
+            Height: =Parent.Height
+            RadiusBottomLeft: =gblTheme.Radius.Large
+            RadiusBottomRight: =gblTheme.Radius.Large
+            RadiusTopLeft: =gblTheme.Radius.Large
+            RadiusTopRight: =gblTheme.Radius.Large
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - galScOptions:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height
+                  Items: |-
+                    =ForAll(
+                        Sequence(CountRows(cmpSegmentedControl.Options)),
+                        {
+                            ItemValue: Text(Index(cmpSegmentedControl.Options, Value).Value),
+                            Label: Coalesce(Text(Index(cmpSegmentedControl.Options, Value).Label), ""),
+                            Icon: Coalesce(Text(Index(cmpSegmentedControl.Options, Value).Icon), "")
+                        }
+                    )
+                  LoadingSpinner: =LoadingSpinner.None
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: |-
+                    =If(
+                        And(
+                            cmpSegmentedControl.DisplayMode = "Icons",
+                            Not(cmpSegmentedControl.EqualWidth)
+                        ),
+                        Min(
+                            Parent.Height,
+                            Parent.Width / Max(CountRows(cmpSegmentedControl.Options), 1)
+                        ),
+                        Parent.Width / Max(CountRows(cmpSegmentedControl.Options), 1)
+                    )
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+                Children:
+                  - cntScCell:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.TemplateHeight
+                        Width: =Parent.TemplateWidth
+                        X: =0
+                        Y: =0
+                      Children:
+                        - cntScFace:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =If(
+                                    cmpSegmentedControl.SelectedValue = ThisItem.ItemValue,
+                                    If(
+                                        cmpSegmentedControl.Theme = "Dark",
+                                        gblTheme.Dark.Colors.Surface,
+                                        If(
+                                            cmpSegmentedControl.Theme = "Light",
+                                            gblTheme.Light.Colors.Surface,
+                                            fxThemeColor("Surface")
+                                        )
+                                    ),
+                                    Color.Transparent
+                                )
+                              Height: =Max(0, Parent.Height - 6)
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Max(0, Parent.Width - 6)
+                              X: =3
+                              Y: =3
+                            Children:
+                              - imgScIcon:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: |-
+                                      =Min(
+                                          Switch(cmpSegmentedControl.Size, "Small", 14, "Medium", 16, "Large", 18, 16),
+                                          Max(12, Parent.Height - 8)
+                                      )
+                                    Image: |-
+                                      =If(
+                                          StartsWith(ThisItem.Icon, "data:"),
+                                          ThisItem.Icon,
+                                          fxSvg(
+                                              Coalesce(ThisItem.Icon, "List"),
+                                              If(
+                                                  cmpSegmentedControl.SelectedValue = ThisItem.ItemValue,
+                                                  If(
+                                                      cmpSegmentedControl.Theme = "Dark",
+                                                      "rgb(121,176,255)",
+                                                      If(cmpSegmentedControl.Theme = "Light", "rgb(27,86,229)", fxThemeInk("Primary"))
+                                                  ),
+                                                  If(
+                                                      cmpSegmentedControl.Theme = "Dark",
+                                                      "rgb(139,148,158)",
+                                                      If(cmpSegmentedControl.Theme = "Light", "rgb(107,114,128)", fxThemeInk("Muted"))
+                                                  )
+                                              )
+                                          )
+                                      )
+                                    ImagePosition: =ImagePosition.Fit
+                                    Visible: |-
+                                      =And(
+                                          Not(IsBlank(ThisItem.Icon)),
+                                          Or(
+                                              cmpSegmentedControl.DisplayMode = "Icons",
+                                              cmpSegmentedControl.DisplayMode = "Both"
+                                          )
+                                      )
+                                    Width: =Self.Height
+                                    X: |-
+                                      =If(
+                                          Or(
+                                              cmpSegmentedControl.DisplayMode = "Icons",
+                                              And(
+                                                  cmpSegmentedControl.DisplayMode = "Both",
+                                                  cmpSegmentedControl.IconPosition = "Top"
+                                              )
+                                          ),
+                                          (Parent.Width - Self.Width) / 2,
+                                          8
+                                      )
+                                    Y: |-
+                                      =If(
+                                          And(
+                                              cmpSegmentedControl.DisplayMode = "Both",
+                                              cmpSegmentedControl.IconPosition = "Top"
+                                          ),
+                                          4,
+                                          (Parent.Height - Self.Height) / 2
+                                      )
+                              - lblScText:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: |-
+                                      =If(
+                                          Or(
+                                              cmpSegmentedControl.DisplayMode = "Text",
+                                              And(
+                                                  cmpSegmentedControl.DisplayMode = "Both",
+                                                  cmpSegmentedControl.IconPosition = "Top"
+                                              )
+                                          ),
+                                          Align.Center,
+                                          Align.Left
+                                      )
+                                    Color: |-
+                                      =If(
+                                          cmpSegmentedControl.Disabled,
+                                          If(
+                                              cmpSegmentedControl.Theme = "Dark",
+                                              gblTheme.Dark.Colors.TextDisabled,
+                                              If(
+                                                  cmpSegmentedControl.Theme = "Light",
+                                                  gblTheme.Light.Colors.TextDisabled,
+                                                  fxThemeColor("TextDisabled")
+                                              )
+                                          ),
+                                          If(
+                                              cmpSegmentedControl.SelectedValue = ThisItem.ItemValue,
+                                              If(
+                                                  cmpSegmentedControl.Theme = "Dark",
+                                                  gblTheme.Dark.Colors.Primary,
+                                                  If(
+                                                      cmpSegmentedControl.Theme = "Light",
+                                                      gblTheme.Light.Colors.Primary,
+                                                      fxThemeColor("Primary")
+                                                  )
+                                              ),
+                                              If(
+                                                  cmpSegmentedControl.Theme = "Dark",
+                                                  gblTheme.Dark.Colors.TextMuted,
+                                                  If(
+                                                      cmpSegmentedControl.Theme = "Light",
+                                                      gblTheme.Light.Colors.TextMuted,
+                                                      fxThemeColor("TextMuted")
+                                                  )
+                                              )
+                                          )
+                                      )
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: |-
+                                      =If(
+                                          cmpSegmentedControl.SelectedValue = ThisItem.ItemValue,
+                                          gblTheme.FontWeights.Medium,
+                                          gblTheme.FontWeights.Regular
+                                      )
+                                    Height: |-
+                                      =If(
+                                          And(
+                                              cmpSegmentedControl.DisplayMode = "Both",
+                                              cmpSegmentedControl.IconPosition = "Top"
+                                          ),
+                                          Max(14, Parent.Height - 24),
+                                          Parent.Height
+                                      )
+                                    PaddingBottom: =0
+                                    PaddingLeft: =4
+                                    PaddingRight: =4
+                                    PaddingTop: =0
+                                    Size: |-
+                                      =Switch(
+                                          cmpSegmentedControl.Size,
+                                          "Small", 11,
+                                          "Medium", 12,
+                                          "Large", 13,
+                                          12
+                                      )
+                                    Text: =ThisItem.Label
+                                    Tooltip: =Self.Text
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Visible: |-
+                                      =And(
+                                          Not(IsBlank(ThisItem.Label)),
+                                          Or(
+                                              cmpSegmentedControl.DisplayMode = "Text",
+                                              cmpSegmentedControl.DisplayMode = "Both"
+                                          )
+                                      )
+                                    Width: |-
+                                      =Max(
+                                          0,
+                                          If(
+                                              And(
+                                                  cmpSegmentedControl.DisplayMode = "Both",
+                                                  cmpSegmentedControl.IconPosition = "Left"
+                                              ),
+                                              Parent.Width - 8 - Switch(cmpSegmentedControl.Size, "Small", 14, "Medium", 16, "Large", 18, 16) - 8,
+                                              Parent.Width
+                                          )
+                                      )
+                                    Wrap: =false
+                                    X: |-
+                                      =If(
+                                          And(
+                                              cmpSegmentedControl.DisplayMode = "Both",
+                                              cmpSegmentedControl.IconPosition = "Left"
+                                          ),
+                                          8 + Switch(cmpSegmentedControl.Size, "Small", 14, "Medium", 16, "Large", 18, 16),
+                                          0
+                                      )
+                                    Y: |-
+                                      =If(
+                                          And(
+                                              cmpSegmentedControl.DisplayMode = "Both",
+                                              cmpSegmentedControl.IconPosition = "Top"
+                                          ),
+                                          22,
+                                          0
+                                      )
+                        - btnScHit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =Coalesce(ThisItem.Label, ThisItem.ItemValue)
+                              Appearance: =ButtonAppearance.Transparent
+                              Height: =Parent.Height
+                              OnSelect: |-
+                                =If(
+                                    Not(cmpSegmentedControl.Disabled),
+                                    Set(_scSelected, ThisItem.ItemValue);
+                                    cmpSegmentedControl.OnChange()
+                                )
+                              Text: =""
+                              Tooltip: =Coalesce(ThisItem.Label, ThisItem.ItemValue)
+                              Width: =Parent.Width
+                              X: =0
+                              Y: =0

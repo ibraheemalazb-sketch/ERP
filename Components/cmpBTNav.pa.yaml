@@ -1,0 +1,230 @@
+ComponentDefinitions:
+  cmpBTNav:
+    DefinitionType: CanvasComponent
+    Description: Phone bottom navigation. Icons come from fxSvg. Pass ItemsBtnNav. IconsBtn is kept so existing screens still bind.
+    AccessAppScope: true
+    CustomProperties:
+      AccentColor:
+        PropertyKind: Input
+        DisplayName: AccentColor
+        Description: Kept for existing screens. The selected tab uses gblTheme.
+        DataType: Color
+        Default: =RGBA(27, 86, 229, 1)
+      IconsBtn:
+        PropertyKind: Input
+        DisplayName: IconsBtn
+        Description: Kept so existing screens still bind. Tabs draw fxSvg from the Icon column and do not read this table.
+        DataType: Table
+        Default: |-
+          =Table(
+              {
+                  Name: "Home",
+                  SVG: ""
+              }
+          )
+      ItemsBtnNav:
+        PropertyKind: Input
+        DisplayName: ItemsBtnNav
+        Description: Tabs with ID, Module, Title, Icon, and Visible.
+        DataType: Table
+        Default: |-
+          =Table(
+              {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+              {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+              {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+              {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+              {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+              {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+              {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+          )
+      ModuleBtnNav:
+        PropertyKind: Input
+        DisplayName: ModuleBtnNav
+        Description: Kept for existing screens. The highlighted tab follows gblSelectedModule.
+        DataType: Text
+        Default: ="Home"
+      OnNavigateBtn:
+        PropertyKind: Event
+        DisplayName: OnNavigateBtn
+        Description: Fires after gblSelectedModule is set to the tab Module.
+        ReturnType: None
+        Default: =false
+      SelectedID:
+        PropertyKind: Input
+        DisplayName: SelectedID
+        Description: Used only when gblSelectedModule is blank.
+        DataType: Number
+        Default: =1
+    Properties:
+      Fill: |-
+        =If(
+            gblTheme.Mode = "Dark",
+            gblTheme.Dark.Colors.Surface,
+            gblTheme.Light.Colors.Surface
+        )
+      Height: =52
+      Width: =390
+    Children:
+      - rectBTEdge:
+          Control: Rectangle@2.3.0
+          Properties:
+            Fill: |-
+              =If(
+                  gblTheme.Mode = "Dark",
+                  gblTheme.Dark.Colors.Border,
+                  gblTheme.Light.Colors.Border
+              )
+            Height: =1
+            Width: =cmpBTNav.Width
+            X: =0
+            Y: =0
+      - galBTNav:
+          Control: Gallery@2.15.0
+          Variant: Horizontal
+          Properties:
+            AccessibleLabel: |-
+              =If(
+                  gblLanguage = "Arabic",
+                  "التنقل السفلي",
+                  "Bottom navigation"
+              )
+            BorderStyle: =BorderStyle.None
+            DelayItemLoading: =false
+            Fill: =Color.Transparent
+            Height: =cmpBTNav.Height - 1
+            Items: |-
+              =Filter(
+                  cmpBTNav.ItemsBtnNav As navBtn,
+                  navBtn.Visible = true
+              )
+            LoadingSpinner: =LoadingSpinner.None
+            ShowScrollbar: =false
+            TabIndex: =0
+            TemplatePadding: =0
+            TemplateSize: |-
+              =Max(
+                  72,
+                  cmpBTNav.Width / Max(
+                      CountRows(
+                          Filter(
+                              cmpBTNav.ItemsBtnNav As navBtn,
+                              navBtn.Visible = true
+                          )
+                      ),
+                      1
+                  )
+              )
+            Transition: =Transition.None
+            Width: =cmpBTNav.Width
+            X: =0
+            Y: =1
+          Children:
+            - conBTItem:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =galBTNav.TemplateHeight
+                  Width: =galBTNav.TemplateWidth
+                  X: =0
+                  Y: =0
+                Children:
+                  - rectBTMark:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        BorderStyle: =BorderStyle.None
+                        Fill: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.Primary,
+                              gblTheme.Light.Colors.Primary
+                          )
+                        Height: =2
+                        Visible: |-
+                          =If(
+                              !IsBlank(gblSelectedModule),
+                              ThisItem.Module = gblSelectedModule,
+                              ThisItem.ID = cmpBTNav.SelectedID
+                          )
+                        Width: =16
+                        X: =(conBTItem.Width - Self.Width) / 2
+                        Y: =0
+                  - imgBTNav:
+                      Control: Image@2.2.3
+                      Properties:
+                        AccessibleLabel: =Coalesce(ThisItem.Title, "")
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: |-
+                          =fxSvg(
+                              Coalesce(ThisItem.Icon, "Home"),
+                              If(
+                                  If(
+                                      !IsBlank(gblSelectedModule),
+                                      ThisItem.Module = gblSelectedModule,
+                                      ThisItem.ID = cmpBTNav.SelectedID
+                                  ),
+                                  fxThemeInk("Primary"),
+                                  fxThemeInk("Muted")
+                              )
+                          )
+                        ImagePosition: =ImagePosition.Fit
+                        Tooltip: =Coalesce(ThisItem.Title, "")
+                        Width: =16
+                        X: =(conBTItem.Width - Self.Width) / 2
+                        Y: =8
+                  - lblBTItem:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        AutoHeight: =false
+                        BorderStyle: =BorderStyle.None
+                        Color: |-
+                          =If(
+                              If(
+                                  !IsBlank(gblSelectedModule),
+                                  ThisItem.Module = gblSelectedModule,
+                                  ThisItem.ID = cmpBTNav.SelectedID
+                              ),
+                              If(
+                                  gblTheme.Mode = "Dark",
+                                  gblTheme.Dark.Colors.Primary,
+                                  gblTheme.Light.Colors.Primary
+                              ),
+                              If(
+                                  gblTheme.Mode = "Dark",
+                                  gblTheme.Dark.Colors.TextMuted,
+                                  gblTheme.Light.Colors.TextMuted
+                              )
+                          )
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Regular
+                        Height: =12
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =8
+                        Text: =Coalesce(ThisItem.Title, "")
+                        Tooltip: =Self.Text
+                        VerticalAlign: =VerticalAlign.Top
+                        Width: =conBTItem.Width
+                        Wrap: =false
+                        X: =0
+                        Y: =28
+                  - btnBTNav:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =Coalesce(ThisItem.Title, "")
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =conBTItem.Height
+                        Icon: =""
+                        OnSelect: |-
+                          =Set(gblSelectedModule, ThisItem.Module);
+                          cmpBTNav.OnNavigateBtn()
+                        Text: =""
+                        Tooltip: =Coalesce(ThisItem.Title, "")
+                        Width: =conBTItem.Width
+                        X: =0
+                        Y: =0

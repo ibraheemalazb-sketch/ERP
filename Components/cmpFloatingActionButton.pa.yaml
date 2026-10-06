@@ -1,0 +1,402 @@
+ComponentDefinitions:
+  cmpFloatingActionButton:
+    DefinitionType: CanvasComponent
+    Description: Corner action button. The instance Width and Height are the whole box, including the speed dial. The button stays at the bottom right. Pills use that width instead of a character count.
+    AccessAppScope: true
+    CustomProperties:
+      Color:
+        PropertyKind: Input
+        DisplayName: Color
+        Description: Button color. Speed-dial rows use their own Color when that column is set.
+        DataType: Color
+        Default: =fxThemeColor("Primary")
+      Disabled:
+        PropertyKind: Input
+        DisplayName: Disabled
+        Description: Disable the main button.
+        DataType: Boolean
+        Default: =false
+      Icon:
+        PropertyKind: Input
+        DisplayName: Icon
+        Description: fxSvg name (Plus, Edit, Share, Camera, Search, Check, X, Heart, Star, Upload, Download, Settings, Menu, Send) or a data URI.
+        DataType: Text
+        Default: ="Plus"
+      IconColor:
+        PropertyKind: Input
+        DisplayName: IconColor
+        Description: Stroke color for the main icon, as rgb() or a hex color.
+        DataType: Text
+        Default: =If(gblTheme.Mode = "Dark", "rgb(13,17,23)", "rgb(255,255,255)")
+      IsOpen:
+        PropertyKind: Output
+        DisplayName: IsOpen
+        Description: Whether the speed dial is open.
+        DataType: Boolean
+      ItemSize:
+        PropertyKind: Input
+        DisplayName: ItemSize
+        Description: Preferred height of each speed-dial row. Rows shrink when the instance is shorter than the preferred stack.
+        DataType: Number
+        Default: =52
+      Label:
+        PropertyKind: Input
+        DisplayName: Label
+        Description: Text on the button when Style is extended.
+        DataType: Text
+        Default: ="New"
+      OnSelect:
+        PropertyKind: Event
+        DisplayName: OnSelect
+        Description: Fires when the button is pressed and SpeedDialItems is empty.
+        ReturnType: None
+        Default: =false
+      OnSpeedDialSelect:
+        PropertyKind: Event
+        DisplayName: OnSpeedDialSelect
+        Description: Fires after a speed-dial row is pressed. Read SelectedSpeedDialItem.
+        ReturnType: None
+        Default: =false
+      SelectedSpeedDialItem:
+        PropertyKind: Output
+        DisplayName: SelectedSpeedDialItem
+        Description: Last speed-dial row. Columns are Icon, Label, and Color.
+        DataType: Record
+      Size:
+        PropertyKind: Input
+        DisplayName: Size
+        Description: small (40), regular (56), or large (72).
+        DataType: Text
+        Default: ="regular"
+      SpeedDialItems:
+        PropertyKind: Input
+        DisplayName: SpeedDialItems
+        Description: Rows with Icon, Label, and Color. Leave the table empty for a single action.
+        DataType: Table
+        Default: |-
+          =Table(
+              {Icon: "Plus", Label: "New task", Color: RGBA(37, 99, 235, 1)},
+              {Icon: "Edit", Label: "Quick note", Color: RGBA(5, 150, 105, 1)},
+              {Icon: "Camera", Label: "Photo", Color: RGBA(168, 85, 247, 1)}
+          )
+      Style:
+        PropertyKind: Input
+        DisplayName: Style
+        Description: standard is the round button. extended adds Label on the button and uses the instance width.
+        DataType: Text
+        Default: ="standard"
+      Theme:
+        PropertyKind: Input
+        DisplayName: Theme
+        Description: Kept for existing bindings. Button color comes from Color, which defaults to the app theme.
+        DataType: Text
+        Default: =gblTheme.Mode
+    Properties:
+      Fill: =Color.Transparent
+      Height: |-
+        =With(
+            {
+                buttonSize: Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                count: CountRows(cmpFloatingActionButton.SpeedDialItems)
+            },
+            buttonSize + If(count > 0, 8 + count * cmpFloatingActionButton.ItemSize, 0)
+        )
+      IsOpen: =_fabOpen
+      OnReset: |-
+        =Set(_fabOpen, false);
+        Set(_fabSelectedSD, {Icon: "", Label: "", Color: RGBA(0, 0, 0, 0)})
+      SelectedSpeedDialItem: =_fabSelectedSD
+      Width: |-
+        =If(
+            CountRows(cmpFloatingActionButton.SpeedDialItems) > 0,
+            240,
+            If(cmpFloatingActionButton.Style = "extended", 180, Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56))
+        )
+    Children:
+      - cntFabRoot:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - btnFabBackdrop:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =Parent.Height
+                  OnSelect: =Set(_fabOpen, false)
+                  Text: =""
+                  Visible: =_fabOpen
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+            - galFabDial:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Height: |-
+                    =With(
+                        {
+                            buttonSize: Min(
+                                Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                                Parent.Height
+                            ),
+                            count: CountRows(cmpFloatingActionButton.SpeedDialItems),
+                            available: Max(
+                                0,
+                                Parent.Height - Min(
+                                    Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                                    Parent.Height
+                                ) - 8
+                            )
+                        },
+                        If(
+                            count = 0,
+                            0,
+                            count * Min(cmpFloatingActionButton.ItemSize, available / count)
+                        )
+                    )
+                  Items: =cmpFloatingActionButton.SpeedDialItems
+                  LoadingSpinner: =LoadingSpinner.None
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: |-
+                    =With(
+                        {
+                            buttonSize: Min(
+                                Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                                Parent.Height
+                            ),
+                            count: Max(CountRows(cmpFloatingActionButton.SpeedDialItems), 1),
+                            available: Max(
+                                0,
+                                Parent.Height - Min(
+                                    Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                                    Parent.Height
+                                ) - 8
+                            )
+                        },
+                        Min(cmpFloatingActionButton.ItemSize, available / count)
+                    )
+                  Visible: |-
+                    =And(
+                        _fabOpen,
+                        CountRows(cmpFloatingActionButton.SpeedDialItems) > 0
+                    )
+                  Width: =Parent.Width
+                  X: =0
+                  Y: |-
+                    =Parent.Height - Min(
+                        Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                        Parent.Height
+                    ) - 8 - Self.Height
+                Children:
+                  - cntFabRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.TemplateHeight
+                        Width: =Parent.TemplateWidth
+                        X: =0
+                        Y: =0
+                      Children:
+                        - cntFabPill:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =If(IsBlank(ThisItem.Color), cmpFloatingActionButton.Color, ThisItem.Color)
+                              Height: =Max(32, Parent.Height - 8)
+                              RadiusBottomLeft: =gblTheme.Radius.Round
+                              RadiusBottomRight: =gblTheme.Radius.Round
+                              RadiusTopLeft: =gblTheme.Radius.Round
+                              RadiusTopRight: =gblTheme.Radius.Round
+                              Width: =Max(44, Parent.Width - 8)
+                              X: =Parent.Width - Self.Width
+                              Y: =(Parent.Height - Self.Height) / 2
+                            Children:
+                              - lblFabPill:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Left
+                                    Color: =RGBA(255, 255, 255, 1)
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =Parent.Height
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =13
+                                    Text: =Coalesce(ThisItem.Label, "")
+                                    Tooltip: =Self.Text
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    Width: =Max(0, Parent.Width - Parent.Height - 12)
+                                    Wrap: =false
+                                    X: =14
+                                    Y: =0
+                              - imgFabPill:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =Max(12, Parent.Height - 28)
+                                    Image: |-
+                                      =If(
+                                          StartsWith(ThisItem.Icon, "data:"),
+                                          ThisItem.Icon,
+                                          If(
+                                              StartsWith(ThisItem.Icon, "<svg"),
+                                              "data:image/svg+xml;utf8," & EncodeUrl(Substitute(ThisItem.Icon, "currentColor", "rgb(255,255,255)")),
+                                              fxSvg(Coalesce(ThisItem.Icon, "Plus"), "rgb(255,255,255)")
+                                          )
+                                      )
+                                    ImagePosition: =ImagePosition.Fit
+                                    Width: =Self.Height
+                                    X: =Parent.Width - 10 - Self.Width
+                                    Y: =(Parent.Height - Self.Height) / 2
+                        - btnFabPill:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =Coalesce(ThisItem.Label, "")
+                              Appearance: =ButtonAppearance.Transparent
+                              Height: =Parent.Height
+                              OnSelect: |-
+                                =Set(
+                                    _fabSelectedSD,
+                                    {
+                                        Icon: ThisItem.Icon,
+                                        Label: ThisItem.Label,
+                                        Color: ThisItem.Color
+                                    }
+                                );
+                                Set(_fabOpen, false);
+                                cmpFloatingActionButton.OnSpeedDialSelect()
+                              Text: =""
+                              Tooltip: =Coalesce(ThisItem.Label, "")
+                              Width: =Parent.Width
+                              X: =0
+                              Y: =0
+            - cntFabBody:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =cmpFloatingActionButton.Color
+                  Height: |-
+                    =Min(
+                        Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                        Parent.Height
+                    )
+                  RadiusBottomLeft: =gblTheme.Radius.Round
+                  RadiusBottomRight: =gblTheme.Radius.Round
+                  RadiusTopLeft: =gblTheme.Radius.Round
+                  RadiusTopRight: =gblTheme.Radius.Round
+                  Width: |-
+                    =If(
+                        cmpFloatingActionButton.Style = "extended",
+                        Parent.Width,
+                        Min(
+                            Switch(cmpFloatingActionButton.Size, "small", 40, "regular", 56, "large", 72, 56),
+                            Parent.Width
+                        )
+                    )
+                  X: =Parent.Width - Self.Width
+                  Y: =Parent.Height - Self.Height
+                Children:
+                  - imgFabIcon:
+                      Control: Image@2.2.3
+                      Properties:
+                        BorderStyle: =BorderStyle.None
+                        Height: |-
+                          =Min(
+                              Switch(cmpFloatingActionButton.Size, "small", 20, "regular", 24, "large", 32, 24),
+                              Max(12, Parent.Height - 16)
+                          )
+                        Image: |-
+                          =If(
+                              _fabOpen,
+                              fxSvg("Dismiss", cmpFloatingActionButton.IconColor),
+                              If(
+                                  StartsWith(cmpFloatingActionButton.Icon, "data:"),
+                                  cmpFloatingActionButton.Icon,
+                                  If(
+                                      StartsWith(cmpFloatingActionButton.Icon, "<svg"),
+                                      "data:image/svg+xml;utf8," & EncodeUrl(Substitute(cmpFloatingActionButton.Icon, "currentColor", cmpFloatingActionButton.IconColor)),
+                                      fxSvg(Coalesce(cmpFloatingActionButton.Icon, "Plus"), cmpFloatingActionButton.IconColor)
+                                  )
+                              )
+                          )
+                        ImagePosition: =ImagePosition.Fit
+                        Width: =Self.Height
+                        X: |-
+                          =If(
+                              cmpFloatingActionButton.Style = "extended",
+                              16,
+                              (Parent.Width - Self.Width) / 2
+                          )
+                        Y: =(Parent.Height - Self.Height) / 2
+                  - lblFabExt:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Left
+                        Color: =If(gblTheme.Mode = "Dark", gblTheme.Dark.Colors.TextOnPrimary, gblTheme.Light.Colors.TextOnPrimary)
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =Parent.Height
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =Switch(cmpFloatingActionButton.Size, "small", 12, "regular", 14, "large", 16, 14)
+                        Text: =cmpFloatingActionButton.Label
+                        Tooltip: =Self.Text
+                        VerticalAlign: =VerticalAlign.Middle
+                        Visible: =cmpFloatingActionButton.Style = "extended"
+                        Width: |-
+                          =Max(
+                              0,
+                              Parent.Width - 16 - Switch(cmpFloatingActionButton.Size, "small", 20, "regular", 24, "large", 32, 24) - 8 - 12
+                          )
+                        Wrap: =false
+                        X: |-
+                          =16 + Switch(cmpFloatingActionButton.Size, "small", 20, "regular", 24, "large", 32, 24) + 8
+                        Y: =0
+                  - recFabDisabled:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =RGBA(255, 255, 255, 0.55)
+                        Height: =Parent.Height
+                        Visible: =cmpFloatingActionButton.Disabled
+                        Width: =Parent.Width
+                        X: =0
+                        Y: =0
+                  - btnFabHit:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =Coalesce(cmpFloatingActionButton.Label, cmpFloatingActionButton.Icon)
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =Parent.Height
+                        OnSelect: |-
+                          =If(
+                              Not(cmpFloatingActionButton.Disabled),
+                              If(
+                                  CountRows(cmpFloatingActionButton.SpeedDialItems) > 0,
+                                  Set(_fabOpen, Not(_fabOpen)),
+                                  cmpFloatingActionButton.OnSelect()
+                              )
+                          )
+                        Text: =""
+                        Tooltip: =Coalesce(cmpFloatingActionButton.Label, "")
+                        Width: =Parent.Width
+                        X: =0
+                        Y: =0

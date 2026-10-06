@@ -1,0 +1,868 @@
+ComponentDefinitions:
+  cmpModuleNav:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      AnimationEffect:
+        PropertyKind: Input
+        DisplayName: Animation Effect
+        Description: 'Gallery transition. "Pop", "Push", or "None". None is the fast setting.'
+        DataType: Text
+        Default: ="None"
+      CardClick:
+        PropertyKind: Event
+        DisplayName: CardClick
+        Description: Fires after varSelectedScreen is set to the row Screen value.
+        ReturnType: None
+        Default: =false
+      ColumnsLayout:
+        PropertyKind: Input
+        DisplayName: Columns Layout
+        Description: Responsive column record with Mobile, Tablet, Desktop, and three breakpoints.
+        DataType: Record
+        Default: |-
+          ={
+              Mobile: 1,
+              Tablet: 2,
+              Desktop: 4,
+              MobileBreakpoint: IfError(Index(App.SizeBreakpoints, 1).Value, 640),
+              TabletBreakpoint: IfError(Index(App.SizeBreakpoints, 2).Value, 1024),
+              DesktopBreakpoint: IfError(Index(App.SizeBreakpoints, 3).Value, 1366)
+          }
+      Data:
+        PropertyKind: Input
+        DisplayName: Data
+        Description: In-memory module table. Pass an already-loaded table. This component does not query Dataverse or SharePoint. The description column is Descripation.
+        DataType: Table
+        Default: |-
+          =Table(
+              {
+                  ID: 1,
+                  Icon: "Users",
+                  Tab: "HRHome",
+                  Value: 128,
+                  Label: "Human resources",
+                  Descripation: "Employees, leave, and performance",
+                  Screen: "HR",
+                  IconBg: "#EBF5FF",
+                  IconColor: "#2196F3",
+                  SparklineData: "",
+                  isHidden: false
+              },
+              {
+                  ID: 2,
+                  Icon: "Activity",
+                  Tab: "PHome",
+                  Value: 24,
+                  Label: "Programs",
+                  Descripation: "Projects, activities, and tasks",
+                  Screen: "Projects",
+                  IconBg: "#E8F5E9",
+                  IconColor: "#4CAF50",
+                  SparklineData: "",
+                  isHidden: false
+              },
+              {
+                  ID: 3,
+                  Icon: "Box",
+                  Tab: "Main",
+                  Value: 16,
+                  Label: "Procurement",
+                  Descripation: "Requests, orders, and receipts",
+                  Screen: "Procurement",
+                  IconBg: "#F3E5F5",
+                  IconColor: "#9C27B0",
+                  SparklineData: "",
+                  isHidden: false
+              },
+              {
+                  ID: 4,
+                  Icon: "Target",
+                  Tab: "Main",
+                  Value: 0,
+                  Label: "MEAL",
+                  Descripation: "Indicators, reviews, and reports",
+                  Screen: "MEAL",
+                  IconBg: "#FFF3E0",
+                  IconColor: "#FF9800",
+                  SparklineData: "",
+                  isHidden: false
+              },
+              {
+                  ID: 5,
+                  Icon: "Dollar",
+                  Tab: "Main",
+                  Value: 0,
+                  Label: "Finance",
+                  Descripation: "Budgets, commitments, and spend",
+                  Screen: "Finance",
+                  IconBg: "#E0F2F1",
+                  IconColor: "#009688",
+                  SparklineData: "",
+                  isHidden: false
+              }
+          )
+      Icons:
+        PropertyKind: Input
+        DisplayName: Icons
+        Description: Kept so existing screens still bind. Cards draw their own outline SVG from Data.Icon and do not read this table.
+        DataType: Table
+        Default: |-
+          =Table(
+              {
+                  Name: "Box",
+                  SVG: ""
+              }
+          )
+      IsLoading:
+        PropertyKind: Input
+        DisplayName: Is Loading
+        Description: When true, shows placeholder cards and hides the module gallery.
+        DataType: Boolean
+        Default: =false
+      Style:
+        PropertyKind: Input
+        DisplayName: Style
+        Description: '"Compact" and "Minimal" use a 70px row. "Standard", "Filled", and "Chart" use heights.statsCardMax. Chart does not draw a sparkline.'
+        DataType: Text
+        Default: ="Compact"
+      StyleConfig:
+        PropertyKind: Input
+        DisplayName: Style Config
+        Description: Only abbreviateThreshold and heights.statsCardMax are read. Color, type, spacing, and radius come from gblTheme.
+        DataType: Record
+        Default: |-
+          ={
+              colors: {
+                  cardBg: ColorValue("#FFFFFF"),
+                  border: ColorValue("#E5E7EB"),
+                  text: ColorValue("#111827"),
+                  textMuted: ColorValue("#6B7280"),
+                  positive: ColorValue("#22C55E"),
+                  negative: ColorValue("#EF4444"),
+                  neutral: ColorValue("#9E9E9E"),
+                  skeletonBase: ColorValue("#E5E7EB"),
+                  skeletonShine: ColorValue("#F3F4F6")
+              },
+              space: {
+                  xs: 4,
+                  sm: 8,
+                  md: 12,
+                  lg: 16,
+                  xl: 24
+              },
+              radius: {
+                  md: 8,
+                  lg: 12
+              },
+              type: {
+                  value: {
+                      size: 28,
+                      sizeCompact: 20
+                  },
+                  label: {
+                      size: 13
+                  },
+                  body: {
+                      size: 12
+                  }
+              },
+              heights: {
+                  statsCardMax: 168
+              },
+              abbreviateThreshold: 10000
+          }
+      Theme:
+        PropertyKind: Input
+        DisplayName: Theme
+        Description: Kept for existing screens. Card colors follow gblTheme.Mode.
+        DataType: Text
+        Default: ="Light"
+    Properties:
+      Fill: =Color.Transparent
+      Height: |-
+        =IfError(
+            With(
+                {
+                    bp: cmpModuleNav.ColumnsLayout,
+                    w: cmpModuleNav.Width,
+                    cardCount: CountRows(
+                        Filter(
+                            cmpModuleNav.Data,
+                            !IfError(isHidden, false)
+                        )
+                    )
+                },
+                With(
+                    {
+                        cols: Max(
+                            1,
+                            If(
+                                w < bp.MobileBreakpoint,
+                                bp.Mobile,
+                                If(
+                                    w < bp.TabletBreakpoint,
+                                    bp.Tablet,
+                                    bp.Desktop
+                                )
+                            )
+                        ),
+                        cardH: If(
+                            Or(
+                                cmpModuleNav.Style = "Compact",
+                                cmpModuleNav.Style = "Minimal"
+                            ),
+                            70,
+                            cmpModuleNav.StyleConfig.heights.statsCardMax
+                        ),
+                        gap: If(
+                            Or(
+                                cmpModuleNav.Style = "Compact",
+                                cmpModuleNav.Style = "Minimal"
+                            ),
+                            gblTheme.Spacing.MD,
+                            gblTheme.Spacing.LG
+                        )
+                    },
+                    With(
+                        {
+                            rows: If(
+                                And(cmpModuleNav.IsLoading, cardCount = 0),
+                                1,
+                                RoundUp(cardCount / cols, 0)
+                            )
+                        },
+                        rows * (cardH + gap)
+                    )
+                )
+            ),
+            70
+        )
+      Width: =Parent.Width
+    Children:
+      - galModules:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            AccessibleLabel: |-
+              =If(
+                  gblLanguage = "Arabic",
+                  "وحدات النظام",
+                  "Modules"
+              )
+            BorderStyle: =BorderStyle.None
+            DelayItemLoading: =false
+            Fill: =Color.Transparent
+            Height: =cmpModuleNav.Height
+            ItemAccessibleLabel: |-
+              =Coalesce(ThisItem.Label, "") & " " & Coalesce(ThisItem.Descripation, "")
+            Items: |-
+              =Filter(
+                  cmpModuleNav.Data,
+                  !IfError(isHidden, false)
+              )
+            Selectable: =false
+            ShowScrollbar: =false
+            TabIndex: =0
+            TemplatePadding: =0
+            TemplateSize: |-
+              =If(
+                  Or(
+                      cmpModuleNav.Style = "Compact",
+                      cmpModuleNav.Style = "Minimal"
+                  ),
+                  70 + gblTheme.Spacing.MD,
+                  cmpModuleNav.StyleConfig.heights.statsCardMax + gblTheme.Spacing.LG
+              )
+            Transition: |-
+              =Switch(
+                  cmpModuleNav.AnimationEffect,
+                  "Pop",
+                  Transition.Pop,
+                  "Push",
+                  Transition.Push,
+                  Transition.None
+              )
+            Visible: =!cmpModuleNav.IsLoading
+            Width: =cmpModuleNav.Width
+            WrapCount: |-
+              =With(
+                  {
+                      bp: cmpModuleNav.ColumnsLayout,
+                      w: cmpModuleNav.Width
+                  },
+                  Max(
+                      1,
+                      If(
+                          w < bp.MobileBreakpoint,
+                          bp.Mobile,
+                          If(
+                              w < bp.TabletBreakpoint,
+                              bp.Tablet,
+                              bp.Desktop
+                          )
+                      )
+                  )
+              )
+            X: =0
+            Y: =0
+          Children:
+            - conModuleCard:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  BorderColor: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.Border,
+                        gblTheme.Light.Colors.Border
+                    )
+                  BorderStyle: =BorderStyle.Solid
+                  BorderThickness: =If(cmpModuleNav.Style = "Filled", 0, 1)
+                  DropShadow: =DropShadow.None
+                  Fill: |-
+                    =If(
+                        cmpModuleNav.Style = "Filled",
+                        If(
+                            gblTheme.Mode = "Dark",
+                            gblTheme.Dark.Colors.PrimaryLight,
+                            gblTheme.Light.Colors.PrimaryLight
+                        ),
+                        If(
+                            gblTheme.Mode = "Dark",
+                            gblTheme.Dark.Colors.Surface,
+                            gblTheme.Light.Colors.Surface
+                        )
+                    )
+                  Height: |-
+                    =If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        70,
+                        cmpModuleNav.StyleConfig.heights.statsCardMax
+                    )
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Width: |-
+                    =Parent.TemplateWidth - If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        gblTheme.Spacing.MD,
+                        gblTheme.Spacing.LG
+                    )
+                  X: |-
+                    =If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        gblTheme.Spacing.MD,
+                        gblTheme.Spacing.LG
+                    ) / 2
+                  Y: |-
+                    =If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        gblTheme.Spacing.MD,
+                        gblTheme.Spacing.LG
+                    ) / 2
+                Children:
+                  - conModuleIcon:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.PrimaryLight,
+                              gblTheme.Light.Colors.PrimaryLight
+                          )
+                        Height: =40
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: |-
+                          =Not(
+                              Or(
+                                  cmpModuleNav.Style = "Filled",
+                                  cmpModuleNav.Style = "Minimal",
+                                  cmpModuleNav.Style = "Chart"
+                              )
+                          )
+                        Width: =40
+                        X: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              Parent.Width - 16 - Self.Width,
+                              16
+                          )
+                        Y: =(Parent.Height - Self.Height) / 2
+                      Children:
+                        - imgModule:
+                            Control: Image@2.2.3
+                            Properties:
+                              AccessibleLabel: =Coalesce(ThisItem.Label, "")
+                              BorderStyle: =BorderStyle.None
+                              Height: =22
+                              Image: |-
+                                =With(
+                                    {
+                                        stroke: If(
+                                            gblTheme.Mode = "Dark",
+                                            "rgb(121,176,255)",
+                                            "rgb(27,86,229)"
+                                        ),
+                                        body: Switch(
+                                            ThisItem.Icon,
+                                            "Users",
+                                            "<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M22 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>",
+                                            "Activity",
+                                            "<polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/>",
+                                            "TrendLines",
+                                            "<polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/>",
+                                            "Box",
+                                            "<path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/><polyline points='3.27 6.96 12 12.01 20.73 6.96'/><line x1='12' y1='22.08' x2='12' y2='12'/>",
+                                            "Package",
+                                            "<path d='M16.5 9.4 7.55 4.24'/><path d='M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'/><polyline points='3.29 7 12 12 20.71 7'/><line x1='12' y1='22' x2='12' y2='12'/>",
+                                            "Target",
+                                            "<circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='6'/><circle cx='12' cy='12' r='2'/>",
+                                            "Dollar",
+                                            "<line x1='12' y1='1' x2='12' y2='23'/><path d='M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'/>",
+                                            "Warning",
+                                            "<path d='M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>",
+                                            "Quantity",
+                                            "<line x1='8' y1='6' x2='21' y2='6'/><line x1='8' y1='12' x2='21' y2='12'/><line x1='8' y1='18' x2='21' y2='18'/><line x1='3' y1='6' x2='3.01' y2='6'/><line x1='3' y1='12' x2='3.01' y2='12'/><line x1='3' y1='18' x2='3.01' y2='18'/>",
+                                            "BarChart",
+                                            "<line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/>",
+                                            "Clock",
+                                            "<circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>",
+                                            "Calendar",
+                                            "<rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>",
+                                            "Mail",
+                                            "<path d='M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z'/><polyline points='22,6 12,13 2,6'/>",
+                                            "Shield",
+                                            "<path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/>",
+                                            "Heart",
+                                            "<path d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'/>",
+                                            "HeartFilled",
+                                            "<path d='M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z' fill='current'/>",
+                                            "Star",
+                                            "<polygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/>",
+                                            "Percent",
+                                            "<line x1='19' y1='5' x2='5' y2='19'/><circle cx='6.5' cy='6.5' r='2.5'/><circle cx='17.5' cy='17.5' r='2.5'/>",
+                                            "<rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/>"
+                                        )
+                                    },
+                                    "data:image/svg+xml;utf8," & EncodeUrl(
+                                        Substitute(
+                                            "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='" & stroke & "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" & body & "</svg>",
+                                            "current",
+                                            stroke
+                                        )
+                                    )
+                                )
+                              Width: =22
+                              X: =(Parent.Width - Self.Width) / 2
+                              Y: =(Parent.Height - Self.Height) / 2
+                  - txtModuleCount:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        AccessibleLabel: =Self.Text
+                        Align: =If(gblLanguage = "Arabic", Align.Left, Align.Right)
+                        AutoHeight: =false
+                        Color: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.TextPrimary,
+                              gblTheme.Light.Colors.TextPrimary
+                          )
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =22
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.CardTitle
+                        Text: |-
+                          =IfError(
+                              With(
+                                  {
+                                      v: Value(Text(ThisItem.Value)),
+                                      thresh: cmpModuleNav.StyleConfig.abbreviateThreshold
+                                  },
+                                  If(
+                                      IsBlank(v),
+                                      "",
+                                      And(thresh > 0, Abs(v) >= 1000000),
+                                      Text(v / 1000000, "#,##0.0") & "M",
+                                      And(thresh > 0, Abs(v) >= thresh),
+                                      Text(v / 1000, "#,##0.0") & "K",
+                                      v = Round(v, 0),
+                                      Text(v, "#,##0"),
+                                      Text(v, "#,##0.##")
+                                  )
+                              ),
+                              ""
+                          )
+                        Visible: =!IsBlank(Self.Text)
+                        Width: =56
+                        Wrap: =false
+                        X: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              12,
+                              Parent.Width - 12 - Self.Width
+                          )
+                        Y: =txtModuleLabel.Y
+                  - txtModuleLabel:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        AccessibleLabel: =Self.Text
+                        Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
+                        AutoHeight: =false
+                        Color: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.TextPrimary,
+                              gblTheme.Light.Colors.TextPrimary
+                          )
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =22
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Navigation
+                        Text: =Coalesce(ThisItem.Label, "")
+                        Width: |-
+                          =With(
+                              {
+                                  startX: If(
+                                      gblLanguage = "Arabic",
+                                      12 + If(txtModuleCount.Visible, txtModuleCount.Width + 8, 0),
+                                      If(conModuleIcon.Visible, 68, 16)
+                                  ),
+                                  endPad: If(
+                                      gblLanguage = "Arabic",
+                                      If(conModuleIcon.Visible, 68, 16),
+                                      If(txtModuleCount.Visible, txtModuleCount.Width + 20, 16)
+                                  )
+                              },
+                              Max(0, Parent.Width - startX - endPad)
+                          )
+                        Wrap: =false
+                        X: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              12 + If(txtModuleCount.Visible, txtModuleCount.Width + 8, 0),
+                              If(conModuleIcon.Visible, conModuleIcon.X + conModuleIcon.Width + 12, 16)
+                          )
+                        Y: |-
+                          =If(
+                              Or(
+                                  cmpModuleNav.Style = "Compact",
+                                  cmpModuleNav.Style = "Minimal"
+                              ),
+                              (Parent.Height - 46) / 2,
+                              20
+                          )
+                  - txtModuleDesc:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        AccessibleLabel: =Self.Text
+                        Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
+                        AutoHeight: =false
+                        Color: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.TextMuted,
+                              gblTheme.Light.Colors.TextMuted
+                          )
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: |-
+                          =If(
+                              Or(
+                                  cmpModuleNav.Style = "Compact",
+                                  cmpModuleNav.Style = "Minimal"
+                              ),
+                              18,
+                              36
+                          )
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =Coalesce(ThisItem.Descripation, "")
+                        Width: =txtModuleLabel.Width
+                        Wrap: |-
+                          =Not(
+                              Or(
+                                  cmpModuleNav.Style = "Compact",
+                                  cmpModuleNav.Style = "Minimal"
+                              )
+                          )
+                        X: =txtModuleLabel.X
+                        Y: =txtModuleLabel.Y + 24
+                  - btnModuleOpen:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: |-
+                          =Coalesce(ThisItem.Label, "") & If(
+                              IsBlank(txtModuleCount.Text),
+                              "",
+                              " " & txtModuleCount.Text
+                          ) & If(
+                              IsBlank(txtModuleDesc.Text),
+                              "",
+                              " " & txtModuleDesc.Text
+                          )
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =Parent.Height
+                        OnSelect: |-
+                          =Set(varSelectedScreen, ThisItem.Screen);
+                          cmpModuleNav.CardClick()
+                        Text: =""
+                        Tooltip: |-
+                          =Coalesce(ThisItem.Label, "") & If(
+                              IsBlank(txtModuleCount.Text),
+                              "",
+                              " · " & txtModuleCount.Text
+                          ) & If(
+                              IsBlank(txtModuleDesc.Text),
+                              "",
+                              " · " & txtModuleDesc.Text
+                          )
+                        Width: =Parent.Width
+                        X: =0
+                        Y: =0
+      - galModuleSkeleton:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            AccessibleLabel: |-
+              =If(
+                  gblLanguage = "Arabic",
+                  "جار تحميل الوحدات",
+                  "Loading modules"
+              )
+            BorderStyle: =BorderStyle.None
+            DelayItemLoading: =false
+            Fill: =Color.Transparent
+            Height: =cmpModuleNav.Height
+            Items: |-
+              =Sequence(
+                  Min(
+                      8,
+                      Max(
+                          1,
+                          With(
+                              {
+                                  bp: cmpModuleNav.ColumnsLayout,
+                                  w: cmpModuleNav.Width,
+                                  cardCount: CountRows(
+                                      Filter(
+                                          cmpModuleNav.Data,
+                                          !IfError(isHidden, false)
+                                      )
+                                  )
+                              },
+                              If(
+                                  cardCount = 0,
+                                  Max(
+                                      1,
+                                      If(
+                                          w < bp.MobileBreakpoint,
+                                          bp.Mobile,
+                                          If(
+                                              w < bp.TabletBreakpoint,
+                                              bp.Tablet,
+                                              bp.Desktop
+                                          )
+                                      )
+                                  ),
+                                  cardCount
+                              )
+                          )
+                      )
+                  )
+              )
+            Selectable: =false
+            ShowScrollbar: =false
+            TabIndex: =-1
+            TemplatePadding: =0
+            TemplateSize: |-
+              =If(
+                  Or(
+                      cmpModuleNav.Style = "Compact",
+                      cmpModuleNav.Style = "Minimal"
+                  ),
+                  70 + gblTheme.Spacing.MD,
+                  cmpModuleNav.StyleConfig.heights.statsCardMax + gblTheme.Spacing.LG
+              )
+            Visible: =cmpModuleNav.IsLoading
+            Width: =cmpModuleNav.Width
+            WrapCount: |-
+              =With(
+                  {
+                      bp: cmpModuleNav.ColumnsLayout,
+                      w: cmpModuleNav.Width
+                  },
+                  Max(
+                      1,
+                      If(
+                          w < bp.MobileBreakpoint,
+                          bp.Mobile,
+                          If(
+                              w < bp.TabletBreakpoint,
+                              bp.Tablet,
+                              bp.Desktop
+                          )
+                      )
+                  )
+              )
+            X: =0
+            Y: =0
+          Children:
+            - conModuleSkeleton:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  BorderColor: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.Border,
+                        gblTheme.Light.Colors.Border
+                    )
+                  BorderStyle: =BorderStyle.Solid
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.Surface,
+                        gblTheme.Light.Colors.Surface
+                    )
+                  Height: |-
+                    =If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        70,
+                        cmpModuleNav.StyleConfig.heights.statsCardMax
+                    )
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Width: |-
+                    =Parent.TemplateWidth - If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        gblTheme.Spacing.MD,
+                        gblTheme.Spacing.LG
+                    )
+                  X: |-
+                    =If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        gblTheme.Spacing.MD,
+                        gblTheme.Spacing.LG
+                    ) / 2
+                  Y: |-
+                    =If(
+                        Or(
+                            cmpModuleNav.Style = "Compact",
+                            cmpModuleNav.Style = "Minimal"
+                        ),
+                        gblTheme.Spacing.MD,
+                        gblTheme.Spacing.LG
+                    ) / 2
+                Children:
+                  - shpModuleSkIcon:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.SurfaceHover,
+                              gblTheme.Light.Colors.Border
+                          )
+                        Height: =40
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: |-
+                          =Not(
+                              Or(
+                                  cmpModuleNav.Style = "Filled",
+                                  cmpModuleNav.Style = "Minimal",
+                                  cmpModuleNav.Style = "Chart"
+                              )
+                          )
+                        Width: =40
+                        X: =If(gblLanguage = "Arabic", Parent.Width - 56, 16)
+                        Y: =(Parent.Height - Self.Height) / 2
+                  - shpModuleSkLabel:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.SurfaceHover,
+                              gblTheme.Light.Colors.Border
+                          )
+                        Height: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Small
+                        RadiusBottomRight: =gblTheme.Radius.Small
+                        RadiusTopLeft: =gblTheme.Radius.Small
+                        RadiusTopRight: =gblTheme.Radius.Small
+                        Width: =Min(120, Parent.Width * 0.42)
+                        X: |-
+                          =If(
+                              shpModuleSkIcon.Visible,
+                              If(gblLanguage = "Arabic", 16, 68),
+                              16
+                          )
+                        Y: =(Parent.Height - 36) / 2
+                  - shpModuleSkDesc:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: |-
+                          =If(
+                              gblTheme.Mode = "Dark",
+                              gblTheme.Dark.Colors.TextDisabled,
+                              gblTheme.Light.Colors.BorderLight
+                          )
+                        Height: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Small
+                        RadiusBottomRight: =gblTheme.Radius.Small
+                        RadiusTopLeft: =gblTheme.Radius.Small
+                        RadiusTopRight: =gblTheme.Radius.Small
+                        Width: =Min(160, Parent.Width * 0.5)
+                        X: =shpModuleSkLabel.X
+                        Y: =shpModuleSkLabel.Y + 20

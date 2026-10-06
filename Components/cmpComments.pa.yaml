@@ -1,0 +1,1392 @@
+ComponentDefinitions:
+  cmpComments:
+    DefinitionType: CanvasComponent
+    Description: Reusable record discussion. Pass Title, ModuleName, RecordType, RecordID, RecordNumber, RelatedEntity, and People. One instance visible at a time.
+    AccessAppScope: true
+    CustomProperties:
+      Title:
+        PropertyKind: Input
+        DisplayName: Title
+        Description: Heading. The toolbar shows it in capitals.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "التعليقات", "Comments")
+      ModuleName:
+        PropertyKind: Input
+        DisplayName: ModuleName
+        Description: Comments and Notifications Module choice, for example Procurement.
+        DataType: Text
+        Default: ="Procurement"
+      RecordType:
+        PropertyKind: Input
+        DisplayName: RecordType
+        Description: Comments RecordType text, for example PurchaseRequest.
+        DataType: Text
+        Default: ="PurchaseRequest"
+      RecordID:
+        PropertyKind: Input
+        DisplayName: RecordID
+        Description: Id of the record being discussed. 0 loads nothing.
+        DataType: Number
+        Default: =0
+      RecordNumber:
+        PropertyKind: Input
+        DisplayName: RecordNumber
+        Description: Human reference stored on the comment and used in notifications.
+        DataType: Text
+        Default: =""
+      RelatedEntity:
+        PropertyKind: Input
+        DisplayName: RelatedEntity
+        Description: Notifications RelatedEntity choice, for example PurchaseRequest.
+        DataType: Text
+        Default: ="PurchaseRequest"
+      Involved:
+        PropertyKind: Input
+        DisplayName: Involved
+        Description: People who should be notified about a new comment. Columns are UserID and UserName.
+        DataType: Table
+        Default: |-
+          =Table({UserID: 0, UserName: ""})
+      People:
+        PropertyKind: Input
+        DisplayName: People
+        Description: In-memory people for mentions. Columns are ID, FullName, Email, and EmployeeNumber.
+        DataType: Table
+        Default: =Employees
+    Properties:
+      Fill: =fxThemeColor("Surface")
+      Height: =700
+      Width: =400
+    Children:
+      - conDiscussion:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Surface")
+            Height: =cmpComments.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =8
+            PaddingLeft: =8
+            PaddingRight: =8
+            PaddingTop: =8
+            Width: =cmpComments.Width
+            X: =0
+            Y: =0
+          Children:
+            - tmrDiscussion:
+                Control: Timer@2.1.0
+                Properties:
+                  AutoStart: =true
+                  Duration: =800
+                  FillPortions: =0
+                  Height: =0
+                  OnTimerEnd: |-
+                    =If(
+                        Or(
+                            varDiscussionRecord <> cmpComments.RecordID,
+                            Coalesce(varDiscussionRecordType, "") <> Coalesce(cmpComments.RecordType, ""),
+                            varDiscussionReload
+                        ),
+                        If(
+                            Or(cmpComments.RecordID = 0, IsBlank(cmpComments.RecordID)),
+                            Clear(colDiscussion);
+                            Set(varDiscussionRecord, 0);
+                            Set(varDiscussionRecordType, cmpComments.RecordType);
+                            Set(varDiscussionReload, false),
+                            ClearCollect(
+                                colDiscussion,
+                                Filter(
+                                    Comments,
+                                    RecordID = cmpComments.RecordID,
+                                    RecordType = cmpComments.RecordType,
+                                    IsDeleted = false
+                                )
+                            );
+                            Set(varDiscussionRecord, cmpComments.RecordID);
+                            Set(varDiscussionRecordType, cmpComments.RecordType);
+                            Set(varDiscussionReload, false)
+                        )
+                    )
+                  Repeat: =true
+                  Visible: =false
+                  Width: =0
+            - conCommentsToolbar:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =40
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =2
+                  PaddingLeft: =4
+                  PaddingRight: =4
+                  PaddingTop: =2
+                  Width: =Parent.Width
+                Children:
+                  - icoComments:
+                      Control: ModernIcon@1.1.1
+                      Properties:
+                        Icon: ="Chat"
+                        IconColor: =fxThemeColor("Primary")
+                        Height: =16
+                        Width: =16
+                  - lblCommentsTitle:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =20
+                        Size: =If(App.Width < 700, gblTheme.Typography.BodySmall, gblTheme.Typography.Body)
+                        Text: =Upper(Coalesce(cmpComments.Title, ""))
+                        Width: =Parent.Width - 32
+            - conCompose:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: |-
+                    =Max(
+                        112,
+                        24 + Max(
+                            72,
+                            24 * Max(
+                                1,
+                                CountRows(Split(Coalesce(varCommentDraft, ""), Char(10)))
+                            )
+                        ) + If(CountRows(colCommentMentions) > 0, 40, 0) + 40
+                    )
+                  LayoutAlignItems: =LayoutAlignItems.Start
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =12
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Width: =Parent.Width
+                Children:
+                  - conComposeAvatar:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Start
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =40
+                      Children:
+                        - shpComposeAvatar:
+                            Control: Circle@2.3.0
+                            Properties:
+                              Fill: =fxThemeColor("Primary")
+                              Height: =40
+                              Width: =40
+                              X: =0
+                              Y: =0
+                        - lblComposeAvatar:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("TextOnPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =40
+                              Size: =14
+                              Text: |-
+                                =With(
+                                    { words: Split(Trim(Coalesce(gblUser.FullName, "")), " ") },
+                                    Upper(
+                                        Left(First(words).Value, 1) & If(
+                                            CountRows(words) > 1,
+                                            Left(Last(FirstN(words, 2)).Value, 1),
+                                            ""
+                                        )
+                                    )
+                                )
+                              Width: =40
+                              X: =0
+                              Y: =0
+                  - conComposeBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Start
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Transparent")
+                        FillPortions: =1
+                        Height: |-
+                          =Max(
+                              72,
+                              24 * Max(
+                                  1,
+                                  CountRows(Split(Coalesce(varCommentDraft, ""), Char(10)))
+                              )
+                          ) + If(CountRows(colCommentMentions) > 0, 40, 0) + 44
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width - 52
+                      Children:
+                        - txtComment:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "اكتب تعليقًا", "Write a comment")
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Fill: =fxThemeColor("Background")
+                              FillPortions: =0
+                              Height: |-
+                                =Max(
+                                    72,
+                                    24 * Max(
+                                        1,
+                                        CountRows(Split(Coalesce(varCommentDraft, ""), Char(10)))
+                                    )
+                                )
+                              OnChange: =Set(varCommentDraft, Self.Text)
+                              Placeholder: =If(gblLanguage = "Arabic", "اكتب تعليقك هنا...", "Write your comment...")
+                              RadiusBottomLeft: =gblTheme.Radius.XL
+                              RadiusBottomRight: =gblTheme.Radius.XL
+                              RadiusTopLeft: =gblTheme.Radius.XL
+                              RadiusTopRight: =gblTheme.Radius.XL
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - conMentionList:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Transparent")
+                              FillPortions: =0
+                              Height: =If(CountRows(colCommentMentions) > 0, 36, 0)
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =CountRows(colCommentMentions) > 0
+                              Width: =Parent.Width
+                            Children:
+                              - galMentions:
+                                  Control: Gallery@2.15.0
+                                  Variant: Horizontal
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الإشارات", "Mentions")
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =fxThemeColor("Transparent")
+                                    Height: =36
+                                    Items: =colCommentMentions
+                                    ShowScrollbar: =false
+                                    TemplatePadding: =2
+                                    TemplateSize: =150
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conMentionChip:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =fxThemeColor("PrimaryLight")
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("PrimaryLighter")
+                                          Height: =32
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =4
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingLeft: =8
+                                          PaddingRight: =4
+                                          RadiusBottomLeft: =gblTheme.Radius.Round
+                                          RadiusBottomRight: =gblTheme.Radius.Round
+                                          RadiusTopLeft: =gblTheme.Radius.Round
+                                          RadiusTopRight: =gblTheme.Radius.Round
+                                          Width: =146
+                                        Children:
+                                          - lblMention:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("Primary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =28
+                                                Size: =gblTheme.Typography.BodySmall
+                                                Text: ="@" & Coalesce(ThisItem.UserName, "")
+                                                Width: =104
+                                          - btnRemoveMention:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                AccessibleLabel: =If(gblLanguage = "Arabic", "إزالة الإشارة", "Remove mention")
+                                                Appearance: =ButtonAppearance.Subtle
+                                                BasePaletteColor: =fxThemeColor("TextMuted")
+                                                Height: =24
+                                                Icon: ="Dismiss"
+                                                OnSelect: =Remove(colCommentMentions, ThisItem)
+                                                Text: =""
+                                                Width: =24
+                        - conComposeActions:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Transparent")
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutJustifyContent: =LayoutJustifyContent.End
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - btnMention:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الإشارة إلى مستخدم", "Mention a user")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =32
+                                    Icon: ="People"
+                                    OnSelect: =Set(varShowMentionPicker, !varShowMentionPicker)
+                                    Text: =If(gblLanguage = "Arabic", "إشارة", "Mention")
+                                    Width: =If(Parent.Width < 360, 96, 110)
+                              - conMentionPicker:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("Transparent")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Visible: =varShowMentionPicker
+                                    Width: =If(varShowMentionPicker, If(Parent.Width < 360, 140, 200), 0)
+                                  Children:
+                                    - cmbMentionUser:
+                                        Control: ModernCombobox@1.1.2
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "اختر مستخدمًا للإشارة إليه", "Select a user to mention")
+                                          Height: =34
+                                          InputTextPlaceholder: =If(gblLanguage = "Arabic", "مستخدم", "User")
+                                          ItemDisplayText: =ThisItem.FullName
+                                          Items: =cmpComments.People
+                                          OnChange: |-
+                                            =If(
+                                                !IsBlank(Self.Selected.ID),
+                                                If(
+                                                    IsBlank(LookUp(colCommentMentions, UserID = Self.Selected.ID)),
+                                                    Collect(
+                                                        colCommentMentions,
+                                                        {
+                                                            UserID: Self.Selected.ID,
+                                                            UserName: Self.Selected.FullName,
+                                                            Email: Self.Selected.Email,
+                                                            EmployeeNumber: Self.Selected.EmployeeNumber
+                                                        }
+                                                    )
+                                                )
+                                            );
+                                            Reset(cmbMentionUser);
+                                            Set(varShowMentionPicker, false)
+                                          SelectMultiple: =false
+                                          Width: =Parent.Width
+                              - btnPostComment:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إضافة تعليق", "Post comment")
+                                    Appearance: =ButtonAppearance.Primary
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    DisplayMode: |-
+                                      =If(
+                                          Or(
+                                              cmpComments.RecordID = 0,
+                                              IsBlank(Trim(Coalesce(varCommentDraft, "")))
+                                          ),
+                                          DisplayMode.Disabled,
+                                          DisplayMode.Edit
+                                      )
+                                    Height: =32
+                                    Icon: ="Send"
+                                    OnSelect: |-
+                                      =If(
+                                          cmpComments.RecordID = 0,
+                                          Notify(If(gblLanguage = "Arabic", "اختر سجلًا أولاً", "Select a record first"), NotificationType.Warning),
+                                          If(
+                                              IsBlank(Trim(Coalesce(varCommentDraft, ""))),
+                                              Notify(If(gblLanguage = "Arabic", "اكتب تعليقًا أولاً", "Please enter a comment first"), NotificationType.Warning),
+                                              Patch(
+                                                  Comments,
+                                                  Defaults(Comments),
+                                                  {
+                                                      Title: If(IsBlank(cmpComments.RecordNumber), "Comment", "Comment - " & cmpComments.RecordNumber),
+                                                      Module: {Value: cmpComments.ModuleName},
+                                                      Comment: Trim(varCommentDraft),
+                                                      RecordType: cmpComments.RecordType,
+                                                      RecordID: cmpComments.RecordID,
+                                                      RecordNumber: cmpComments.RecordNumber,
+                                                      CommentType: "Comment",
+                                                      CommentedByID: gblUser.ID,
+                                                      CommentedByName: gblUser.FullName,
+                                                      CommentDate: Now(),
+                                                      MentionedUserIDs: Concat(colCommentMentions, Text(UserID), ";"),
+                                                      MentionedUserNames: Concat(colCommentMentions, UserName, ";"),
+                                                      MentionCount: CountRows(colCommentMentions),
+                                                      ParentCommentID: Blank(),
+                                                      IsInternal: false,
+                                                      IsDeleted: false,
+                                                      ReplyCount: 0
+                                                  }
+                                              );
+                                              If(
+                                                  Or(
+                                                      cmpComments.RecordType = "PurchaseRequest",
+                                                      cmpComments.RecordType = "PurchaseOrder",
+                                                      cmpComments.RecordType = "GRN"
+                                                  ),
+                                                  fnWriteLog(
+                                                      Switch(
+                                                          cmpComments.RecordType,
+                                                          "PurchaseRequest", "Purchase Request",
+                                                          "PurchaseOrder", "Purchase Order",
+                                                          "GRN", "GRN"
+                                                      ),
+                                                      cmpComments.RecordID,
+                                                      Coalesce(cmpComments.RecordNumber, ""),
+                                                      "Commented",
+                                                      "Info",
+                                                      0,
+                                                      "",
+                                                      Blank(),
+                                                      "",
+                                                      "",
+                                                      "",
+                                                      "",
+                                                      "Comment added",
+                                                      "",
+                                                      0
+                                                  )
+                                              );
+                                              ForAll(
+                                                  Filter(colCommentMentions, UserID <> gblUser.ID) As mention,
+                                                  Patch(
+                                                      Notifications,
+                                                      Defaults(Notifications),
+                                                      {
+                                                          Title: "You were mentioned in " & Coalesce(cmpComments.RecordNumber, cmpComments.RecordType),
+                                                          Message: gblUser.FullName & " mentioned you in " & cmpComments.RecordType & " " & Coalesce(cmpComments.RecordNumber, ""),
+                                                          IsRead: "false",
+                                                          Createddate: Now(),
+                                                          RecipientID: mention.UserID,
+                                                          Recipient: {Id: mention.UserID, Value: mention.UserName},
+                                                          RecipientNo: mention.EmployeeNumber,
+                                                          RelatedEntity: {Value: cmpComments.RelatedEntity},
+                                                          RelatedItemID: cmpComments.RecordID,
+                                                          RecordType: cmpComments.RecordType,
+                                                          Module: {Value: cmpComments.ModuleName},
+                                                          Status: {Value: "Unread"},
+                                                          Duration: 0,
+                                                          ReadDate: Blank()
+                                                      }
+                                                  )
+                                              );
+                                              ClearCollect(
+                                                  colCommentAudience,
+                                                  Filter(cmpComments.Involved, UserID > 0)
+                                              );
+                                              RemoveIf(
+                                                  colCommentAudience,
+                                                  Or(
+                                                      UserID = Coalesce(gblUser.ID, 0),
+                                                      UserID in colCommentMentions.UserID
+                                                  )
+                                              );
+                                              ForAll(
+                                                  ForAll(
+                                                      Distinct(colCommentAudience, UserID),
+                                                      LookUp(colCommentAudience, UserID = Value)
+                                                  ) As person,
+                                                  Patch(
+                                                      Notifications,
+                                                      Defaults(Notifications),
+                                                      {
+                                                          Title: "New comment on " & Coalesce(cmpComments.RecordNumber, cmpComments.RecordType),
+                                                          Message: gblUser.FullName & " commented on " & cmpComments.RecordType & " " & Coalesce(cmpComments.RecordNumber, ""),
+                                                          IsRead: "false",
+                                                          Createddate: Now(),
+                                                          RecipientID: person.UserID,
+                                                          Recipient: {Id: person.UserID, Value: person.UserName},
+                                                          RecipientNo: LookUp(cmpComments.People, ID = person.UserID).EmployeeNumber,
+                                                          RelatedEntity: {Value: cmpComments.RelatedEntity},
+                                                          RelatedItemID: cmpComments.RecordID,
+                                                          RecordType: cmpComments.RecordType,
+                                                          Module: {Value: cmpComments.ModuleName},
+                                                          Status: {Value: "Unread"},
+                                                          Duration: 0,
+                                                          ReadDate: Blank()
+                                                      }
+                                                  )
+                                              );
+                                              Reset(txtComment);
+                                              Clear(colCommentMentions);
+                                              Set(varCommentDraft, "");
+                                              Set(varShowMentionPicker, false);
+                                              Refresh(Comments);
+                                              ClearCollect(
+                                                  colDiscussion,
+                                                  Filter(
+                                                      Comments,
+                                                      RecordID = cmpComments.RecordID,
+                                                      RecordType = cmpComments.RecordType,
+                                                      IsDeleted = false
+                                                  )
+                                              );
+                                              Set(varDiscussionRecord, cmpComments.RecordID);
+                                              Set(varDiscussionRecordType, cmpComments.RecordType);
+                                              Set(varDiscussionReload, false);
+                                              Notify(If(gblLanguage = "Arabic", "تمت إضافة التعليق", "Comment added successfully"), NotificationType.Success)
+                                          )
+                                      )
+                                    Text: =If(gblLanguage = "Arabic", "إضافة تعليق", "Post Comment")
+                                    Width: =If(Parent.Width < 360, 124, 148)
+            - lblCommentsEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  Color: =fxThemeColor("TextMuted")
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =64
+                  Size: =gblTheme.Typography.Body
+                  Text: |-
+                    =If(
+                        Or(
+                            varDiscussionRecord <> cmpComments.RecordID,
+                            Coalesce(varDiscussionRecordType, "") <> Coalesce(cmpComments.RecordType, "")
+                        ),
+                        If(gblLanguage = "Arabic", "جارٍ تحميل التعليقات", "Loading comments"),
+                        If(gblLanguage = "Arabic", "لا توجد تعليقات بعد", "No comments yet")
+                    )
+                  Visible: |-
+                    =CountRows(
+                        Filter(
+                            colDiscussion,
+                            And(
+                                varDiscussionRecord = cmpComments.RecordID,
+                                Coalesce(varDiscussionRecordType, "") = Coalesce(cmpComments.RecordType, "")
+                            ),
+                            CommentType = "Comment",
+                            Or(IsBlank(ParentCommentID), ParentCommentID = 0)
+                        )
+                    ) = 0
+                  Width: =Parent.Width
+            - galComments:
+                Control: Gallery@2.15.0
+                Variant: VariableHeight
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "التعليقات", "Comments")
+                  BorderStyle: =BorderStyle.None
+                  Fill: =fxThemeColor("Transparent")
+                  FillPortions: =1
+                  Items: |-
+                    =SortByColumns(
+                        Filter(
+                            colDiscussion,
+                            And(
+                                varDiscussionRecord = cmpComments.RecordID,
+                                Coalesce(varDiscussionRecordType, "") = Coalesce(cmpComments.RecordType, "")
+                            ),
+                            CommentType = "Comment",
+                            Or(IsBlank(ParentCommentID), ParentCommentID = 0)
+                        ),
+                        "CommentDate",
+                        SortOrder.Descending
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  ShowScrollbar: =true
+                  TemplatePadding: =6
+                  TemplateSize: =160
+                  Width: =Parent.Width
+                Children:
+                  - conCommentCard:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Transparent")
+                        Height: |-
+                          =With(
+                              {
+                                  bodyLines: Max(1, CountRows(Split(Coalesce(ThisItem.Comment, ""), Char(10)))),
+                                  replyRows: CountRows(Filter(colDiscussion, ParentCommentID = ThisItem.ID))
+                              },
+                              bodyLines * 28 + 96 + If(
+                                  varReplyToCommentID = ThisItem.ID,
+                                  16 + Max(
+                                      48,
+                                      22 * Max(1, CountRows(Split(Coalesce(varReplyDraft, ""), Char(10))))
+                                  ) + If(CountRows(colReplyMentions) > 0, 36, 0) + 44,
+                                  0
+                              ) + If(replyRows > 0, replyRows * 104 + 12, 0)
+                          )
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - conComment:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Transparent")
+                              FillPortions: =0
+                              Height: |-
+                                =Max(1, CountRows(Split(Coalesce(ThisItem.Comment, ""), Char(10)))) * 28 + 88
+                              LayoutAlignItems: =LayoutAlignItems.Start
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =10
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =4
+                              PaddingLeft: =4
+                              PaddingRight: =4
+                              PaddingTop: =4
+                              Width: =Parent.Width
+                            Children:
+                              - conCommentAvatar:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Start
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0
+                                    Height: =40
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =40
+                                  Children:
+                                    - shpCommentAvatar:
+                                        Control: Circle@2.3.0
+                                        Properties:
+                                          Fill: =fxThemeColor("PrimaryLighter")
+                                          Height: =40
+                                          Width: =40
+                                          X: =0
+                                          Y: =0
+                                    - lblCommentAvatar:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =40
+                                          Size: =13
+                                          Text: |-
+                                            =With(
+                                                { words: Split(Trim(Coalesce(ThisItem.CommentedByName, "")), " ") },
+                                                Upper(
+                                                    Left(First(words).Value, 1) & If(
+                                                        CountRows(words) > 1,
+                                                        Left(Last(FirstN(words, 2)).Value, 1),
+                                                        ""
+                                                    )
+                                                )
+                                            )
+                                          Width: =40
+                                          X: =0
+                                          Y: =0
+                              - conCommentContent:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Start
+                                    BorderColor: =fxThemeColor("BorderLight")
+                                    BorderThickness: =1
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("SurfaceHover")
+                                    FillPortions: =1
+                                    Height: |-
+                                      =Max(1, CountRows(Split(Coalesce(ThisItem.Comment, ""), Char(10)))) * 28 + 80
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =4
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =8
+                                    PaddingLeft: =10
+                                    PaddingRight: =10
+                                    PaddingTop: =8
+                                    RadiusBottomLeft: =gblTheme.Radius.Large
+                                    RadiusBottomRight: =gblTheme.Radius.Large
+                                    RadiusTopLeft: =gblTheme.Radius.Large
+                                    RadiusTopRight: =gblTheme.Radius.Large
+                                    Width: =Parent.Width - 50
+                                  Children:
+                                    - conCommentHeader:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("Transparent")
+                                          FillPortions: =0
+                                          Height: =28
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - lblCommentAuthor:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                FillPortions: =1
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =22
+                                                Size: =gblTheme.Typography.Body
+                                                Text: =Coalesce(ThisItem.CommentedByName, "")
+                                                Width: =Parent.Width - 140
+                                          - lblCommentDate:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Right
+                                                Color: =fxThemeColor("TextSecondary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                Height: =22
+                                                Size: =gblTheme.Typography.Caption
+                                                Text: =Text(ThisItem.CommentDate, "dd mmm yyyy, hh:mm")
+                                                Width: =132
+                                    - lblCommentText:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          AutoHeight: =false
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Fill: =fxThemeColor("Transparent")
+                                          FillPortions: =0
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: |-
+                                            =Max(
+                                                28,
+                                                28 * Max(1, CountRows(Split(Coalesce(ThisItem.Comment, ""), Char(10))))
+                                            )
+                                          Overflow: =Overflow.Scroll
+                                          Size: =gblTheme.Typography.BodySmall
+                                          Text: =Coalesce(ThisItem.Comment, "")
+                                          Width: =Parent.Width
+                                    - conCommentActions:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("Transparent")
+                                          FillPortions: =0
+                                          Height: =32
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - btnReply:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                AccessibleLabel: =If(gblLanguage = "Arabic", "الرد على التعليق", "Reply to comment")
+                                                Appearance: =ButtonAppearance.Subtle
+                                                BasePaletteColor: =fxThemeColor("Primary")
+                                                Height: =30
+                                                Icon: ="ArrowReply"
+                                                OnSelect: |-
+                                                  =Set(varReplyToCommentID, ThisItem.ID);
+                                                  Clear(colReplyMentions);
+                                                  Set(varReplyDraft, "");
+                                                  Set(varShowReplyMentionPicker, false);
+                                                  Reset(txtReply)
+                                                Text: =If(gblLanguage = "Arabic", "رد", "Reply")
+                                                Width: =100
+                        - conReplyComposer:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: |-
+                                =If(
+                                    varReplyToCommentID = ThisItem.ID,
+                                    16 + Max(
+                                        48,
+                                        22 * Max(1, CountRows(Split(Coalesce(varReplyDraft, ""), Char(10))))
+                                    ) + If(CountRows(colReplyMentions) > 0, 36, 0) + 40,
+                                    0
+                                )
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =6
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Visible: =varReplyToCommentID = ThisItem.ID
+                              Width: =Parent.Width
+                            Children:
+                              - txtReply:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "اكتب ردك هنا", "Write your reply")
+                                    Fill: =fxThemeColor("Background")
+                                    FillPortions: =0
+                                    Height: |-
+                                      =Max(
+                                          48,
+                                          22 * Max(1, CountRows(Split(Coalesce(varReplyDraft, ""), Char(10))))
+                                      )
+                                    OnChange: =Set(varReplyDraft, Self.Text)
+                                    Placeholder: =If(gblLanguage = "Arabic", "اكتب ردك هنا...", "Write your reply...")
+                                    RadiusBottomLeft: =gblTheme.Radius.Large
+                                    RadiusBottomRight: =gblTheme.Radius.Large
+                                    RadiusTopLeft: =gblTheme.Radius.Large
+                                    RadiusTopRight: =gblTheme.Radius.Large
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - conReplyMentions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("Transparent")
+                                    FillPortions: =0
+                                    Height: =If(CountRows(colReplyMentions) > 0, 34, 0)
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Visible: =CountRows(colReplyMentions) > 0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - galReplyMentions:
+                                        Control: Gallery@2.15.0
+                                        Variant: Horizontal
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "إشارات الرد", "Reply mentions")
+                                          BorderStyle: =BorderStyle.None
+                                          Fill: =fxThemeColor("Transparent")
+                                          Height: =32
+                                          Items: =colReplyMentions
+                                          ShowScrollbar: =false
+                                          TemplatePadding: =2
+                                          TemplateSize: =148
+                                          Width: =Parent.Width
+                                        Children:
+                                          - conReplyMention:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                BorderColor: =fxThemeColor("PrimaryLight")
+                                                BorderThickness: =1
+                                                DropShadow: =DropShadow.None
+                                                Fill: =fxThemeColor("PrimaryLighter")
+                                                Height: =30
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutGap: =4
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                PaddingLeft: =8
+                                                PaddingRight: =4
+                                                RadiusBottomLeft: =gblTheme.Radius.Round
+                                                RadiusBottomRight: =gblTheme.Radius.Round
+                                                RadiusTopLeft: =gblTheme.Radius.Round
+                                                RadiusTopRight: =gblTheme.Radius.Round
+                                                Width: =144
+                                              Children:
+                                                - lblReplyMention:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      Color: =fxThemeColor("Primary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =24
+                                                      Size: =gblTheme.Typography.BodySmall
+                                                      Text: ="@" & Coalesce(ThisItem.UserName, "")
+                                                      Width: =100
+                                                - btnRemoveReplyMention:
+                                                    Control: ModernButton@1.0.0
+                                                    Properties:
+                                                      AccessibleLabel: =If(gblLanguage = "Arabic", "إزالة الإشارة", "Remove mention")
+                                                      Appearance: =ButtonAppearance.Subtle
+                                                      BasePaletteColor: =fxThemeColor("TextMuted")
+                                                      Height: =24
+                                                      Icon: ="Dismiss"
+                                                      OnSelect: =Remove(colReplyMentions, ThisItem)
+                                                      Text: =""
+                                                      Width: =24
+                              - conReplyActions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("Transparent")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutJustifyContent: =LayoutJustifyContent.End
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - btnReplyMention:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "الإشارة إلى مستخدم", "Mention a user")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =32
+                                          Icon: ="People"
+                                          OnSelect: =Set(varShowReplyMentionPicker, !varShowReplyMentionPicker)
+                                          Text: =If(gblLanguage = "Arabic", "إشارة", "Mention")
+                                          Width: =110
+                                    - conReplyPicker:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("Transparent")
+                                          FillPortions: =0
+                                          Height: =36
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Visible: =varShowReplyMentionPicker
+                                          Width: =If(varShowReplyMentionPicker, 160, 0)
+                                        Children:
+                                          - cmbReplyUser:
+                                              Control: ModernCombobox@1.1.2
+                                              Properties:
+                                                AccessibleLabel: =If(gblLanguage = "Arabic", "اختر مستخدمًا للإشارة إليه", "Select a user to mention")
+                                                Height: =34
+                                                InputTextPlaceholder: =If(gblLanguage = "Arabic", "مستخدم", "User")
+                                                ItemDisplayText: =ThisItem.FullName
+                                                Items: =cmpComments.People
+                                                OnChange: |-
+                                                  =If(
+                                                      !IsBlank(Self.Selected.ID),
+                                                      If(
+                                                          IsBlank(LookUp(colReplyMentions, UserID = Self.Selected.ID)),
+                                                          Collect(
+                                                              colReplyMentions,
+                                                              {
+                                                                  UserID: Self.Selected.ID,
+                                                                  UserName: Self.Selected.FullName,
+                                                                  Email: Self.Selected.Email,
+                                                                  EmployeeNumber: Self.Selected.EmployeeNumber
+                                                              }
+                                                          )
+                                                      )
+                                                  );
+                                                  Reset(cmbReplyUser);
+                                                  Set(varShowReplyMentionPicker, false)
+                                                SelectMultiple: =false
+                                                Width: =Parent.Width
+                                    - btnPostReply:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "إرسال الرد", "Post reply")
+                                          Appearance: =ButtonAppearance.Primary
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          DisplayMode: |-
+                                            =If(
+                                                IsBlank(Trim(Coalesce(varReplyDraft, ""))),
+                                                DisplayMode.Disabled,
+                                                DisplayMode.Edit
+                                            )
+                                          Height: =32
+                                          Icon: ="Send"
+                                          OnSelect: |-
+                                            =If(
+                                                IsBlank(Trim(Coalesce(varReplyDraft, ""))),
+                                                Notify(If(gblLanguage = "Arabic", "اكتب ردًا أولاً", "Please enter a reply first"), NotificationType.Warning),
+                                                With(
+                                                    { parentComment: LookUp(colDiscussion, ID = ThisItem.ID) },
+                                                    Patch(
+                                                        Comments,
+                                                        Defaults(Comments),
+                                                        {
+                                                            Title: If(IsBlank(cmpComments.RecordNumber), "Reply", "Reply - " & cmpComments.RecordNumber),
+                                                            Module: {Value: cmpComments.ModuleName},
+                                                            Comment: Trim(varReplyDraft),
+                                                            RecordType: cmpComments.RecordType,
+                                                            RecordID: cmpComments.RecordID,
+                                                            RecordNumber: cmpComments.RecordNumber,
+                                                            CommentType: "Reply",
+                                                            CommentedByID: gblUser.ID,
+                                                            CommentedByName: gblUser.FullName,
+                                                            CommentDate: Now(),
+                                                            MentionedUserIDs: Concat(colReplyMentions, Text(UserID), ";"),
+                                                            MentionedUserNames: Concat(colReplyMentions, UserName, ";"),
+                                                            MentionCount: CountRows(colReplyMentions),
+                                                            ParentCommentID: ThisItem.ID,
+                                                            IsInternal: false,
+                                                            IsDeleted: false,
+                                                            ReplyCount: 0
+                                                        }
+                                                    );
+                                                    If(
+                                                        Or(
+                                                            cmpComments.RecordType = "PurchaseRequest",
+                                                            cmpComments.RecordType = "PurchaseOrder",
+                                                            cmpComments.RecordType = "GRN"
+                                                        ),
+                                                        fnWriteLog(
+                                                            Switch(
+                                                                cmpComments.RecordType,
+                                                                "PurchaseRequest", "Purchase Request",
+                                                                "PurchaseOrder", "Purchase Order",
+                                                                "GRN", "GRN"
+                                                            ),
+                                                            cmpComments.RecordID,
+                                                            Coalesce(cmpComments.RecordNumber, ""),
+                                                            "Commented",
+                                                            "Info",
+                                                            0,
+                                                            "",
+                                                            Blank(),
+                                                            "",
+                                                            "",
+                                                            "",
+                                                            "",
+                                                            "Reply added",
+                                                            "",
+                                                            0
+                                                        )
+                                                    );
+                                                    Patch(
+                                                        Comments,
+                                                        parentComment,
+                                                        {ReplyCount: Coalesce(parentComment.ReplyCount, 0) + 1}
+                                                    );
+                                                    If(
+                                                        parentComment.CommentedByID <> gblUser.ID,
+                                                        Patch(
+                                                            Notifications,
+                                                            Defaults(Notifications),
+                                                            {
+                                                                Title: "New reply to your comment",
+                                                                Message: gblUser.FullName & " replied to your comment on " & Coalesce(cmpComments.RecordNumber, ""),
+                                                                IsRead: "false",
+                                                                Createddate: Now(),
+                                                                RecipientID: parentComment.CommentedByID,
+                                                                Recipient: {Id: parentComment.CommentedByID, Value: parentComment.CommentedByName},
+                                                                RecipientNo: LookUp(cmpComments.People, ID = parentComment.CommentedByID).EmployeeNumber,
+                                                                RelatedEntity: {Value: cmpComments.RelatedEntity},
+                                                                RelatedItemID: cmpComments.RecordID,
+                                                                Duration: 0,
+                                                                Module: {Value: cmpComments.ModuleName},
+                                                                Status: {Value: "Unread"},
+                                                                ReadDate: Blank(),
+                                                                RecordType: cmpComments.RecordType
+                                                            }
+                                                        )
+                                                    );
+                                                    ForAll(
+                                                        Filter(
+                                                            colReplyMentions,
+                                                            UserID <> gblUser.ID,
+                                                            UserID <> parentComment.CommentedByID
+                                                        ) As mention,
+                                                        Patch(
+                                                            Notifications,
+                                                            Defaults(Notifications),
+                                                            {
+                                                                Title: "You were mentioned in " & Coalesce(cmpComments.RecordNumber, cmpComments.RecordType),
+                                                                Message: gblUser.FullName & " mentioned you in a reply on " & cmpComments.RecordType & " " & Coalesce(cmpComments.RecordNumber, ""),
+                                                                IsRead: "false",
+                                                                Createddate: Now(),
+                                                                RecipientID: mention.UserID,
+                                                                Recipient: {Id: mention.UserID, Value: mention.UserName},
+                                                                RecipientNo: mention.EmployeeNumber,
+                                                                RelatedEntity: {Value: cmpComments.RelatedEntity},
+                                                                RelatedItemID: cmpComments.RecordID,
+                                                                Duration: 0,
+                                                                Module: {Value: cmpComments.ModuleName},
+                                                                Status: {Value: "Unread"},
+                                                                ReadDate: Blank(),
+                                                                RecordType: cmpComments.RecordType
+                                                            }
+                                                        )
+                                                    );
+                                                    ClearCollect(
+                                                        colCommentAudience,
+                                                        Filter(cmpComments.Involved, UserID > 0)
+                                                    );
+                                                    RemoveIf(
+                                                        colCommentAudience,
+                                                        Or(
+                                                            UserID = Coalesce(gblUser.ID, 0),
+                                                            UserID = parentComment.CommentedByID,
+                                                            UserID in colReplyMentions.UserID
+                                                        )
+                                                    );
+                                                    ForAll(
+                                                        ForAll(
+                                                            Distinct(colCommentAudience, UserID),
+                                                            LookUp(colCommentAudience, UserID = Value)
+                                                        ) As person,
+                                                        Patch(
+                                                            Notifications,
+                                                            Defaults(Notifications),
+                                                            {
+                                                                Title: "New comment on " & Coalesce(cmpComments.RecordNumber, cmpComments.RecordType),
+                                                                Message: gblUser.FullName & " replied on " & cmpComments.RecordType & " " & Coalesce(cmpComments.RecordNumber, ""),
+                                                                IsRead: "false",
+                                                                Createddate: Now(),
+                                                                RecipientID: person.UserID,
+                                                                Recipient: {Id: person.UserID, Value: person.UserName},
+                                                                RecipientNo: LookUp(cmpComments.People, ID = person.UserID).EmployeeNumber,
+                                                                RelatedEntity: {Value: cmpComments.RelatedEntity},
+                                                                RelatedItemID: cmpComments.RecordID,
+                                                                RecordType: cmpComments.RecordType,
+                                                                Module: {Value: cmpComments.ModuleName},
+                                                                Status: {Value: "Unread"},
+                                                                Duration: 0,
+                                                                ReadDate: Blank()
+                                                            }
+                                                        )
+                                                    );
+                                                    Refresh(Comments);
+                                                    ClearCollect(
+                                                        colDiscussion,
+                                                        Filter(
+                                                            Comments,
+                                                            RecordID = cmpComments.RecordID,
+                                                            RecordType = cmpComments.RecordType,
+                                                            IsDeleted = false
+                                                        )
+                                                    );
+                                                    Set(varDiscussionRecord, cmpComments.RecordID);
+                                                    Set(varDiscussionRecordType, cmpComments.RecordType);
+                                                    Set(varDiscussionReload, false);
+                                                    Reset(txtReply);
+                                                    Clear(colReplyMentions);
+                                                    Set(varReplyDraft, "");
+                                                    Set(varReplyToCommentID, Blank());
+                                                    Set(varShowReplyMentionPicker, false);
+                                                    Notify(If(gblLanguage = "Arabic", "تم إرسال الرد", "Reply posted successfully"), NotificationType.Success)
+                                                )
+                                            )
+                                          Text: =If(gblLanguage = "Arabic", "إرسال", "Post")
+                                          Width: =88
+                        - conReplies:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Transparent")
+                              FillPortions: =0
+                              Height: |-
+                                =With(
+                                    { replyRows: CountRows(Filter(colDiscussion, ParentCommentID = ThisItem.ID)) },
+                                    If(replyRows > 0, replyRows * 104 + 8, 0)
+                                )
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =50
+                              PaddingRight: =8
+                              Visible: =CountRows(Filter(colDiscussion, ParentCommentID = ThisItem.ID)) > 0
+                              Width: =Parent.Width
+                            Children:
+                              - galReplies:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الردود", "Replies")
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =fxThemeColor("Transparent")
+                                    FillPortions: =0
+                                    Height: |-
+                                      =CountRows(Filter(colDiscussion, ParentCommentID = ThisItem.ID)) * 100
+                                    Items: |-
+                                      =SortByColumns(
+                                          Filter(colDiscussion, ParentCommentID = ThisItem.ID),
+                                          "CommentDate",
+                                          SortOrder.Ascending
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    ShowScrollbar: =false
+                                    TemplatePadding: =4
+                                    TemplateSize: =100
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conReply:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("Transparent")
+                                          Height: =96
+                                          LayoutAlignItems: =LayoutAlignItems.Start
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =8
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.TemplateWidth
+                                        Children:
+                                          - conReplyAvatar:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: ManualLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                FillPortions: =0
+                                                Height: =32
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                Width: =32
+                                              Children:
+                                                - shpReplyAvatar:
+                                                    Control: Circle@2.3.0
+                                                    Properties:
+                                                      Fill: =fxThemeColor("PrimaryLighter")
+                                                      Height: =32
+                                                      Width: =32
+                                                      X: =0
+                                                      Y: =0
+                                                - lblReplyAvatar:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      Align: =Align.Center
+                                                      Color: =fxThemeColor("Primary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =32
+                                                      Size: =10
+                                                      Text: |-
+                                                        =With(
+                                                            { words: Split(Trim(Coalesce(ThisItem.CommentedByName, "")), " ") },
+                                                            Upper(
+                                                                Left(First(words).Value, 1) & If(
+                                                                    CountRows(words) > 1,
+                                                                    Left(Last(FirstN(words, 2)).Value, 1),
+                                                                    ""
+                                                                )
+                                                            )
+                                                        )
+                                                      Width: =32
+                                                      X: =0
+                                                      Y: =0
+                                          - conReplyContent:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                BorderColor: =fxThemeColor("BorderLight")
+                                                BorderThickness: =1
+                                                DropShadow: =DropShadow.None
+                                                Fill: =fxThemeColor("Surface")
+                                                FillPortions: =1
+                                                Height: =92
+                                                LayoutAlignItems: =LayoutAlignItems.Stretch
+                                                LayoutDirection: =LayoutDirection.Vertical
+                                                LayoutGap: =2
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                PaddingBottom: =6
+                                                PaddingLeft: =8
+                                                PaddingRight: =8
+                                                PaddingTop: =6
+                                                RadiusBottomLeft: =gblTheme.Radius.Large
+                                                RadiusBottomRight: =gblTheme.Radius.Large
+                                                RadiusTopLeft: =gblTheme.Radius.Large
+                                                RadiusTopRight: =gblTheme.Radius.Large
+                                                Width: =Parent.Width - 40
+                                              Children:
+                                                - conReplyHeader:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =fxThemeColor("Transparent")
+                                                      FillPortions: =0
+                                                      Height: =22
+                                                      LayoutAlignItems: =LayoutAlignItems.Center
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      Width: =Parent.Width
+                                                    Children:
+                                                      - lblReplyAuthor:
+                                                          Control: ModernText@1.0.0
+                                                          Properties:
+                                                            Color: =fxThemeColor("TextPrimary")
+                                                            FillPortions: =1
+                                                            Font: =gblTheme.Typography.FontFamily
+                                                            FontWeight: =gblTheme.FontWeights.Medium
+                                                            Height: =18
+                                                            Size: =gblTheme.Typography.BodySmall
+                                                            Text: =Coalesce(ThisItem.CommentedByName, "")
+                                                            Width: =Parent.Width - 132
+                                                      - lblReplyDate:
+                                                          Control: ModernText@1.0.0
+                                                          Properties:
+                                                            Align: =Align.Right
+                                                            Color: =fxThemeColor("TextSecondary")
+                                                            Font: =gblTheme.Typography.FontFamily
+                                                            Height: =18
+                                                            Size: =gblTheme.Typography.Caption
+                                                            Text: =Text(ThisItem.CommentDate, "dd mmm yyyy, hh:mm")
+                                                            Width: =124
+                                                - lblReplyText:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      AutoHeight: =false
+                                                      Color: =fxThemeColor("TextPrimary")
+                                                      Fill: =fxThemeColor("Transparent")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      Height: =48
+                                                      Overflow: =Overflow.Scroll
+                                                      Size: =gblTheme.Typography.Caption
+                                                      Text: =Coalesce(ThisItem.Comment, "")
+                                                      Width: =Parent.Width
