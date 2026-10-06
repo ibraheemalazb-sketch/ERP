@@ -1,0 +1,1579 @@
+Screens:
+  ScrSettings:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        If(IsBlank(VarSettingSection), Set(VarSettingSection, "Main"));
+        Set(gblShowPermissionForm, false);
+        Set(gblShowProjectAccessForm, false);
+        Concurrent(
+            ClearCollect(colSettingsPermissions, Permissions),
+            ClearCollect(colSettingsProjectAccess, ProjectAccess),
+            ClearCollect(colSettingsRoles, Roles),
+            ClearCollect(colSettingsEmployees, Employees),
+            ClearCollect(colSettingsProjects, Projects)
+        )
+    Children:
+      - conSettingsNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpSettingsNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "Home",
+                            SVG: ""
+                        }
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpSettingsTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="Settings"
+            ModuleName: =If(gblLanguage = "Arabic", "الإعدادات", "Settings")
+            OnSelectTitle: =Navigate(ScrHome, ScreenTransition.None)
+            ScreenSubtitle: |-
+              =Switch(
+                  VarSettingSection,
+                  "UserPermissions", If(gblLanguage = "Arabic", "صلاحيات المستخدمين", "User Permissions"),
+                  "ProjectAccess", If(gblLanguage = "Arabic", "صلاحيات المشاريع", "Project Access"),
+                  "AppSettings", If(gblLanguage = "Arabic", "إعدادات التطبيق", "App Settings"),
+                  If(gblLanguage = "Arabic", "إدارة الوصول", "Access administration")
+              )
+            ScreenTitle: =If(gblLanguage = "Arabic", "الإعدادات", "Settings")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpSettingsPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table(
+                  {
+                      Name: "Home",
+                      SVG: ""
+                  }
+              )
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "UserPermissions", Title: If(gblLanguage = "Arabic", "الصلاحيات", "Permissions"), Icon: "Shield", Visible: true},
+                  {ID: 20, Module: "ProjectAccess", Title: If(gblLanguage = "Arabic", "المشاريع", "Projects"), Icon: "Folder", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "UserPermissions", Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false),
+                  "ProjectAccess", Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false)
+              )
+            SelectedID: |-
+              =Switch(
+                  VarSettingSection,
+                  "UserPermissions", 10,
+                  "ProjectAccess", 20,
+                  1
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conSettingsHome:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =16
+            PaddingLeft: =16
+            PaddingRight: =16
+            PaddingTop: =16
+            Visible: |-
+              =And(
+                  Or(VarSettingSection = "Main", VarSettingSection = "AppSettings", IsBlank(VarSettingSection)),
+                  !gblShowPermissionForm,
+                  !gblShowProjectAccessForm
+              )
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - lblSettingsHomeTitle:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("TextPrimary")
+                  Font: =Font.'Segoe UI'
+                  FontWeight: =FontWeight.Semibold
+                  Height: =28
+                  Size: =18
+                  Text: =If(gblLanguage = "Arabic", "إدارة الوصول", "Access administration")
+                  Width: =Parent.Width
+            - lblSettingsHomeHint:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("TextSecondary")
+                  Font: =Font.'Segoe UI'
+                  Height: =36
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "اختر صلاحيات الأدوار أو وصول المشاريع. القوائم تُصفى محلياً بعد تحميلها.", "Choose role permissions or project access. Lists load once, then filter locally.")
+                  Width: =Parent.Width
+            - conSettingsHomeCards:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 120, 52)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - btnSettingsOpenPermissions:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "صلاحيات المستخدمين", "User Permissions")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Secondary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =52
+                        Icon: ="Shield"
+                        OnSelect: |-
+                          =Set(VarSettingSection, "UserPermissions");
+                          Set(gblShowPermissionForm, false)
+                        Text: =If(gblLanguage = "Arabic", "صلاحيات المستخدمين", "User Permissions")
+                        Width: =If(App.Width < 700, Parent.Width, 280)
+                  - btnSettingsOpenProjects:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "صلاحيات المشاريع", "Project Access")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Secondary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =52
+                        Icon: ="People"
+                        OnSelect: |-
+                          =Set(VarSettingSection, "ProjectAccess");
+                          Set(gblShowProjectAccessForm, false)
+                        Text: =If(gblLanguage = "Arabic", "صلاحيات المشاريع", "Project Access")
+                        Width: =If(App.Width < 700, Parent.Width, 280)
+      - conSettingsPermissions:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =8
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =8
+            Visible: =And(VarSettingSection = "UserPermissions", !gblShowPermissionForm, !gblShowProjectAccessForm)
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - conSettingsPermToolbar:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 248, 72)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsPermTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        Size: =14
+                        Text: =If(gblLanguage = "Arabic", "صلاحيات المستخدمين", "User Permissions")
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbSettingsPermRole:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تصفية حسب الدور", "Filter by role")
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الدور", "Role")
+                        ItemDisplayText: =ThisItem.Title
+                        Items: =colSettingsRoles
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - ddSettingsPermModule:
+                      Control: ModernDropdown@1.0.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تصفية حسب الوحدة", "Filter by module")
+                        Height: =40
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(Permissions.Module)
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - ddSettingsPermScope:
+                      Control: ModernDropdown@1.0.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تصفية حسب النطاق", "Filter by scope")
+                        Height: =40
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(Permissions.Scope)
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - btnSettingsPermRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowSync"
+                        OnSelect: |-
+                          =Refresh(Permissions);
+                          ClearCollect(colSettingsPermissions, Permissions)
+                        Text: =""
+                        Width: =36
+                  - btnSettingsPermNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "صلاحية جديدة", "New Permission")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Primary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Add"
+                        OnSelect: |-
+                          =Clear(colPermissionModules);
+                          Collect(
+                              colPermissionModules,
+                              {
+                                  RowID: GUID(),
+                                  Module: Blank(),
+                                  Scope: Blank(),
+                                  CanCreate: false,
+                                  CanRead: true,
+                                  CanEdit: false,
+                                  CanDelete: false,
+                                  CanApprove: false,
+                                  CanExport: false,
+                                  CanSubmit: false,
+                                  CanViewAll: false
+                              }
+                          );
+                          Set(gblSelectedPermission, Blank());
+                          Set(gblShowPermissionForm, true)
+                        Text: =If(gblLanguage = "Arabic", "صلاحية جديدة", "New Permission")
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+            - galSettingsPermissions:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "صلاحيات المستخدمين", "User permissions")
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Items: |-
+                    =SortByColumns(
+                        Filter(
+                            colSettingsPermissions,
+                            Or(IsBlank(cmbSettingsPermRole.Selected), Role.Id = cmbSettingsPermRole.Selected.ID),
+                            Or(IsBlank(ddSettingsPermModule.Selected), Module.Value = ddSettingsPermModule.Selected.Value),
+                            Or(IsBlank(ddSettingsPermScope.Selected), Scope.Value = ddSettingsPermScope.Selected.Value)
+                        ),
+                        "Created",
+                        SortOrder.Descending
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplatePadding: =6
+                  TemplateSize: =If(App.Width < 700, 148, 52)
+                  Width: =Parent.Width
+                Children:
+                  - conSettingsPermRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.TemplateHeight - 6
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =10
+                        PaddingRight: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - lblSettingsPermRole:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              Size: =12
+                              Text: =Coalesce(ThisItem.Role.Value, "-")
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.16)
+                        - lblSettingsPermModule:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Fill: =fxThemeColor("PrimaryLighter")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Size: =11
+                              Text: =Coalesce(ThisItem.Module.Value, "-")
+                              Width: =If(App.Width < 700, 110, Parent.Width * 0.12)
+                        - lblSettingsPermScope:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Fill: =fxThemeColor("SurfaceHover")
+                              Font: =Font.'Segoe UI'
+                              Height: =22
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Size: =11
+                              Text: =Coalesce(ThisItem.Scope.Value, "-")
+                              Width: =If(App.Width < 700, 90, Parent.Width * 0.1)
+                        - lblSettingsPermAccess:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =22
+                              Size: =11
+                              Text: |-
+                                =Concat(
+                                    Filter(
+                                        Table(
+                                            {On: ThisItem.CanCreate, Name: If(gblLanguage = "Arabic", "إنشاء", "Create")},
+                                            {On: ThisItem.CanRead, Name: If(gblLanguage = "Arabic", "قراءة", "Read")},
+                                            {On: ThisItem.CanEdit, Name: If(gblLanguage = "Arabic", "تعديل", "Edit")},
+                                            {On: ThisItem.CanDelete, Name: If(gblLanguage = "Arabic", "حذف", "Delete")},
+                                            {On: ThisItem.CanApprove, Name: If(gblLanguage = "Arabic", "اعتماد", "Approve")},
+                                            {On: ThisItem.CanExport, Name: If(gblLanguage = "Arabic", "تصدير", "Export")},
+                                            {On: ThisItem.CanSubmit, Name: If(gblLanguage = "Arabic", "تقديم", "Submit")},
+                                            {On: ThisItem.CanViewAll, Name: If(gblLanguage = "Arabic", "عرض الكل", "View All")}
+                                        ),
+                                        On
+                                    ),
+                                    Name,
+                                    " · "
+                                )
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.48)
+                        - btnSettingsPermEdit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =32
+                              Icon: ="Edit"
+                              OnSelect: |-
+                                =Set(gblSelectedPermission, ThisItem);
+                                Set(gblShowPermissionForm, true);
+                                ClearCollect(
+                                    colPermissionModules,
+                                    AddColumns(
+                                        Filter(colSettingsPermissions, RoleID = ThisItem.Role.Id),
+                                        RowID,
+                                        GUID()
+                                    )
+                                )
+                              Text: =""
+                              Width: =32
+                        - btnSettingsPermDelete:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =32
+                              Icon: ="Delete"
+                              OnSelect: |-
+                                =If(
+                                    Confirm(If(gblLanguage = "Arabic", "هل تريد حذف هذه الصلاحية؟", "Delete this permission?")),
+                                    Remove(Permissions, LookUp(Permissions, ID = ThisItem.ID));
+                                    Remove(colSettingsPermissions, LookUp(colSettingsPermissions, ID = ThisItem.ID));
+                                    Notify(If(gblLanguage = "Arabic", "تم حذف الصلاحية.", "Permission deleted."), NotificationType.Success)
+                                )
+                              Text: =""
+                              Width: =32
+      - conSettingsProjects:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =8
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =8
+            Visible: =And(VarSettingSection = "ProjectAccess", !gblShowPermissionForm, !gblShowProjectAccessForm)
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - conSettingsProjToolbar:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 248, 72)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsProjTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        Size: =14
+                        Text: =If(gblLanguage = "Arabic", "صلاحيات المشاريع", "Project Access")
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbSettingsProjEmployee:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تصفية حسب الموظف", "Filter by employee")
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                        ItemDisplayText: =ThisItem.FullName
+                        Items: =colSettingsEmployees
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 200)
+                  - cmbSettingsProjProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تصفية حسب المشروع", "Filter by project")
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        ItemDisplayText: =ThisItem.Title
+                        Items: =colSettingsProjects
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - ddSettingsProjLevel:
+                      Control: ModernDropdown@1.0.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تصفية حسب مستوى الوصول", "Filter by access level")
+                        Height: =40
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ProjectAccess.AccessLevel)
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - btnSettingsProjRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowSync"
+                        OnSelect: |-
+                          =Refresh(ProjectAccess);
+                          ClearCollect(colSettingsProjectAccess, ProjectAccess)
+                        Text: =""
+                        Width: =36
+                  - btnSettingsProjNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "صلاحية وصول جديدة", "New Project Access")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Primary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Add"
+                        OnSelect: |-
+                          =Set(gblSelectedProjectAccess, Blank());
+                          Clear(colSelectedProjectAccessProjects);
+                          Set(gblShowProjectAccessForm, true)
+                        Text: =If(gblLanguage = "Arabic", "وصول جديد", "New Access")
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+            - galSettingsProjects:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "صلاحيات المشاريع", "Project access")
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Items: |-
+                    =SortByColumns(
+                        Filter(
+                            colSettingsProjectAccess,
+                            Or(IsBlank(cmbSettingsProjEmployee.Selected), Employee.Id = cmbSettingsProjEmployee.Selected.ID),
+                            Or(IsBlank(cmbSettingsProjProject.Selected), Project.Id = cmbSettingsProjProject.Selected.ID),
+                            Or(IsBlank(ddSettingsProjLevel.Selected), AccessLevel.Value = ddSettingsProjLevel.Selected.Value)
+                        ),
+                        "Created",
+                        SortOrder.Descending
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplatePadding: =6
+                  TemplateSize: =If(App.Width < 700, 112, 52)
+                  Width: =Parent.Width
+                Children:
+                  - conSettingsProjRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.TemplateHeight - 6
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =10
+                        PaddingRight: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - lblSettingsProjEmployee:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              Size: =12
+                              Text: =Coalesce(ThisItem.Employee.Value, "-")
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.22)
+                        - lblSettingsProjProject:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =22
+                              Size: =12
+                              Text: =If(ThisItem.AllProjects, If(gblLanguage = "Arabic", "جميع المشاريع", "All projects"), Coalesce(ThisItem.Project.Value, "-"))
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.28)
+                        - lblSettingsProjLevel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Fill: =fxThemeColor("PrimaryLighter")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Size: =11
+                              Text: =Coalesce(ThisItem.AccessLevel.Value, "-")
+                              Width: =If(App.Width < 700, 120, Parent.Width * 0.16)
+                        - lblSettingsProjStatus:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =If(ThisItem.IsActive, fxToneInk("Success"), fxThemeColor("TextMuted"))
+                              Fill: =If(ThisItem.IsActive, fxToneFill("Success"), fxThemeColor("SurfaceHover"))
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Size: =11
+                              Text: =If(ThisItem.IsActive, If(gblLanguage = "Arabic", "نشط", "Active"), If(gblLanguage = "Arabic", "غير نشط", "Inactive"))
+                              Width: =If(App.Width < 700, 80, Parent.Width * 0.14)
+                        - btnSettingsProjEdit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =32
+                              Icon: ="Edit"
+                              OnSelect: |-
+                                =Set(gblSelectedProjectAccess, ThisItem);
+                                Set(gblShowProjectAccessForm, true);
+                                ClearCollect(
+                                    colSelectedProjectAccessProjects,
+                                    If(
+                                        Or(IsBlank(ThisItem.Project), ThisItem.AllProjects),
+                                        Blank(),
+                                        {
+                                            ProjectID: ThisItem.Project.Id,
+                                            ProjectTitle: ThisItem.Project.Value
+                                        }
+                                    )
+                                )
+                              Text: =""
+                              Width: =32
+                        - btnSettingsProjDelete:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =32
+                              Icon: ="Delete"
+                              OnSelect: |-
+                                =If(
+                                    Confirm(If(gblLanguage = "Arabic", "هل تريد حذف صلاحية الوصول هذه؟", "Delete this project access?")),
+                                    Remove(ProjectAccess, LookUp(ProjectAccess, ID = ThisItem.ID));
+                                    Remove(colSettingsProjectAccess, LookUp(colSettingsProjectAccess, ID = ThisItem.ID));
+                                    Notify(If(gblLanguage = "Arabic", "تم حذف صلاحية الوصول.", "Project access deleted."), NotificationType.Success)
+                                )
+                              Text: =""
+                              Width: =32
+      - conSettingsPermissionForm:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Background")
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =12
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =12
+            Visible: =gblShowPermissionForm
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - conSettingsPermFormHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =48
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsPermFormTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        Size: =16
+                        Text: =If(IsBlank(gblSelectedPermission), If(gblLanguage = "Arabic", "إنشاء صلاحية", "Create Permission"), If(gblLanguage = "Arabic", "تعديل صلاحية", "Edit Permission"))
+                        Width: =Parent.Width - 44
+                  - btnSettingsPermFormClose:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =32
+                        Icon: ="Dismiss"
+                        OnSelect: |-
+                          =Clear(colPermissionModules);
+                          Set(gblSelectedPermission, Blank());
+                          Set(gblShowPermissionForm, false)
+                        Text: =""
+                        Width: =32
+            - lblSettingsPermRoleCaption:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("TextSecondary")
+                  Font: =Font.'Segoe UI'
+                  FontWeight: =FontWeight.Semibold
+                  Height: =20
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "الدور الوظيفي", "Role")
+                  Width: =Parent.Width
+            - cmbSettingsPermissionRole:
+                Control: ModernCombobox@1.1.2
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "اختر الدور", "Select role")
+                  DefaultSelectedItems: =If(IsBlank(gblSelectedPermission), [], [LookUp(colSettingsRoles, ID = gblSelectedPermission.Role.Id)])
+                  Height: =40
+                  InputTextPlaceholder: =If(gblLanguage = "Arabic", "اختر الدور", "Select role")
+                  ItemDisplayText: =ThisItem.Title
+                  Items: =colSettingsRoles
+                  SelectMultiple: =false
+                  Width: =Parent.Width
+            - conSettingsPermModuleHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =40
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsPermModules:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =24
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "صلاحيات الأقسام", "Module permissions")
+                        Width: =Parent.Width - 140
+                  - btnSettingsPermAddModule:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إضافة قسم", "Add module")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Secondary
+                        Font: =Font.'Segoe UI'
+                        Height: =32
+                        Icon: ="Add"
+                        OnSelect: |-
+                          =Collect(
+                              colPermissionModules,
+                              {
+                                  RowID: GUID(),
+                                  Module: Blank(),
+                                  Scope: Blank(),
+                                  CanCreate: false,
+                                  CanRead: true,
+                                  CanEdit: false,
+                                  CanDelete: false,
+                                  CanApprove: false,
+                                  CanExport: false,
+                                  CanSubmit: false,
+                                  CanViewAll: false
+                              }
+                          )
+                        Text: =If(gblLanguage = "Arabic", "إضافة قسم", "Add Module")
+                        Width: =130
+            - galSettingsPermModules:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "وحدات الصلاحية", "Permission modules")
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Height: =If(App.Width < 700, 420, 280)
+                  Items: =colPermissionModules
+                  TemplatePadding: =8
+                  TemplateSize: =If(App.Width < 700, 220, 92)
+                  Width: =Parent.Width
+                Children:
+                  - conSettingsPermModule:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.TemplateHeight - 8
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - ddSettingsModule:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "القسم", "Module")
+                              Default: =ThisItem.Module
+                              Height: =36
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Permissions.Module)
+                              OnChange: "=Patch(colPermissionModules, ThisItem, {Module: Self.Selected})"
+                              Width: =If(App.Width < 700, Parent.Width, 140)
+                        - ddSettingsScope:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "النطاق", "Scope")
+                              Default: =ThisItem.Scope
+                              Height: =36
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Permissions.Scope)
+                              OnChange: "=Patch(colPermissionModules, ThisItem, {Scope: Self.Selected})"
+                              Width: =If(App.Width < 700, Parent.Width, 120)
+                        - togSettingsRead:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanRead
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "قراءة", "Read")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanRead: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanRead: false})"
+                              Width: =88
+                        - togSettingsCreate:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanCreate
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "إنشاء", "Create")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanCreate: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanCreate: false})"
+                              Width: =96
+                        - togSettingsEdit:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanEdit
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanEdit: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanEdit: false})"
+                              Width: =84
+                        - togSettingsDelete:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanDelete
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanDelete: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanDelete: false})"
+                              Width: =92
+                        - togSettingsApprove:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanApprove
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "اعتماد", "Approve")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanApprove: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanApprove: false})"
+                              Width: =104
+                        - togSettingsExport:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanExport
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "تصدير", "Export")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanExport: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanExport: false})"
+                              Width: =96
+                        - togSettingsSubmit:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanSubmit
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "تقديم", "Submit")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanSubmit: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanSubmit: false})"
+                              Width: =96
+                        - togSettingsViewAll:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =ThisItem.CanViewAll
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "عرض الكل", "View All")
+                              OnCheck: "=Patch(colPermissionModules, ThisItem, {CanViewAll: true})"
+                              OnUncheck: "=Patch(colPermissionModules, ThisItem, {CanViewAll: false})"
+                              Width: =108
+                        - btnSettingsModuleRemove:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إزالة القسم", "Remove module")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =32
+                              Icon: ="Delete"
+                              OnSelect: |-
+                                =If(
+                                    Confirm(If(gblLanguage = "Arabic", "هل تريد حذف هذه الصلاحية؟", "Delete this permission?")),
+                                    If(
+                                        !IsBlank(ThisItem.ID),
+                                        Remove(Permissions, LookUp(Permissions, ID = ThisItem.ID))
+                                    );
+                                    Remove(colPermissionModules, ThisItem)
+                                )
+                              Text: =""
+                              Width: =32
+            - conSettingsPermFormFoot:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =48
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsPermCount:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =Font.'Segoe UI'
+                        Height: =24
+                        Size: =11
+                        Text: =CountRows(colPermissionModules) & " " & If(gblLanguage = "Arabic", "وحدة", "module(s)")
+                        Width: =Parent.Width - If(App.Width < 700, 0, 380)
+                  - btnSettingsPermCancel:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                        Appearance: =ButtonAppearance.Secondary
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        OnSelect: |-
+                          =Clear(colPermissionModules);
+                          Set(gblSelectedPermission, Blank());
+                          Set(gblShowPermissionForm, false)
+                        Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                        Width: =100
+                  - btnSettingsPermSave:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "حفظ الصلاحيات", "Save permissions")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Primary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Save"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(cmbSettingsPermissionRole.Selected),
+                              Notify(If(gblLanguage = "Arabic", "يرجى اختيار الدور.", "Please select a role."), NotificationType.Warning),
+                              If(
+                                  IsBlank(gblSelectedPermission),
+                                  ForAll(
+                                      colPermissionModules As P,
+                                      Patch(
+                                          Permissions,
+                                          Defaults(Permissions),
+                                          {
+                                              Role: {Id: cmbSettingsPermissionRole.Selected.ID, Value: cmbSettingsPermissionRole.Selected.Title},
+                                              RoleID: cmbSettingsPermissionRole.Selected.ID,
+                                              Module: P.Module,
+                                              Scope: P.Scope,
+                                              CanCreate: P.CanCreate,
+                                              CanRead: P.CanRead,
+                                              CanEdit: P.CanEdit,
+                                              CanDelete: P.CanDelete,
+                                              CanApprove: P.CanApprove,
+                                              CanExport: P.CanExport,
+                                              CanSubmit: P.CanSubmit,
+                                              CanViewAll: P.CanViewAll
+                                          }
+                                      )
+                                  ),
+                                  ForAll(
+                                      colPermissionModules As P,
+                                      Patch(
+                                          Permissions,
+                                          If(IsBlank(P.ID), Defaults(Permissions), LookUp(Permissions, ID = P.ID)),
+                                          {
+                                              Role: {Id: cmbSettingsPermissionRole.Selected.ID, Value: cmbSettingsPermissionRole.Selected.Title},
+                                              RoleID: cmbSettingsPermissionRole.Selected.ID,
+                                              Module: P.Module,
+                                              Scope: P.Scope,
+                                              CanCreate: P.CanCreate,
+                                              CanRead: P.CanRead,
+                                              CanEdit: P.CanEdit,
+                                              CanDelete: P.CanDelete,
+                                              CanApprove: P.CanApprove,
+                                              CanExport: P.CanExport,
+                                              CanSubmit: P.CanSubmit,
+                                              CanViewAll: P.CanViewAll
+                                          }
+                                      )
+                                  )
+                              );
+                              Refresh(Permissions);
+                              ClearCollect(colSettingsPermissions, Permissions);
+                              Notify(If(gblLanguage = "Arabic", "تم حفظ الصلاحيات.", "Permissions saved."), NotificationType.Success);
+                              Clear(colPermissionModules);
+                              Set(gblSelectedPermission, Blank());
+                              Set(gblShowPermissionForm, false)
+                          )
+                        Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                        Width: =120
+                  - btnSettingsPermFormDelete:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                        Appearance: =ButtonAppearance.Secondary
+                        BasePaletteColor: =fxThemeColor("Danger")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Delete"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(gblSelectedPermission),
+                              Notify(If(gblLanguage = "Arabic", "لا توجد صلاحية محددة.", "There is no permission selected."), NotificationType.Warning),
+                              If(
+                                  Confirm(If(gblLanguage = "Arabic", "هل تريد حذف هذه الصلاحية؟", "Delete this permission?")),
+                                  Remove(Permissions, LookUp(Permissions, ID = gblSelectedPermission.ID));
+                                  Refresh(Permissions);
+                                  ClearCollect(colSettingsPermissions, Permissions);
+                                  Clear(colPermissionModules);
+                                  Set(gblSelectedPermission, Blank());
+                                  Set(gblShowPermissionForm, false);
+                                  Notify(If(gblLanguage = "Arabic", "تم حذف الصلاحية.", "Permission deleted."), NotificationType.Success)
+                              )
+                          )
+                        Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                        Visible: =!IsBlank(gblSelectedPermission)
+                        Width: =100
+      - conSettingsProjectForm:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Background")
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =12
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =12
+            Visible: =gblShowProjectAccessForm
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - conSettingsProjFormHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =48
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsProjFormTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        Size: =16
+                        Text: |-
+                          =If(
+                              IsBlank(gblSelectedProjectAccess),
+                              If(gblLanguage = "Arabic", "إنشاء صلاحية مشروع", "Create Project Access"),
+                              If(gblLanguage = "Arabic", "تعديل صلاحية المشروع", "Edit Project Access") & " — " & Coalesce(gblSelectedProjectAccess.Employee.Value, "")
+                          )
+                        Width: =Parent.Width - 44
+                  - btnSettingsProjFormClose:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =32
+                        Icon: ="Dismiss"
+                        OnSelect: |-
+                          =Clear(colSelectedProjectAccessProjects);
+                          Set(gblSelectedProjectAccess, Blank());
+                          Set(gblShowProjectAccessForm, false)
+                        Text: =""
+                        Width: =32
+            - conSettingsProjFields:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 220, 72)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - cmbSettingsAccessEmployee:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                        DefaultSelectedItems: =If(IsBlank(gblSelectedProjectAccess), [], [LookUp(colSettingsEmployees, ID = gblSelectedProjectAccess.Employee.Id)])
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                        ItemDisplayText: =ThisItem.FullName
+                        Items: =Filter(colSettingsEmployees, Or(IsBlank(Status.Value), Status.Value = "Active"))
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.34)
+                  - ddSettingsAccessLevel:
+                      Control: ModernDropdown@1.0.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "مستوى الوصول", "Access level")
+                        Default: =If(IsBlank(gblSelectedProjectAccess), Blank(), gblSelectedProjectAccess.AccessLevel)
+                        Height: =40
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ProjectAccess.AccessLevel)
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.22)
+                  - togSettingsAllProjects:
+                      Control: ModernToggle@1.0.1
+                      Properties:
+                        Default: =If(IsBlank(gblSelectedProjectAccess), false, gblSelectedProjectAccess.AllProjects)
+                        Height: =36
+                        Label: =If(gblLanguage = "Arabic", "جميع المشاريع", "All projects")
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - togSettingsAccessActive:
+                      Control: ModernToggle@1.0.1
+                      Properties:
+                        Default: =If(IsBlank(gblSelectedProjectAccess), true, gblSelectedProjectAccess.IsActive)
+                        Height: =36
+                        Label: =If(gblLanguage = "Arabic", "نشط", "Active")
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+            - conSettingsProjPicker:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 96, 56)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Visible: =!togSettingsAllProjects.Checked
+                  Width: =Parent.Width
+                Children:
+                  - cmbSettingsAccessProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "اختر المشروع", "Select project")
+                        ItemDisplayText: =ThisItem.Title
+                        Items: =colSettingsProjects
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - 180)
+                  - btnSettingsAddProject:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إضافة المشروع", "Add project")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Secondary
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Add"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(cmbSettingsAccessProject.Selected),
+                              Notify(If(gblLanguage = "Arabic", "يرجى اختيار مشروع.", "Please select a project."), NotificationType.Warning),
+                              !IsBlank(LookUp(colSelectedProjectAccessProjects, ProjectID = cmbSettingsAccessProject.Selected.ID)),
+                              Notify(If(gblLanguage = "Arabic", "تمت إضافة هذا المشروع.", "This project is already added."), NotificationType.Warning),
+                              Collect(
+                                  colSelectedProjectAccessProjects,
+                                  {
+                                      ProjectID: cmbSettingsAccessProject.Selected.ID,
+                                      ProjectTitle: cmbSettingsAccessProject.Selected.Title
+                                  }
+                              );
+                              Reset(cmbSettingsAccessProject)
+                          )
+                        Text: =If(gblLanguage = "Arabic", "إضافة", "Add")
+                        Width: =120
+            - galSettingsSelectedProjects:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "المشاريع المحددة", "Selected projects")
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Height: =180
+                  Items: =colSelectedProjectAccessProjects
+                  TemplatePadding: =4
+                  TemplateSize: =40
+                  Visible: =!togSettingsAllProjects.Checked
+                  Width: =Parent.Width
+                Children:
+                  - conSettingsSelectedProject:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =10
+                        RadiusBottomLeft: =gblTheme.Radius.Small
+                        RadiusBottomRight: =gblTheme.Radius.Small
+                        RadiusTopLeft: =gblTheme.Radius.Small
+                        RadiusTopRight: =gblTheme.Radius.Small
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - lblSettingsSelectedProject:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =Font.'Segoe UI'
+                              Height: =22
+                              Size: =12
+                              Text: =ThisItem.ProjectTitle
+                              Width: =Parent.Width - 40
+                        - btnSettingsRemoveProject:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إزالة", "Remove")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =28
+                              Icon: ="Delete"
+                              OnSelect: =Remove(colSelectedProjectAccessProjects, ThisItem)
+                              Text: =""
+                              Width: =32
+            - conSettingsProjFormFoot:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =48
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - lblSettingsProjCount:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =Font.'Segoe UI'
+                        Height: =24
+                        Size: =11
+                        Text: =CountRows(colSelectedProjectAccessProjects) & " " & If(gblLanguage = "Arabic", "مشروع محدد", "project(s) selected")
+                        Width: =Parent.Width - If(App.Width < 700, 0, 360)
+                  - btnSettingsProjCancel:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                        Appearance: =ButtonAppearance.Secondary
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        OnSelect: |-
+                          =Clear(colSelectedProjectAccessProjects);
+                          Set(gblSelectedProjectAccess, Blank());
+                          Set(gblShowProjectAccessForm, false)
+                        Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                        Width: =100
+                  - btnSettingsProjSave:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "حفظ الصلاحية", "Save access")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Primary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Save"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(cmbSettingsAccessEmployee.Selected),
+                              Notify(If(gblLanguage = "Arabic", "يرجى اختيار موظف.", "Please select an employee."), NotificationType.Warning),
+                              IsBlank(ddSettingsAccessLevel.Selected),
+                              Notify(If(gblLanguage = "Arabic", "يرجى اختيار مستوى الوصول.", "Please select an access level."), NotificationType.Warning),
+                              And(CountRows(colSelectedProjectAccessProjects) = 0, !togSettingsAllProjects.Checked),
+                              Notify(If(gblLanguage = "Arabic", "أضف مشروعاً أو فعّل جميع المشاريع.", "Add a project or turn on All projects."), NotificationType.Warning),
+                              If(
+                                  IsBlank(gblSelectedProjectAccess),
+                                  If(
+                                      togSettingsAllProjects.Checked,
+                                      Patch(
+                                          ProjectAccess,
+                                          Defaults(ProjectAccess),
+                                          {
+                                              Title: cmbSettingsAccessEmployee.Selected.FullName,
+                                              Employee: {Id: cmbSettingsAccessEmployee.Selected.ID, Value: cmbSettingsAccessEmployee.Selected.FullName},
+                                              EmployeeID: cmbSettingsAccessEmployee.Selected.ID,
+                                              AccessLevel: ddSettingsAccessLevel.Selected,
+                                              AllProjects: true,
+                                              IsActive: togSettingsAccessActive.Checked,
+                                              All: ddSettingsAccessLevel.Selected
+                                          }
+                                      ),
+                                      ForAll(
+                                          colSelectedProjectAccessProjects,
+                                          Patch(
+                                              ProjectAccess,
+                                              Defaults(ProjectAccess),
+                                              {
+                                                  Title: cmbSettingsAccessEmployee.Selected.FullName & " - " & ProjectTitle,
+                                                  Employee: {Id: cmbSettingsAccessEmployee.Selected.ID, Value: cmbSettingsAccessEmployee.Selected.FullName},
+                                                  EmployeeID: cmbSettingsAccessEmployee.Selected.ID,
+                                                  Project: {Id: ProjectID, Value: ProjectTitle},
+                                                  ProjectID: ProjectID,
+                                                  AccessLevel: ddSettingsAccessLevel.Selected,
+                                                  AllProjects: false,
+                                                  IsActive: togSettingsAccessActive.Checked,
+                                                  All: ddSettingsAccessLevel.Selected
+                                              }
+                                          )
+                                      )
+                                  ),
+                                  Patch(
+                                      ProjectAccess,
+                                      gblSelectedProjectAccess,
+                                      {
+                                          Title: cmbSettingsAccessEmployee.Selected.FullName & " - " & If(togSettingsAllProjects.Checked, "All Projects", Coalesce(First(colSelectedProjectAccessProjects).ProjectTitle, "")),
+                                          Employee: {Id: cmbSettingsAccessEmployee.Selected.ID, Value: cmbSettingsAccessEmployee.Selected.FullName},
+                                          EmployeeID: cmbSettingsAccessEmployee.Selected.ID,
+                                          Project: If(togSettingsAllProjects.Checked, Blank(), {Id: First(colSelectedProjectAccessProjects).ProjectID, Value: First(colSelectedProjectAccessProjects).ProjectTitle}),
+                                          ProjectID: If(togSettingsAllProjects.Checked, Blank(), First(colSelectedProjectAccessProjects).ProjectID),
+                                          AccessLevel: ddSettingsAccessLevel.Selected,
+                                          AllProjects: togSettingsAllProjects.Checked,
+                                          IsActive: togSettingsAccessActive.Checked,
+                                          All: ddSettingsAccessLevel.Selected
+                                      }
+                                  )
+                              );
+                              Refresh(ProjectAccess);
+                              ClearCollect(colSettingsProjectAccess, ProjectAccess);
+                              Notify(If(gblLanguage = "Arabic", "تم حفظ صلاحية المشروع.", "Project access saved."), NotificationType.Success);
+                              Clear(colSelectedProjectAccessProjects);
+                              Set(gblSelectedProjectAccess, Blank());
+                              Set(gblShowProjectAccessForm, false)
+                          )
+                        Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                        Width: =120
+                  - btnSettingsProjFormDelete:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                        Appearance: =ButtonAppearance.Secondary
+                        BasePaletteColor: =fxThemeColor("Danger")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Delete"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(gblSelectedProjectAccess),
+                              Notify(If(gblLanguage = "Arabic", "لا توجد صلاحية للحذف.", "There is no project access to delete."), NotificationType.Warning),
+                              If(
+                                  Confirm(If(gblLanguage = "Arabic", "هل تريد حذف صلاحية المشروع؟", "Delete this project access?")),
+                                  Remove(ProjectAccess, gblSelectedProjectAccess);
+                                  Refresh(ProjectAccess);
+                                  ClearCollect(colSettingsProjectAccess, ProjectAccess);
+                                  Clear(colSelectedProjectAccessProjects);
+                                  Set(gblSelectedProjectAccess, Blank());
+                                  Set(gblShowProjectAccessForm, false);
+                                  Notify(If(gblLanguage = "Arabic", "تم حذف صلاحية المشروع.", "Project access deleted."), NotificationType.Success)
+                              )
+                          )
+                        Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                        Visible: =!IsBlank(gblSelectedProjectAccess)
+                        Width: =100
+      - conSettingsRestricted:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.45)
+            Height: =Parent.Height
+            Visible: =gblUser.Role <> "System Administrator"
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - conSettingsRestrictedCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  Height: =220
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  PaddingBottom: =16
+                  PaddingLeft: =20
+                  PaddingRight: =20
+                  PaddingTop: =20
+                  RadiusBottomLeft: =gblTheme.Radius.Large
+                  RadiusBottomRight: =gblTheme.Radius.Large
+                  RadiusTopLeft: =gblTheme.Radius.Large
+                  RadiusTopRight: =gblTheme.Radius.Large
+                  Width: =Min(420, Parent.Width - 32)
+                  X: =(Parent.Width - Self.Width) / 2
+                  Y: =(Parent.Height - Self.Height) / 2
+                Children:
+                  - icoSettingsRestricted:
+                      Control: ModernIcon@1.1.1
+                      Properties:
+                        Height: =32
+                        Icon: ="Warning"
+                        IconColor: =fxThemeColor("Danger")
+                        Width: =32
+                  - lblSettingsRestrictedTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =24
+                        Size: =16
+                        Text: =If(gblLanguage = "Arabic", "الوصول مقيّد", "Restricted access")
+                        Width: =Parent.Width
+                  - lblSettingsRestrictedBody:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextSecondary")
+                        Font: =Font.'Segoe UI'
+                        Height: =48
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "هذه الشاشة لمدير النظام فقط. ارجع إلى الرئيسية أو اطلب الوصول.", "This screen is for the system administrator. Go back home or ask for access.")
+                        Width: =Parent.Width
+                  - btnSettingsRestrictedBack:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "رجوع", "Go back")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Secondary
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        OnSelect: =Navigate(ScrHome, ScreenTransition.None)
+                        Text: =If(gblLanguage = "Arabic", "رجوع", "Go back")
+                        Width: =140

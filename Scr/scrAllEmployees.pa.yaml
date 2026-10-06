@@ -1,0 +1,2560 @@
+Screens:
+  scrAllEmployees:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =Set(gblSelectedEmployee, Blank());
+        Set(VarNewEmployee, false);
+        Set(VarHRDocUpload, false);
+        Set(VarEmployeeDoc, false);
+        If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        If(IsBlank(varEmployeeViewMode), Set(varEmployeeViewMode, "Table"));
+        Set(varEmployeeQuickFilter, "All");
+        Set(gblSelectedModule, "HR");
+        Set(
+            gblSProject,
+            If(
+                varUserHasAllProjects,
+                Blank(),
+                First(SortByColumns(colUserAccessibleProjects, "ID", SortOrder.Ascending))
+            )
+        );
+        Clear(colAllEmployees);
+        If(
+            varHRScope = "Own",
+            Collect(colAllEmployees, Filter(Employees, ID = gblUser.ID)),
+            If(
+                varUserHasAllProjects,
+                Collect(colAllEmployees, Employees),
+                ForAll(
+                    colUserAccessibleProjects As proj,
+                    Collect(colAllEmployees, Filter(Employees, ProjectID = proj.ID))
+                )
+            )
+        );
+        If(
+            And(varHRScope <> "Own", IsEmpty(colAllEmployees), !IsBlank(gblSProject.ID)),
+            Collect(colAllEmployees, Filter(Employees, ProjectID = gblSProject.ID))
+        );
+        Clear(colEmployeeDocs)
+    Children:
+      - conEmpNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpEmpNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "Home",
+                            SVG: ""
+                        }
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpEmpTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="People"
+            ModuleName: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            OnSelectTitle: =Navigate(ScrHR, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الموظفون", "Employees")
+            ScreenTitle: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpEmpPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table(
+                  {
+                      Name: "Home",
+                      SVG: ""
+                  }
+              )
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Leaves", Title: If(gblLanguage = "Arabic", "الإجازات", "Leaves"), Icon: "Calendar", Visible: true},
+                  {ID: 30, Module: "Attendance", Title: If(gblLanguage = "Arabic", "الحضور", "Attendance"), Icon: "Clock", Visible: true},
+                  {ID: 40, Module: "Performance", Title: If(gblLanguage = "Arabic", "الأداء", "Performance"), Icon: "Activity", Visible: true},
+                  {ID: 50, Module: "Training", Title: If(gblLanguage = "Arabic", "التدريب", "Training"), Icon: "Graduation", Visible: true},
+                  {ID: 60, Module: "Recruitment", Title: If(gblLanguage = "Arabic", "التوظيف", "Recruitment"), Icon: "UserPlus", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Leaves", Navigate(scrLeaveManagement, ScreenTransition.None),
+                  "Attendance", Navigate(scrAttendance, ScreenTransition.None),
+                  "Performance", Notify(If(gblLanguage = "Arabic", "إدارة الأداء ستكون متاحة قريباً.", "Performance is coming soon."), NotificationType.Information),
+                  "Training", Notify(If(gblLanguage = "Arabic", "إدارة التدريب ستكون متاحة قريباً.", "Training is coming soon."), NotificationType.Information),
+                  "Recruitment", Notify(If(gblLanguage = "Arabic", "التوظيف سيكون متاحاً قريباً.", "Recruitment is coming soon."), NotificationType.Information)
+              )
+            SelectedID: =10
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conEmpWorkspace:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =8
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =8
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - conEmpHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =48
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - icoEmpHeader:
+                      Control: ModernIcon@1.1.1
+                      Properties:
+                        Icon: ="People"
+                        IconColor: =fxThemeColor("Primary")
+                        Height: =28
+                        Width: =28
+                  - lblEmpTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        Size: =16
+                        Text: =If(gblLanguage = "Arabic", "جميع الموظفين", "All Employees")
+                        Width: =If(App.Width < 700, Parent.Width - 180, 220)
+                  - lblEmpCount:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =Font.'Segoe UI'
+                        Height: =28
+                        Size: =12
+                        Visible: =App.Width >= 700
+                        Text: |-
+                          =CountRows(
+                              Filter(
+                                  colAllEmployees,
+                                  Or(IsBlank(cmbEmployeeFilter.Selected), ID = cmbEmployeeFilter.Selected.ID),
+                                  Or(IsBlank(cmbProjectFilter.Selected), ProjectID = cmbProjectFilter.Selected.ID),
+                                  Or(IsBlank(cmbDepartmentFilter.Selected), Department.Value = cmbDepartmentFilter.Selected.Value),
+                                  Or(IsBlank(cmbOfficeFilter.Selected), Office.Value = cmbOfficeFilter.Selected.Value),
+                                  Or(IsBlank(cmbRoleFilter.Selected), Role.Value = cmbRoleFilter.Selected.Value),
+                                  Or(
+                                      Or(varEmployeeQuickFilter = "All", IsBlank(varEmployeeQuickFilter)),
+                                      And(varEmployeeQuickFilter = "Active", Status.Value = "Active"),
+                                      And(varEmployeeQuickFilter = "On Leave", Status.Value = "On Leave"),
+                                      And(varEmployeeQuickFilter = "Inactive", Status.Value = "Inactive")
+                                  )
+                              )
+                          ) & If(gblLanguage = "Arabic", " موظف", " employees")
+                        Width: =120
+                  - btnEmpNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "موظف جديد", "New employee")
+                        Align: =Align.Center
+                        Appearance: =ButtonAppearance.Primary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="PersonAdd"
+                        OnSelect: |-
+                          =Set(gblSelectedEmployee, Blank());
+                          Set(gblEmployeeMode, "Add");
+                          Set(varEmployeeMode, "Add");
+                          Set(gblCanEditEmployee, true);
+                          Set(VarNewEmployee, true);
+                          Set(VarEmployeeDoc, false)
+                        Text: =If(gblLanguage = "Arabic", "موظف جديد", "New Employee")
+                        Visible: =LookUp(colUserPermissions, Module.Value = "HR").Scope.Value = "All"
+                        Width: =If(App.Width < 700, 140, 160)
+            - conEmpFilters:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 292, 108)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Width: =Parent.Width
+                Children:
+                  - conEmpFilterRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 210, 40)
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - cmbEmployeeFilter:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =colAllEmployees
+                              OnChange: |-
+                                =Set(varEmployeePageNumber, 1);
+                                Set(gblSelectedEmployee, Self.Selected)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.22)
+                        - cmbProjectFilter:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              DefaultSelectedItems: =If(Or(varUserHasAllProjects, IsBlank(gblSProject)), Blank(), [gblSProject])
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              ItemDisplayText: =ThisItem.ProjectCode
+                              Items: =If(varUserHasAllProjects, Projects, colUserAccessibleProjects)
+                              OnChange: |-
+                                =If(
+                                    And(!varUserHasAllProjects, IsBlank(Self.Selected)),
+                                    Reset(cmbProjectFilter)
+                                );
+                                Set(gblSProject, Self.Selected);
+                                Set(varEmployeePageNumber, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.16)
+                        - cmbDepartmentFilter:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "القسم", "Department")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "القسم", "Department")
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Employees.Department)
+                              OnChange: =Set(varEmployeePageNumber, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.16)
+                        - cmbOfficeFilter:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المكتب", "Office")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المكتب", "Office")
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Employees.Office)
+                              OnChange: =Set(varEmployeePageNumber, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.14)
+                        - cmbRoleFilter:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الوظيفة", "Role")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الوظيفة", "Role")
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Employees.Role)
+                              OnChange: =Set(varEmployeePageNumber, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.16)
+                        - conEmpViewToggle:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =2
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Visible: =App.Width >= 700
+                              Width: =150
+                            Children:
+                              - btnEmpViewTable:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "جدول", "Table")
+                                    Appearance: =If(varEmployeeViewMode = "Table", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =32
+                                    Icon: ="Table"
+                                    OnSelect: =Set(varEmployeeViewMode, "Table")
+                                    Text: =If(gblLanguage = "Arabic", "جدول", "Table")
+                                    Width: =72
+                              - btnEmpViewCard:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "بطاقة", "Card")
+                                    Appearance: =If(varEmployeeViewMode = "Card", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =32
+                                    Icon: ="Grid"
+                                    OnSelect: =Set(varEmployeeViewMode, "Card")
+                                    Text: =If(gblLanguage = "Arabic", "بطاقة", "Card")
+                                    Width: =72
+                  - conEmpFilterActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - btnEmpQuickAll:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varEmployeeQuickFilter = "All", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =32
+                              OnSelect: |-
+                                =Set(varEmployeeQuickFilter, "All");
+                                Set(varEmployeePageNumber, 1)
+                              Text: =If(gblLanguage = "Arabic", "الكل", "All")
+                              Width: =72
+                        - btnEmpQuickActive:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varEmployeeQuickFilter = "Active", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =32
+                              OnSelect: |-
+                                =Set(varEmployeeQuickFilter, "Active");
+                                Set(varEmployeePageNumber, 1)
+                              Text: =If(gblLanguage = "Arabic", "نشط", "Active")
+                              Width: =80
+                        - btnEmpQuickLeave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varEmployeeQuickFilter = "On Leave", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =32
+                              OnSelect: |-
+                                =Set(varEmployeeQuickFilter, "On Leave");
+                                Set(varEmployeePageNumber, 1)
+                              Text: =If(gblLanguage = "Arabic", "إجازة", "On Leave")
+                              Width: =88
+                        - btnEmpQuickInactive:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varEmployeeQuickFilter = "Inactive", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =32
+                              OnSelect: |-
+                                =Set(varEmployeeQuickFilter, "Inactive");
+                                Set(varEmployeePageNumber, 1)
+                              Text: =If(gblLanguage = "Arabic", "غير نشط", "Inactive")
+                              Width: =88
+                        - btnEmpClear:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "مسح التصفية", "Clear filters")
+                              Appearance: =ButtonAppearance.Outline
+                              Font: =Font.'Segoe UI'
+                              Height: =32
+                              Icon: ="Filter"
+                              OnSelect: |-
+                                =Reset(cmbEmployeeFilter);
+                                Reset(cmbDepartmentFilter);
+                                Reset(cmbOfficeFilter);
+                                Reset(cmbRoleFilter);
+                                If(
+                                    varUserHasAllProjects,
+                                    Reset(cmbProjectFilter);
+                                    Set(gblSProject, Blank())
+                                );
+                                Set(gblSelectedEmployee, Blank());
+                                Set(varEmployeeQuickFilter, "All");
+                                Set(varEmployeePageNumber, 1)
+                              Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                              Width: =88
+                        - btnEmpRefresh:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                              Appearance: =ButtonAppearance.Outline
+                              Font: =Font.'Segoe UI'
+                              Height: =32
+                              Icon: ="ArrowSync"
+                              OnSelect: |-
+                                =Refresh(Employees);
+                                Clear(colAllEmployees);
+                                If(
+                                    varHRScope = "Own",
+                                    Collect(colAllEmployees, Filter(Employees, ID = gblUser.ID)),
+                                    If(
+                                        varUserHasAllProjects,
+                                        Collect(colAllEmployees, Employees),
+                                        ForAll(
+                                            colUserAccessibleProjects As proj,
+                                            Collect(colAllEmployees, Filter(Employees, ProjectID = proj.ID))
+                                        )
+                                    )
+                                );
+                                If(
+                                    And(varHRScope <> "Own", IsEmpty(colAllEmployees), !IsBlank(gblSProject.ID)),
+                                    Collect(colAllEmployees, Filter(Employees, ProjectID = gblSProject.ID))
+                                );
+                                Set(varEmployeePageNumber, 1)
+                              Text: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                              Width: =96
+            - conEmpTable:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  FillPortions: =1
+                  Visible: =And(varEmployeeViewMode <> "Card", App.Width >= 700)
+                  Width: =Parent.Width
+                Children:
+                  - conEmpTableHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("SurfaceHover")
+                        FillPortions: =0
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        Width: =Parent.Width
+                      Children:
+                        - lblEmpHeadName:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "الموظف", "EMPLOYEE")
+                              Width: =Parent.Width * 0.18
+                        - lblEmpHeadProject:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "المشروع", "PROJECT")
+                              Visible: =App.Width >= 1024
+                              Width: =Parent.Width * 0.1
+                        - lblEmpHeadHire:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "التعيين", "HIRED")
+                              Visible: =App.Width >= 1024
+                              Width: =Parent.Width * 0.08
+                        - lblEmpHeadDept:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "القسم", "DEPARTMENT")
+                              Width: =Parent.Width * 0.12
+                        - lblEmpHeadRole:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "الوظيفة", "ROLE")
+                              Width: =Parent.Width * 0.12
+                        - lblEmpHeadOffice:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "المكتب", "OFFICE")
+                              Visible: =App.Width >= 1024
+                              Width: =Parent.Width * 0.1
+                        - lblEmpHeadStatus:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "الحالة", "STATUS")
+                              Width: =88
+                        - lblEmpHeadContract:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "نهاية العقد", "CONTRACT")
+                              Visible: =App.Width >= 1024
+                              Width: =Parent.Width * 0.1
+                        - lblEmpHeadService:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "الخدمة", "SERVICE")
+                              Visible: =App.Width >= 1024
+                              Width: =Parent.Width * 0.08
+                        - lblEmpHeadActions:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =Parent.Height
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "إجراءات", "ACTIONS")
+                              Width: =108
+                  - galEmpTable:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "جدول الموظفين", "Employee table")
+                        BorderStyle: =BorderStyle.None
+                        Fill: =Color.Transparent
+                        Items: |-
+                          =SortByColumns(
+                              Filter(
+                                  colAllEmployees,
+                                  Or(IsBlank(cmbEmployeeFilter.Selected), ID = cmbEmployeeFilter.Selected.ID),
+                                  Or(IsBlank(cmbProjectFilter.Selected), ProjectID = cmbProjectFilter.Selected.ID),
+                                  Or(IsBlank(cmbDepartmentFilter.Selected), Department.Value = cmbDepartmentFilter.Selected.Value),
+                                  Or(IsBlank(cmbOfficeFilter.Selected), Office.Value = cmbOfficeFilter.Selected.Value),
+                                  Or(IsBlank(cmbRoleFilter.Selected), Role.Value = cmbRoleFilter.Selected.Value),
+                                  Or(
+                                      Or(varEmployeeQuickFilter = "All", IsBlank(varEmployeeQuickFilter)),
+                                      And(varEmployeeQuickFilter = "Active", Status.Value = "Active"),
+                                      And(varEmployeeQuickFilter = "On Leave", Status.Value = "On Leave"),
+                                      And(varEmployeeQuickFilter = "Inactive", Status.Value = "Inactive")
+                                  )
+                              ),
+                              "ID",
+                              SortOrder.Ascending
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(gblSelectedEmployee, ThisItem)
+                        TemplatePadding: =0
+                        TemplateSize: =52
+                        Width: =Parent.Width
+                      Children:
+                        - conEmpRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - conEmpRowWho:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =Parent.Height
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width * 0.18
+                                  Children:
+                                    - lblEmpInitials:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxThemeColor("Primary")
+                                          Fill: =fxThemeColor("PrimaryLighter")
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =32
+                                          Size: =11
+                                          Text: |-
+                                            =Upper(Left(Coalesce(ThisItem.FullName, ""), 1)) & Upper(If(Find(" ", Coalesce(ThisItem.FullName, "") & " ") > 0, Mid(Coalesce(ThisItem.FullName, "") & " ", Find(" ", Coalesce(ThisItem.FullName, "") & " ") + 1, 1), ""))
+                                          Width: =32
+                                    - conEmpRowNames:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          Height: =40
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width - 40
+                                        Children:
+                                          - lblEmpName:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =12
+                                                Text: |-
+                                                  =Coalesce(ThisItem.FullName, "-")
+                                                Width: =Parent.Width
+                                          - lblEmpEmail:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =fxThemeColor("TextMuted")
+                                                Font: =Font.'Segoe UI'
+                                                Height: =16
+                                                Size: =10
+                                                Text: |-
+                                                  =Coalesce(ThisItem.Email, "")
+                                                Width: =Parent.Width
+                              - lblEmpProject:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =11
+                                    Text: |-
+                                      =Coalesce(ThisItem.Project.Value, "-")
+                                    Visible: =App.Width >= 1024
+                                    Width: =Parent.Width * 0.1
+                              - lblEmpHire:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =11
+                                    Text: |-
+                                      =If(IsBlank(ThisItem.HireDate), "-", Text(ThisItem.HireDate, "mmm yyyy"))
+                                    Visible: =App.Width >= 1024
+                                    Width: =Parent.Width * 0.08
+                              - lblEmpDept:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =11
+                                    Text: |-
+                                      =Coalesce(ThisItem.Department.Value, "-")
+                                    Width: =Parent.Width * 0.12
+                              - lblEmpRole:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =11
+                                    Text: |-
+                                      =Coalesce(ThisItem.Role.Value, "-")
+                                    Width: =Parent.Width * 0.12
+                              - lblEmpOffice:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =11
+                                    Text: |-
+                                      =Coalesce(ThisItem.Office.Value, "-")
+                                    Visible: =App.Width >= 1024
+                                    Width: =Parent.Width * 0.1
+                              - lblEmpStatus:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: |-
+                                      =Switch(
+                                          ThisItem.Status.Value,
+                                          "Active", fxToneInk("Success"),
+                                          "On Leave", fxToneInk("Warning"),
+                                          "Inactive", fxThemeColor("TextMuted"),
+                                          fxThemeColor("TextMuted")
+                                      )
+                                    Fill: |-
+                                      =Switch(
+                                          ThisItem.Status.Value,
+                                          "Active", fxToneFill("Success"),
+                                          "On Leave", fxToneFill("Warning"),
+                                          "Inactive", fxThemeColor("SurfaceHover"),
+                                          fxThemeColor("SurfaceHover")
+                                      )
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =22
+                                    Size: =10
+                                    Text: |-
+                                      =Coalesce(ThisItem.Status.Value, "-")
+                                    Width: =88
+                              - lblEmpContract:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: |-
+                                      =If(
+                                          IsBlank(ThisItem.EndDate),
+                                          fxThemeColor("TextMuted"),
+                                          If(
+                                              ThisItem.EndDate < Today(),
+                                              fxToneInk("Danger"),
+                                              If(DateDiff(Today(), ThisItem.EndDate, TimeUnit.Months) <= 3, fxToneInk("Warning"), fxToneInk("Success"))
+                                          )
+                                      )
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =10
+                                    Text: |-
+                                      =If(
+                                          IsBlank(ThisItem.EndDate),
+                                          If(gblLanguage = "Arabic", "بدون نهاية", "No end"),
+                                          If(
+                                              ThisItem.EndDate < Today(),
+                                              If(gblLanguage = "Arabic", "منتهي", "Expired"),
+                                              If(
+                                                  DateDiff(Today(), ThisItem.EndDate, TimeUnit.Months) < 1,
+                                                  If(gblLanguage = "Arabic", "أقل من شهر", "< 1 month"),
+                                                  DateDiff(Today(), ThisItem.EndDate, TimeUnit.Months) & If(gblLanguage = "Arabic", " ش", " mo")
+                                              )
+                                          )
+                                      )
+                                    Visible: =App.Width >= 1024
+                                    Width: =Parent.Width * 0.1
+                              - lblEmpService:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =22
+                                    Size: =10
+                                    Text: |-
+                                      =If(
+                                          IsBlank(ThisItem.HireDate),
+                                          "-",
+                                          With(
+                                              {
+                                                  startDate: ThisItem.HireDate,
+                                                  endDate: If(IsBlank(ThisItem.EndDate), Today(), Min(ThisItem.EndDate, Today()))
+                                              },
+                                              DateDiff(startDate, endDate, TimeUnit.Years) & If(gblLanguage = "Arabic", " س ", "y ") & Mod(DateDiff(startDate, endDate, TimeUnit.Months), 12) & If(gblLanguage = "Arabic", " ش", "m")
+                                          )
+                                      )
+                                    Visible: =App.Width >= 1024
+                                    Width: =Parent.Width * 0.08
+                              - conEmpRowActions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =32
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =2
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =108
+                                  Children:
+                                    - btnEmpView:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "عرض", "View")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Height: =32
+                                          Icon: ="Eye"
+                                          OnSelect: =Set(gblSelectedEmployee, ThisItem)
+                                          Text: |-
+                                            =""
+                                          Width: =32
+                                    - btnEmpEdit:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Height: =32
+                                          Icon: ="Edit"
+                                          OnSelect: |-
+                                            =Set(gblSelectedEmployee, ThisItem);
+                                            Set(gblEmployeeMode, "Edit");
+                                            Set(varEmployeeMode, "Edit");
+                                            Set(gblCanEditEmployee, true);
+                                            Set(VarEmployeeDoc, false);
+                                            Set(VarNewEmployee, true)
+                                          Text: |-
+                                            =""
+                                          Width: =32
+                                    - btnEmpDelete:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Danger")
+                                          Height: =32
+                                          Icon: ="Delete"
+                                          OnSelect: |-
+                                            =If(
+                                                Confirm(If(gblLanguage = "Arabic", "هل تريد حذف هذا الموظف؟", "Delete this employee?")),
+                                                Remove(Employees, LookUp(Employees, ID = ThisItem.ID));
+                                                Remove(colAllEmployees, LookUp(colAllEmployees, ID = ThisItem.ID));
+                                                If(gblSelectedEmployee.ID = ThisItem.ID, Set(gblSelectedEmployee, Blank()));
+                                                Notify(If(gblLanguage = "Arabic", "تم حذف الموظف.", "Employee deleted."), NotificationType.Success)
+                                            )
+                                          Text: |-
+                                            =""
+                                          Visible: =Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanDelete, false)
+                                          Width: =32
+            - galEmpCards:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "بطاقات الموظفين", "Employee cards")
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Items: |-
+                    =SortByColumns(
+                        Filter(
+                            colAllEmployees,
+                            Or(IsBlank(cmbEmployeeFilter.Selected), ID = cmbEmployeeFilter.Selected.ID),
+                            Or(IsBlank(cmbProjectFilter.Selected), ProjectID = cmbProjectFilter.Selected.ID),
+                            Or(IsBlank(cmbDepartmentFilter.Selected), Department.Value = cmbDepartmentFilter.Selected.Value),
+                            Or(IsBlank(cmbOfficeFilter.Selected), Office.Value = cmbOfficeFilter.Selected.Value),
+                            Or(IsBlank(cmbRoleFilter.Selected), Role.Value = cmbRoleFilter.Selected.Value),
+                            Or(
+                                Or(varEmployeeQuickFilter = "All", IsBlank(varEmployeeQuickFilter)),
+                                And(varEmployeeQuickFilter = "Active", Status.Value = "Active"),
+                                And(varEmployeeQuickFilter = "On Leave", Status.Value = "On Leave"),
+                                And(varEmployeeQuickFilter = "Inactive", Status.Value = "Inactive")
+                            )
+                        ),
+                        "ID",
+                        SortOrder.Ascending
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =Set(gblSelectedEmployee, ThisItem)
+                  TemplatePadding: =8
+                  FillPortions: =1
+                  TemplateSize: =188
+                  Visible: =Or(varEmployeeViewMode = "Card", App.Width < 700)
+                  Width: =Parent.Width
+                  WrapCount: =If(Parent.Width < 640, 1, If(Parent.Width < 1000, 2, If(Parent.Width < 1400, 3, 4)))
+                Children:
+                  - conEmpCard:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.TemplateHeight - 8
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - conEmpCardTop:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =44
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - lblEmpCardInitials:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("Primary")
+                                    Fill: =fxThemeColor("PrimaryLighter")
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =36
+                                    Size: =12
+                                    Text: |-
+                                      =Upper(Left(Coalesce(ThisItem.FullName, ""), 1))
+                                    Width: =36
+                              - conEmpCardTitle:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width - 130
+                                  Children:
+                                    - lblEmpCardName:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =20
+                                          Size: =13
+                                          Text: |-
+                                            =Coalesce(ThisItem.FullName, "-")
+                                          Width: =Parent.Width
+                                    - lblEmpCardRole:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =Font.'Segoe UI'
+                                          Height: =16
+                                          Size: =11
+                                          Text: |-
+                                            =Coalesce(ThisItem.Role.Value, "-")
+                                          Width: =Parent.Width
+                              - lblEmpCardStatus:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =If(ThisItem.Status.Value = "Active", fxToneInk("Success"), If(ThisItem.Status.Value = "On Leave", fxToneInk("Warning"), fxThemeColor("TextMuted")))
+                                    Fill: =If(ThisItem.Status.Value = "Active", fxToneFill("Success"), If(ThisItem.Status.Value = "On Leave", fxToneFill("Warning"), fxThemeColor("SurfaceHover")))
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =22
+                                    Size: =10
+                                    Text: |-
+                                      =Coalesce(ThisItem.Status.Value, "-")
+                                    Width: =72
+                        - lblEmpCardDept:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =18
+                              Size: =11
+                              Text: |-
+                                =Coalesce(ThisItem.Department.Value, "-") & " · " & Coalesce(ThisItem.Office.Value, "-")
+                              Width: =Parent.Width
+                        - lblEmpCardProject:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =18
+                              Size: =11
+                              Text: |-
+                                =Coalesce(ThisItem.Project.Value, "-")
+                              Width: =Parent.Width
+                        - lblEmpCardEmail:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =Font.'Segoe UI'
+                              Height: =18
+                              Size: =11
+                              Text: |-
+                                =Coalesce(ThisItem.Email, "-")
+                              Width: =Parent.Width
+                        - conEmpCardActions:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =4
+                              LayoutJustifyContent: =LayoutJustifyContent.End
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - btnEmpCardView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "عرض", "View")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =32
+                                    Icon: ="Eye"
+                                    OnSelect: =Set(gblSelectedEmployee, ThisItem)
+                                    Text: |-
+                                      =""
+                                    Width: =32
+                              - btnEmpCardEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =32
+                                    Icon: ="Edit"
+                                    OnSelect: |-
+                                      =Set(gblSelectedEmployee, ThisItem);
+                                      Set(gblEmployeeMode, "Edit");
+                                      Set(varEmployeeMode, "Edit");
+                                      Set(gblCanEditEmployee, true);
+                                      Set(VarEmployeeDoc, false);
+                                      Set(VarNewEmployee, true)
+                                    Text: |-
+                                      =""
+                                    Width: =32
+                              - btnEmpCardDelete:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Danger")
+                                    Height: =32
+                                    Icon: ="Delete"
+                                    OnSelect: |-
+                                      =If(
+                                          Confirm(If(gblLanguage = "Arabic", "هل تريد حذف هذا الموظف؟", "Delete this employee?")),
+                                          Remove(Employees, LookUp(Employees, ID = ThisItem.ID));
+                                          Remove(colAllEmployees, LookUp(colAllEmployees, ID = ThisItem.ID));
+                                          If(gblSelectedEmployee.ID = ThisItem.ID, Set(gblSelectedEmployee, Blank()));
+                                          Notify(If(gblLanguage = "Arabic", "تم حذف الموظف.", "Employee deleted."), NotificationType.Success)
+                                      )
+                                    Text: |-
+                                      =""
+                                    Visible: =Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanDelete, false)
+                                    Width: =32
+      - conEmpDetails:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.35)
+            Height: =Parent.Height
+            Visible: =And(!IsBlank(gblSelectedEmployee), !VarNewEmployee)
+            Width: =If(App.Width < 700, Parent.Width, 420)
+            X: =Parent.Width - Self.Width
+            Y: =0
+          Children:
+            - conEmpDetailCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Background")
+                  Height: =Parent.Height
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  Width: =Parent.Width
+                Children:
+                  - conEmpDetailHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =88
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =12
+                        PaddingRight: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Width: =Parent.Width
+                      Children:
+                        - imgEmpPhoto:
+                            Control: Image@2.2.3
+                            Properties:
+                              AccessibleLabel: =Coalesce(gblSelectedEmployee.FullName, "")
+                              Height: =56
+                              Image: |-
+                                =IfError(
+                                    Office365Users.UserPhotoV2(gblSelectedEmployee.Email),
+                                    SampleImage
+                                )
+                              Width: =56
+                        - conEmpDetailTitle:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =64
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 120
+                            Children:
+                              - lblEmpDetailName:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =16
+                                    Text: |-
+                                      =Coalesce(gblSelectedEmployee.FullName, "-")
+                                    Width: =Parent.Width
+                              - lblEmpDetailJob:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =18
+                                    Size: =12
+                                    Text: |-
+                                      =Coalesce(gblSelectedEmployee.JobTitle, "-")
+                                    Width: =Parent.Width
+                              - lblEmpDetailStatus:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(Lower(Coalesce(gblSelectedEmployee.Status.Value, "")) = "active", fxToneInk("Success"), fxToneInk("Danger"))
+                                    Fill: =If(Lower(Coalesce(gblSelectedEmployee.Status.Value, "")) = "active", fxToneFill("Success"), fxToneFill("Danger"))
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =20
+                                    Size: =11
+                                    Text: |-
+                                      =Coalesce(gblSelectedEmployee.Status.Value, "-")
+                                    Width: =88
+                        - btnEmpDetailClose:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =32
+                              Icon: ="Dismiss"
+                              OnSelect: =Set(gblSelectedEmployee, Blank())
+                              Text: |-
+                                =""
+                              Width: =32
+                  - galEmpContact:
+                      Control: Gallery@2.15.0
+                      Variant: Horizontal
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "وسائل الاتصال", "Contact")
+                        BorderStyle: =BorderStyle.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =64
+                        Items: |-
+                          =Table(
+                              {k: If(gblLanguage = "Arabic", "البريد", "Email"), v: Coalesce(gblSelectedEmployee.Email, "-"), link: If(IsBlank(gblSelectedEmployee.Email), "", "mailto:" & gblSelectedEmployee.Email)},
+                              {k: If(gblLanguage = "Arabic", "الهاتف", "Phone"), v: Coalesce(gblSelectedEmployee.Phone, "-"), link: If(IsBlank(gblSelectedEmployee.Phone), "", "tel:" & gblSelectedEmployee.Phone)},
+                              {k: If(gblLanguage = "Arabic", "المكتب", "Office"), v: Coalesce(gblSelectedEmployee.Office.Value, "-"), link: ""}
+                          )
+                        ShowScrollbar: =false
+                        TemplatePadding: =6
+                        TemplateSize: =140
+                        Width: =Parent.Width
+                      Children:
+                        - conEmpContact:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingTop: =6
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblEmpContactK:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =14
+                                    Size: =10
+                                    Text: |-
+                                      =ThisItem.k
+                                    Width: =Parent.Width
+                              - lblEmpContactV:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(IsBlank(ThisItem.link), fxThemeColor("TextPrimary"), fxThemeColor("Primary"))
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =18
+                                    Size: =11
+                                    Text: |-
+                                      =ThisItem.v
+                                    Width: =Parent.Width
+                        - btnEmpContact:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =ThisItem.v
+                              Appearance: =ButtonAppearance.Transparent
+                              DisplayMode: =If(IsBlank(ThisItem.link), DisplayMode.Disabled, DisplayMode.Edit)
+                              Height: =Parent.TemplateHeight
+                              OnSelect: =Launch(ThisItem.link)
+                              Text: |-
+                                =""
+                              Width: =Parent.TemplateWidth
+                              X: =0
+                              Y: =0
+                  - conEmpFacts:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =280
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Width: =Parent.Width
+                      Children:
+                        - lblEmpFactsTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "بيانات الموظف", "Employee details")
+                              Width: =Parent.Width
+                        - lblEmpFactNumber:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =20
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "الرقم: ", "Number: ") & Coalesce(gblSelectedEmployee.EmployeeNumber, "-")
+                              Width: =Parent.Width
+                        - lblEmpFactProject:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =20
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "المشروع: ", "Project: ") & Coalesce(gblSelectedEmployee.Project.Value, "-")
+                              Width: =Parent.Width
+                        - lblEmpFactDept:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =20
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "القسم: ", "Department: ") & Coalesce(gblSelectedEmployee.Department.Value, "-")
+                              Width: =Parent.Width
+                        - lblEmpFactManager:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =20
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "المدير: ", "Manager: ") & Coalesce(gblSelectedEmployee.Manager.Value, "-")
+                              Width: =Parent.Width
+                        - lblEmpFactType:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =20
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "نوع التوظيف: ", "Employment: ") & Coalesce(gblSelectedEmployee.EmploymentType.Value, "-")
+                              Width: =Parent.Width
+                        - lblEmpFactService:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "مدة الخدمة: ", "Service: ") & If(
+                                    IsBlank(gblSelectedEmployee.HireDate),
+                                    "-",
+                                    With(
+                                        {
+                                            startDate: gblSelectedEmployee.HireDate,
+                                            endDate: If(IsBlank(gblSelectedEmployee.EndDate), Today(), Min(gblSelectedEmployee.EndDate, Today()))
+                                        },
+                                        DateDiff(startDate, endDate, TimeUnit.Years) & If(gblLanguage = "Arabic", " سنة، ", " years, ") & Mod(DateDiff(startDate, endDate, TimeUnit.Months), 12) & If(gblLanguage = "Arabic", " شهر", " months")
+                                    )
+                                )
+                              Width: =Parent.Width
+                        - lblEmpFactContract:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: |-
+                                =If(
+                                    IsBlank(gblSelectedEmployee.EndDate),
+                                    fxThemeColor("TextMuted"),
+                                    If(gblSelectedEmployee.EndDate < Today(), fxToneInk("Danger"), If(DateDiff(Today(), gblSelectedEmployee.EndDate, TimeUnit.Months) <= 3, fxToneInk("Warning"), fxToneInk("Success")))
+                                )
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "نهاية العقد: ", "Contract end: ") & If(
+                                    IsBlank(gblSelectedEmployee.EndDate),
+                                    If(gblLanguage = "Arabic", "لا يوجد", "None"),
+                                    Text(gblSelectedEmployee.EndDate, "dd mmm yyyy")
+                                )
+                              Width: =Parent.Width
+                  - lblEmpNotes:
+                      Control: Label@2.5.1
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Color: =fxThemeColor("TextSecondary")
+                        Fill: =fxThemeColor("Surface")
+                        Font: =Font.'Segoe UI'
+                        Height: =72
+                        PaddingLeft: =10
+                        PaddingTop: =8
+                        Size: =12
+                        Text: |-
+                          =If(gblLanguage = "Arabic", "ملاحظات: ", "Notes: ") & Coalesce(gblSelectedEmployee.Remarks, "-")
+                        Visible: =!IsBlank(gblSelectedEmployee.Remarks)
+                        Width: =Parent.Width
+                  - conEmpQuick:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - btnEmpQuickEdit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Icon: ="Edit"
+                              OnSelect: |-
+                                =Set(gblEmployeeMode, "Edit");
+                                Set(varEmployeeMode, "Edit");
+                                Set(gblCanEditEmployee, true);
+                                Set(VarEmployeeDoc, false);
+                                Set(VarNewEmployee, true)
+                              Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                              Width: =100
+                        - btnEmpQuickDocs:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المستندات", "Documents")
+                              Appearance: =ButtonAppearance.Secondary
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Icon: ="Document"
+                              OnSelect: |-
+                                =Set(gblEmployeeMode, "View");
+                                Set(VarEmployeeDoc, true);
+                                Set(VarHRSection, "01-Recruitment");
+                                Set(VarNewEmployee, true);
+                                ClearCollect(colEmployeeDocs, Filter(HumanResourcesDoc, EmployeeNumber = gblSelectedEmployee.EmployeeNumber))
+                              Text: =If(gblLanguage = "Arabic", "ملفات", "Files")
+                              Width: =100
+                        - btnEmpOpenLeave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "رصيد الإجازات", "Leave balance")
+                              Appearance: =ButtonAppearance.Secondary
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Icon: ="Calendar"
+                              OnSelect: |-
+                                =Set(gblEmployeeMode, "LeaveBalance");
+                                Set(VarEmployeeDoc, false);
+                                Set(VarNewEmployee, true)
+                              Text: =If(gblLanguage = "Arabic", "إجازة", "Leave")
+                              Width: =100
+      - conEmpForm:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Background")
+            Height: =Parent.Height - 56 - If(App.Width < 700, 52, 0)
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =12
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =8
+            Visible: =VarNewEmployee
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =56
+          Children:
+            - conEmpFormNav:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - btnEmpMainInfo:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المعلومات الرئيسية", "Main information")
+                        Appearance: =If(!VarEmployeeDoc, ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="ContactCard"
+                        OnSelect: =Set(VarEmployeeDoc, false)
+                        Text: =If(gblLanguage = "Arabic", "البيانات", "Main information")
+                        Width: =180
+                  - btnEmpDocuments:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المستندات", "Documents")
+                        Appearance: =If(VarEmployeeDoc, ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Font: =Font.'Segoe UI'
+                        Height: =36
+                        Icon: ="Document"
+                        OnSelect: |-
+                          =Set(VarEmployeeDoc, true);
+                          Set(VarHRSection, Coalesce(VarHRSection, "01-Recruitment"));
+                          ClearCollect(colEmployeeDocs, Filter(HumanResourcesDoc, EmployeeNumber = gblSelectedEmployee.EmployeeNumber))
+                        Text: =If(gblLanguage = "Arabic", "المستندات", "Documents")
+                        Visible: =!IsBlank(gblSelectedEmployee)
+                        Width: =160
+                  - btnEmpFormClose:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                        Appearance: =ButtonAppearance.Subtle
+                        BasePaletteColor: =fxThemeColor("Danger")
+                        Height: =36
+                        Icon: ="Dismiss"
+                        OnSelect: =Set(VarNewEmployee, false)
+                        Text: |-
+                          =""
+                        Width: =36
+            - conEmpMain:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Visible: =!VarEmployeeDoc
+                  Width: =Parent.Width
+                Children:
+                  - lblEmpFormTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        Size: =16
+                        Text: |-
+                          =If(
+                              gblEmployeeMode = "Edit",
+                              If(gblLanguage = "Arabic", "تعديل ", "Edit ") & Coalesce(gblSelectedEmployee.FullName, ""),
+                              If(gblLanguage = "Arabic", "إضافة موظف", "Add employee")
+                          )
+                        Width: =Parent.Width
+                  - conEmpNameRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 210, 72)
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - txtFirstName:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الاسم الأول", "First name")
+                              Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.FirstName)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Placeholder: =If(gblLanguage = "Arabic", "الاسم الأول", "First name")
+                              Required: =true
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - txtLastName:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "اسم العائلة", "Last name")
+                              Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.LastName)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Placeholder: =If(gblLanguage = "Arabic", "اسم العائلة", "Last name")
+                              Required: =true
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - txtEmail:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "البريد الإلكتروني", "Email")
+                              Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.Email)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Placeholder: ="name@organization.org"
+                              Required: =true
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                  - txtDisplayName:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الاسم المعروض", "Display name")
+                        Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.DisplayName)
+                        DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                        Height: =40
+                        OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                        Placeholder: =If(gblLanguage = "Arabic", "الاسم المعروض", "Display name")
+                        Visible: =false
+                        Width: =Parent.Width
+                  - conEmpJobRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 210, 72)
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - cmbRole:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الدور", "Role")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.Role)), Blank(), Filter(Roles, ID = gblSelectedEmployee.Role.Id))
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الدور", "Role")
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =Roles
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - txtJobTitle:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المسمى الوظيفي", "Job title")
+                              Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.JobTitle)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Placeholder: =If(gblLanguage = "Arabic", "المسمى الوظيفي", "Job title")
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - txtPhone:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الهاتف", "Phone")
+                              Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.Phone)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Placeholder: =If(gblLanguage = "Arabic", "الهاتف", "Phone")
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                  - conEmpOrgRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 210, 72)
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - cmbDepartment:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "القسم", "Department")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.Department)), Blank(), Filter(Departments, ID = gblSelectedEmployee.Department.Id))
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "القسم", "Department")
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =Departments
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - cmbOffice:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المكتب", "Office")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.Office)), Blank(), Filter(Offices, ID = gblSelectedEmployee.Office.Id))
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المكتب", "Office")
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =Offices
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - cmbManager:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المدير", "Manager")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.Manager)), Blank(), Filter(Employees, ID = gblSelectedEmployee.Manager.Id))
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المدير المباشر", "Manager")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Employees
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                  - conEmpWorkRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 210, 72)
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - cmbProject:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.Project)), Blank(), Filter(Projects, ID = gblSelectedEmployee.Project.Id))
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =Projects
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - cmbContractType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "نوع العقد", "Contract type")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.ContractType)), Blank(), [gblSelectedEmployee.ContractType])
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع العقد", "Contract type")
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Employees.ContractType)
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - cmbEmploymentType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "نوع التوظيف", "Employment type")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.EmploymentType)), Blank(), [gblSelectedEmployee.EmploymentType])
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع التوظيف", "Employment type")
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Employees.EmploymentType)
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                  - conEmpDateRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 210, 72)
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - dteHireDate:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تاريخ التعيين", "Hire date")
+                              DefaultDate: =If(gblEmployeeMode = "Add", Today(), gblSelectedEmployee.HireDate)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - dteEndDate:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تاريخ الانتهاء", "End date")
+                              DefaultDate: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.EndDate)
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                        - cmbEmployeeStatus:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                              DefaultSelectedItems: =If(Or(gblEmployeeMode = "Add", IsBlank(gblSelectedEmployee.Status)), Blank(), [gblSelectedEmployee.Status])
+                              DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(Employees.Status)
+                              OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width / 3 - 8)
+                  - txtEmployeeRemarks:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "ملاحظات", "Remarks")
+                        Default: =If(gblEmployeeMode = "Add", Blank(), gblSelectedEmployee.Remarks)
+                        DisplayMode: =If(gblEmployeeMode = "View", DisplayMode.View, DisplayMode.Edit)
+                        Height: =80
+                        OnChange: =If(gblEmployeeMode = "View", Set(gblEmployeeMode, "Edit"))
+                        Placeholder: =If(gblLanguage = "Arabic", "ملاحظات", "Remarks")
+                        Type: =TextInputType.Multiline
+                        Width: =Parent.Width
+                  - conEmpFormActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - btnCancelEmployee:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Appearance: =ButtonAppearance.Secondary
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              OnSelect: =Set(VarNewEmployee, false)
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =100
+                        - btnSaveEmployee:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "حفظ الموظف", "Save employee")
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Icon: ="Save"
+                              OnSelect: |-
+                                =Set(varEmpSaveOk, false);
+                                If(
+                                    Or(IsBlank(Trim(txtFirstName.Text)), IsBlank(Trim(txtLastName.Text)), IsBlank(Trim(txtEmail.Text))),
+                                    Notify(If(gblLanguage = "Arabic", "الاسم الأول واسم العائلة والبريد مطلوبة.", "First name, last name, and email are required."), NotificationType.Error),
+                                    If(
+                                        !IsMatch(Trim(txtEmail.Text), Match.Email),
+                                        Notify(If(gblLanguage = "Arabic", "أدخل بريداً صحيحاً.", "Enter a valid email address."), NotificationType.Error),
+                                        If(
+                                            gblEmployeeMode = "Add",
+                                            Set(
+                                                varSavedEmployee,
+                                                IfError(
+                                                    Patch(
+                                                        Employees,
+                                                        Defaults(Employees),
+                                                        {
+                                                            FirstName: Trim(txtFirstName.Text),
+                                                            LastName: Trim(txtLastName.Text),
+                                                            DisplayName: If(IsBlank(Trim(txtDisplayName.Text)), Trim(txtFirstName.Text) & " " & Trim(txtLastName.Text), Trim(txtDisplayName.Text)),
+                                                            Email: Lower(Trim(txtEmail.Text)),
+                                                            UserPrincipalName: Lower(Trim(txtEmail.Text)),
+                                                            JobTitle: Trim(txtJobTitle.Text),
+                                                            Phone: Trim(txtPhone.Text),
+                                                            Remarks: Trim(txtEmployeeRemarks.Text),
+                                                            Status: If(IsBlank(cmbEmployeeStatus.Selected.Value), Blank(), {Value: cmbEmployeeStatus.Selected.Value}),
+                                                            ContractType: If(IsBlank(cmbContractType.Selected.Value), Blank(), {Value: cmbContractType.Selected.Value}),
+                                                            EmploymentType: If(IsBlank(cmbEmploymentType.Selected.Value), Blank(), {Value: cmbEmploymentType.Selected.Value}),
+                                                            Department: If(IsBlank(cmbDepartment.Selected.ID), Blank(), {Id: cmbDepartment.Selected.ID, Value: cmbDepartment.Selected.Title}),
+                                                            Office: If(IsBlank(cmbOffice.Selected.ID), Blank(), {Id: cmbOffice.Selected.ID, Value: cmbOffice.Selected.Title}),
+                                                            Manager: If(IsBlank(cmbManager.Selected.ID), Blank(), {Id: cmbManager.Selected.ID, Value: cmbManager.Selected.FullName}),
+                                                            Role: If(IsBlank(cmbRole.Selected.ID), Blank(), {Id: cmbRole.Selected.ID, Value: cmbRole.Selected.Title}),
+                                                            Project: If(IsBlank(cmbProject.Selected.ID), Blank(), {Id: cmbProject.Selected.ID, Value: cmbProject.Selected.Title}),
+                                                            ProjectID: cmbProject.Selected.ID,
+                                                            HireDate: dteHireDate.SelectedDate,
+                                                            EndDate: dteEndDate.SelectedDate
+                                                        }
+                                                    ),
+                                                    Notify(If(gblLanguage = "Arabic", "تعذر إنشاء الموظف: ", "Employee could not be created: ") & FirstError.Message, NotificationType.Error);
+                                                    Blank()
+                                                )
+                                            );
+                                            If(
+                                                !IsBlank(varSavedEmployee),
+                                                Patch(Employees, varSavedEmployee, {EmployeeNumber: "EP-" & Text(varSavedEmployee.ID, "000")});
+                                                Notify(If(gblLanguage = "Arabic", "تمت إضافة الموظف.", "Employee added."), NotificationType.Success);
+                                                Set(gblSelectedEmployee, LookUp(Employees, ID = varSavedEmployee.ID));
+                                                Set(gblEmployeeMode, "Add");
+                                                Set(varEmpSaveOk, true);
+                                                Set(VarNewEmployee, false)
+                                            ),
+                                            If(
+                                                gblEmployeeMode = "Edit",
+                                                Set(
+                                                    varUpdatedEmployee,
+                                                    IfError(
+                                                        Patch(
+                                                            Employees,
+                                                            gblSelectedEmployee,
+                                                            {
+                                                                FirstName: Trim(txtFirstName.Text),
+                                                                LastName: Trim(txtLastName.Text),
+                                                                DisplayName: If(IsBlank(Trim(txtDisplayName.Text)), Trim(txtFirstName.Text) & " " & Trim(txtLastName.Text), Trim(txtDisplayName.Text)),
+                                                                Email: Lower(Trim(txtEmail.Text)),
+                                                                UserPrincipalName: Lower(Trim(txtEmail.Text)),
+                                                                JobTitle: Trim(txtJobTitle.Text),
+                                                                Phone: Trim(txtPhone.Text),
+                                                                Remarks: Trim(txtEmployeeRemarks.Text),
+                                                                Status: If(IsBlank(cmbEmployeeStatus.Selected.Value), Blank(), {Value: cmbEmployeeStatus.Selected.Value}),
+                                                                ContractType: If(IsBlank(cmbContractType.Selected.Value), Blank(), {Value: cmbContractType.Selected.Value}),
+                                                                EmploymentType: If(IsBlank(cmbEmploymentType.Selected.Value), Blank(), {Value: cmbEmploymentType.Selected.Value}),
+                                                                Department: If(IsBlank(cmbDepartment.Selected.ID), Blank(), {Id: cmbDepartment.Selected.ID, Value: cmbDepartment.Selected.Title}),
+                                                                Office: If(IsBlank(cmbOffice.Selected.ID), Blank(), {Id: cmbOffice.Selected.ID, Value: cmbOffice.Selected.Title}),
+                                                                Manager: If(IsBlank(cmbManager.Selected.ID), Blank(), {Id: cmbManager.Selected.ID, Value: cmbManager.Selected.FullName}),
+                                                                Role: If(IsBlank(cmbRole.Selected.ID), Blank(), {Id: cmbRole.Selected.ID, Value: cmbRole.Selected.Title}),
+                                                                Project: If(IsBlank(cmbProject.Selected.ID), Blank(), {Id: cmbProject.Selected.ID, Value: cmbProject.Selected.Title}),
+                                                                ProjectID: cmbProject.Selected.ID,
+                                                                HireDate: dteHireDate.SelectedDate,
+                                                                EndDate: dteEndDate.SelectedDate,
+                                                                EmployeeNumber: If(IsBlank(gblSelectedEmployee.EmployeeNumber), "EP-" & Text(gblSelectedEmployee.ID, "000"), gblSelectedEmployee.EmployeeNumber)
+                                                            }
+                                                        ),
+                                                        Notify(If(gblLanguage = "Arabic", "تعذر تحديث الموظف: ", "Employee could not be updated: ") & FirstError.Message, NotificationType.Error);
+                                                        Blank()
+                                                    )
+                                                );
+                                                If(
+                                                    !IsBlank(varUpdatedEmployee),
+                                                    Notify(If(gblLanguage = "Arabic", "تم تحديث الموظف.", "Employee updated."), NotificationType.Success);
+                                                    Set(gblSelectedEmployee, LookUp(Employees, ID = varUpdatedEmployee.ID));
+                                                    Set(gblEmployeeMode, "Add");
+                                                    Set(varEmpSaveOk, true);
+                                                    Set(VarNewEmployee, false)
+                                                ),
+                                                Notify(If(gblLanguage = "Arabic", "النموذج ليس في وضع تعديل.", "The form is not in edit mode."), NotificationType.Error)
+                                            )
+                                        )
+                                    )
+                                );
+                                If(
+                                    varEmpSaveOk,
+                                    Refresh(Employees);
+                                    Clear(colAllEmployees);
+                                    If(
+                                        varHRScope = "Own",
+                                        Collect(colAllEmployees, Filter(Employees, ID = gblUser.ID)),
+                                        If(
+                                            varUserHasAllProjects,
+                                            Collect(colAllEmployees, Employees),
+                                            ForAll(
+                                                colUserAccessibleProjects As proj,
+                                                Collect(colAllEmployees, Filter(Employees, ProjectID = proj.ID))
+                                            )
+                                        )
+                                    )
+                                )
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =120
+            - conEmpDocs:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =200
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Visible: =VarEmployeeDoc
+                  Width: =Parent.Width
+                Children:
+                  - lblEmpDocsTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =24
+                        Size: =15
+                        Text: |-
+                          =Coalesce(gblSelectedEmployee.EmployeeNumber, "EMP") & " — " & Coalesce(gblSelectedEmployee.FullName, "")
+                        Width: =Parent.Width
+                  - tabEmpDocs:
+                      Control: ModernTabList@1.0.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "أقسام الملف", "File sections")
+                        Height: =40
+                        ItemDisplayText: =ThisItem.Section
+                        Items: =colHRSections
+                        OnChange: |-
+                          =Set(VarHRSection, Self.Selected.Section)
+                        Width: =Parent.Width
+                  - conEmpDocBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =If(App.Width < 700, 640, 420)
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - galEmpDocTypes:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "أنواع المستندات", "Document types")
+                              BorderStyle: =BorderStyle.None
+                              Fill: =Color.Transparent
+                              Items: =Filter(colHRDocTypes, Section = VarHRSection)
+                              TemplatePadding: =4
+                              TemplateSize: =48
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.34)
+                            Children:
+                              - conEmpDocType:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("SurfaceHover")
+                                    Height: =44
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingLeft: =8
+                                    PaddingRight: =6
+                                    RadiusBottomLeft: =gblTheme.Radius.Small
+                                    RadiusBottomRight: =gblTheme.Radius.Small
+                                    RadiusTopLeft: =gblTheme.Radius.Small
+                                    RadiusTopRight: =gblTheme.Radius.Small
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - lblEmpDocType:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =12
+                                          Text: |-
+                                            =If(
+                                                gblLanguage = "Arabic",
+                                                Switch(
+                                                    ThisItem.DocType,
+                                                    "Job Application", "طلب توظيف",
+                                                    "Job Description", "الوصف الوظيفي",
+                                                    "CV", "السيرة الذاتية",
+                                                    "Cover Letter", "خطاب التغطية",
+                                                    "Job Advertisement", "إعلان الوظيفة",
+                                                    "Shortlist", "القائمة المختصرة",
+                                                    "Tests", "الاختبارات",
+                                                    "References", "المراجع",
+                                                    "Interview", "المقابلة",
+                                                    "Job Offer", "عرض العمل",
+                                                    "Employment Contract", "عقد العمل",
+                                                    "Code of Conduct", "مدونة السلوك",
+                                                    "Conflict of Interest", "تعارض المصالح",
+                                                    "Academic Certificate", "الشهادة الأكاديمية",
+                                                    "Professional Certificate", "الشهادة المهنية",
+                                                    "Training Certificate", "شهادة التدريب",
+                                                    ThisItem.DocType
+                                                ),
+                                                ThisItem.DocType
+                                            )
+                                          Width: =Parent.Width - 100
+                                    - btnEmpDocUpload:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "رفع", "Upload")
+                                          Appearance: =If(CountRows(Filter(colEmployeeDocs, DocType.Value = ThisItem.DocType, !'Is folder')) > 0, ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Font: =Font.'Segoe UI'
+                                          Height: =30
+                                          Icon: ="ArrowUpload"
+                                          OnSelect: |-
+                                            =Set(VarHRDocType, ThisItem.DocType);
+                                            Set(VarHRDocUpload, true)
+                                          Text: |-
+                                            =If(
+                                                CountRows(Filter(colEmployeeDocs, DocType.Value = ThisItem.DocType, !'Is folder')) > 0,
+                                                If(gblLanguage = "Arabic", "استبدال", "Replace"),
+                                                If(gblLanguage = "Arabic", "رفع", "Upload")
+                                            )
+                                          Width: =88
+                        - conEmpDocList:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.64)
+                            Children:
+                              - conEmpDocListHead:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =32
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - lblEmpDocListTitle:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =13
+                                          Text: =If(gblLanguage = "Arabic", "المستندات المرفوعة", "Uploaded documents")
+                                          Width: =Parent.Width - 150
+                                    - btnEmpDocRefresh:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Height: =28
+                                          Icon: ="ArrowSync"
+                                          OnSelect: |-
+                                            =Refresh(HumanResourcesDoc);
+                                            ClearCollect(colEmployeeDocs, Filter(HumanResourcesDoc, EmployeeNumber = gblSelectedEmployee.EmployeeNumber))
+                                          Text: |-
+                                            =""
+                                          Width: =32
+                                    - btnEmpFolder:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "فتح المجلد", "Open folder")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Font: =Font.'Segoe UI'
+                                          Height: =28
+                                          Icon: ="Folder"
+                                          OnSelect: |-
+                                            =Launch(
+                                                "https://hdpye.sharepoint.com/sites/ERPhdp/HumanResources/EmployeeFiles/" &
+                                                gblSelectedEmployee.EmployeeNumber & "-" & gblSelectedEmployee.FullName
+                                            )
+                                          Text: =If(gblLanguage = "Arabic", "المجلد", "Folder")
+                                          Width: =100
+                              - galEmpDocs:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "مستندات الموظف", "Employee documents")
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    Items: |-
+                                      =SortByColumns(
+                                          Filter(
+                                              colEmployeeDocs,
+                                              !'Is folder',
+                                              DocType.Value in Filter(colHRDocTypes, Section = VarHRSection).DocType
+                                          ),
+                                          "Modified",
+                                          SortOrder.Descending
+                                      )
+                                    TemplatePadding: =4
+                                    TemplateSize: =48
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conEmpDocRow:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("SurfaceHover")
+                                          Height: =44
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingLeft: =8
+                                          PaddingRight: =6
+                                          RadiusBottomLeft: =gblTheme.Radius.Small
+                                          RadiusBottomRight: =gblTheme.Radius.Small
+                                          RadiusTopLeft: =gblTheme.Radius.Small
+                                          RadiusTopRight: =gblTheme.Radius.Small
+                                          Width: =Parent.TemplateWidth
+                                        Children:
+                                          - lblEmpDocName:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                Font: =Font.'Segoe UI'
+                                                Height: =20
+                                                Size: =12
+                                                Text: |-
+                                                  =ThisItem.Name
+                                                Width: =Parent.Width - 180
+                                          - btnEmpDocOpen:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                AccessibleLabel: =If(gblLanguage = "Arabic", "فتح", "Open")
+                                                Appearance: =ButtonAppearance.Secondary
+                                                Font: =Font.'Segoe UI'
+                                                Height: =28
+                                                OnSelect: =Launch(ThisItem.'Link to item')
+                                                Text: =If(gblLanguage = "Arabic", "فتح", "Open")
+                                                Width: =64
+                                          - btnEmpDocReplace:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                AccessibleLabel: =If(gblLanguage = "Arabic", "استبدال", "Replace")
+                                                Appearance: =ButtonAppearance.Subtle
+                                                Font: =Font.'Segoe UI'
+                                                Height: =28
+                                                OnSelect: |-
+                                                  =Set(gblHRDocumentToReplace, ThisItem);
+                                                  Set(VarHRDocType, ThisItem.DocType.Value);
+                                                  Set(VarHRDocUpload, true)
+                                                Text: =If(gblLanguage = "Arabic", "استبدال", "Replace")
+                                                Width: =80
+                              - lblEmpDocsEmpty:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =Font.'Segoe UI'
+                                    Height: =40
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "لا توجد مستندات في هذا القسم.", "No documents in this section yet.")
+                                    Visible: =IsEmpty(galEmpDocs.AllItems)
+                                    Width: =Parent.Width
+      - conEmpUpload:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.45)
+            Height: =Parent.Height
+            Visible: =VarHRDocUpload
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - conEmpUploadCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  Height: =280
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  PaddingBottom: =12
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =12
+                  RadiusBottomLeft: =gblTheme.Radius.Large
+                  RadiusBottomRight: =gblTheme.Radius.Large
+                  RadiusTopLeft: =gblTheme.Radius.Large
+                  RadiusTopRight: =gblTheme.Radius.Large
+                  Width: =Min(480, Parent.Width - 32)
+                  X: =(Parent.Width - Self.Width) / 2
+                  Y: =(Parent.Height - Self.Height) / 2
+                Children:
+                  - lblEmpUploadTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =24
+                        Size: =15
+                        Text: =If(gblLanguage = "Arabic", "إرفاق ", "Attach ") & Coalesce(VarHRDocType, "")
+                        Width: =Parent.Width
+                  - attEmployeeDoc:
+                      Control: Attachments@2.3.0
+                      Properties:
+                        AddAttachmentText: =If(gblLanguage = "Arabic", "اختيار ملف", "Select a file")
+                        BorderStyle: =BorderStyle.None
+                        Height: =120
+                        MaxAttachments: =1
+                        Width: =Parent.Width
+                  - conEmpUploadActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - btnEmpUploadCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Appearance: =ButtonAppearance.Secondary
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              OnSelect: |-
+                                =Reset(attEmployeeDoc);
+                                Set(VarHRDocUpload, false)
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =100
+                        - btnEmpUpload:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "رفع", "Upload")
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Font: =Font.'Segoe UI'
+                              Height: =36
+                              Icon: ="ArrowUpload"
+                              OnSelect: |-
+                                =If(
+                                    IsBlank(gblSelectedEmployee),
+                                    Notify(If(gblLanguage = "Arabic", "اختر موظفاً أولاً.", "Select an employee first."), NotificationType.Error),
+                                    IsEmpty(attEmployeeDoc.Attachments),
+                                    Notify(If(gblLanguage = "Arabic", "اختر ملفاً أولاً.", "Select a file first."), NotificationType.Error),
+                                    With(
+                                        {
+                                            folder: Switch(
+                                                VarHRDocType,
+                                                "Job Application", "Recruitment",
+                                                "CV", "Recruitment",
+                                                "Cover Letter", "Recruitment",
+                                                "References", "Recruitment",
+                                                "Job Description", "Recruitment",
+                                                "Job Advertisement", "Recruitment",
+                                                "Shortlist", "Recruitment",
+                                                "Tests", "Recruitment",
+                                                "Interview", "Recruitment",
+                                                "Job Offer", "Employment",
+                                                "Employment Contract", "Employment",
+                                                "Code of Conduct", "Employment",
+                                                "Conflict of Interest", "Employment",
+                                                "Academic Certificate", "Qualifications",
+                                                "Professional Certificate", "Qualifications",
+                                                "Training Certificate", "Training",
+                                                "Performance Appraisal", "Performance",
+                                                "Performance Review", "Performance",
+                                                "Performance Improvement Plan", "Performance",
+                                                "Recognition & Awards", "Performance",
+                                                "Other Performance Documents", "Performance",
+                                                "Other HR Document", "Other",
+                                                Blank()
+                                            )
+                                        },
+                                        If(
+                                            IsBlank(folder),
+                                            Notify(If(gblLanguage = "Arabic", "نوع المستند غير معروف.", "Select a valid document type."), NotificationType.Error),
+                                            UploadHRDoc.Run(
+                                                Text(gblSelectedEmployee.ID),
+                                                gblSelectedEmployee.EmployeeFolderPath,
+                                                gblSelectedEmployee.EmployeeNumber,
+                                                folder,
+                                                VarHRDocType,
+                                                Text(gblSelectedEmployee.Project.Id),
+                                                gblSelectedEmployee.FullName,
+                                                {
+                                                    file: {
+                                                        name: First(attEmployeeDoc.Attachments).Name,
+                                                        contentBytes: First(attEmployeeDoc.Attachments).Value
+                                                    }
+                                                }
+                                            );
+                                            Reset(attEmployeeDoc);
+                                            Notify(If(gblLanguage = "Arabic", "تم رفع الملف.", "File uploaded."), NotificationType.Success);
+                                            Set(VarHRDocUpload, false);
+                                            Refresh(HumanResourcesDoc);
+                                            ClearCollect(colEmployeeDocs, Filter(HumanResourcesDoc, EmployeeNumber = gblSelectedEmployee.EmployeeNumber))
+                                        )
+                                    )
+                                )
+                              Text: =If(gblLanguage = "Arabic", "رفع", "Upload")
+                              Width: =110

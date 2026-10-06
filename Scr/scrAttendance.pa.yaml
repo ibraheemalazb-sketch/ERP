@@ -1,0 +1,1798 @@
+Screens:
+  scrAttendance:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "HR");
+        Set(VSc, "Attendance");
+        Set(varAttendancePage, 1);
+        Set(varAttendancePageSize, 15);
+        Set(varShowAttendanceDetails, false);
+        Set(varShowAttendanceEdit, false);
+        If(IsBlank(varAttendanceTab), Set(varAttendanceTab, "My Attendance"));
+        Set(AttView, "Mine");
+        Set(VarUserAttendance, true);
+        If(IsBlank(varAttFlt), Set(varAttFlt, true));
+        If(IsBlank(varAttendancePeriod), Set(varAttendancePeriod, "This Month"));
+        If(IsBlank(varCurrentEmployeeOfficeId), Set(varCurrentEmployeeOfficeId, gblUser.OfficeId));
+        ClearCollect(
+            colAttendancePeriods,
+            {Value: "This Month", Label: If(gblLanguage = "Arabic", "هذا الشهر", "This Month")},
+            {Value: "Last Month", Label: If(gblLanguage = "Arabic", "الشهر الماضي", "Last Month")},
+            {Value: "Last 3 Months", Label: If(gblLanguage = "Arabic", "آخر 3 أشهر", "Last 3 Months")},
+            {Value: "This Year", Label: If(gblLanguage = "Arabic", "هذه السنة", "This Year")},
+            {Value: "All", Label: If(gblLanguage = "Arabic", "الكل", "All")}
+        );
+        ClearCollect(colAttendanceDepartments, Departments);
+        ClearCollect(colAttendanceOffices, Offices);
+        If(
+            !varUserHasAllProjects,
+            Clear(colUserAccessibleProjects);
+            ForAll(
+                Filter(colUserProjectAccess, AllProjects = false) As access,
+                With(
+                    {proj: LookUp(Projects, ID = access.ProjectID)},
+                    If(!IsBlank(proj.ID), Collect(colUserAccessibleProjects, proj))
+                )
+            )
+        );
+        ClearCollect(
+            colAttendanceProjects,
+            If(varUserHasAllProjects, Projects, colUserAccessibleProjects)
+        );
+        Clear(colAttendanceEmployees);
+        If(
+            varHRScope = "Own",
+            Collect(colAttendanceEmployees, Filter(Employees, ID = gblUser.ID)),
+            If(
+                Or(varHRScope = "All", varUserHasAllProjects),
+                Collect(colAttendanceEmployees, Employees),
+                ForAll(
+                    colUserAccessibleProjects As proj,
+                    Collect(colAttendanceEmployees, Filter(Employees, ProjectID = proj.ID))
+                )
+            )
+        );
+        ClearCollect(
+            colUserAttendance,
+            Filter(AttendanceRecords, EmployeeNumber = gblUser.EmployeeNumber)
+        );
+        Clear(colAttendanceAll);
+        If(
+            varHRScope = "Own",
+            Collect(colAttendanceAll, colUserAttendance),
+            If(
+                Or(varHRScope = "All", varUserHasAllProjects),
+                Collect(colAttendanceAll, AttendanceRecords),
+                ForAll(
+                    colUserAccessibleProjects As proj,
+                    Collect(colAttendanceAll, Filter(AttendanceRecords, ProjectID = proj.ID))
+                )
+            )
+        );
+        If(
+            And(varHRScope = "Project", IsEmpty(colAttendanceAll), !IsBlank(gblSProject.ID)),
+            Collect(colAttendanceAll, Filter(AttendanceRecords, ProjectID = gblSProject.ID))
+        );
+        Set(
+            varTodayAttendance,
+            LookUp(
+                colUserAttendance,
+                And(
+                    Date >= Today(),
+                    Date < DateAdd(Today(), 1, TimeUnit.Days)
+                )
+            )
+        );
+        ClearCollect(colAttendanceSettings, AttendanceSettings);
+        Set(
+            varAttendanceSettings,
+            LookUp(
+                colAttendanceSettings,
+                Or(
+                    Office.Id = gblUser.OfficeId,
+                    Office.Value = gblUser.Office
+                )
+            )
+        )
+    Children:
+      - conAttNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpAttNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpAttTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="Clock"
+            ModuleName: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            OnSelectTitle: =Navigate(ScrHR, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الحضور", "Attendance")
+            ScreenTitle: =If(gblLanguage = "Arabic", "قسم الموارد البشرية", "Human Resources")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpAttPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conAttPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =If(App.Width < 700, cmpAttPhoneNav.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpAttTopBar.Height + 8
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - conAttHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 88, 48)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - lblAttTitle:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        Size: =If(App.Width < 700, 15, 18)
+                        Text: |-
+                          =If(
+                              AttView = "All",
+                              If(gblLanguage = "Arabic", "حضور جميع الموظفين", "All Employees Attendance"),
+                              If(
+                                  Hour(Now()) < 12,
+                                  If(gblLanguage = "Arabic", "صباح الخير", "Good Morning"),
+                                  If(Hour(Now()) < 17, If(gblLanguage = "Arabic", "مساء الخير", "Good Afternoon"), If(gblLanguage = "Arabic", "مساء الخير", "Good Evening"))
+                              ) & ", " & Coalesce(gblUser.FullName, "")
+                          )
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - 280)
+                  - conAttViewToggle:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =If(App.Width < 700, Parent.Width, 272)
+                      Children:
+                        - btnAttMine:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "حضوري", "My attendance")
+                              Appearance: =If(AttView = "Mine", ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Clock"
+                              OnSelect: =Set(AttView, "Mine")
+                              Text: =If(gblLanguage = "Arabic", "حضوري", "My Attendance")
+                              Width: =If(App.Width < 700, (Parent.Width - 8) / 2, 132)
+                        - btnAttAll:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "حضور الجميع", "All attendance")
+                              Appearance: =If(AttView = "All", ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="People"
+                              OnSelect: =Set(AttView, "All")
+                              Text: =If(gblLanguage = "Arabic", "الجميع", "All")
+                              Width: =If(App.Width < 700, (Parent.Width - 8) / 2, 132)
+            - conAttMine:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =1
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =AttView = "Mine"
+                  Width: =Parent.Width
+                Children:
+                  - conAttMineTop:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =64
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =Parent.Width
+                      Children:
+                        - lblAttMineSub:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =If(gblLanguage = "Arabic", "إدارة الحضور", "Manage Attendance")
+                              Width: =Parent.Width - 280
+                        - lblAttTodayDate:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("Primary")
+                              Fill: =fxThemeColor("PrimaryLighter")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =36
+                              RadiusBottomLeft: =gblTheme.Radius.Round
+                              RadiusBottomRight: =gblTheme.Radius.Round
+                              RadiusTopLeft: =gblTheme.Radius.Round
+                              RadiusTopRight: =gblTheme.Radius.Round
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: |-
+                                =With(
+                                    {ar: gblLanguage = "Arabic"},
+                                    Switch(Weekday(Today()), 1, If(ar, "الأحد", "Sunday"), 2, If(ar, "الإثنين", "Monday"), 3, If(ar, "الثلاثاء", "Tuesday"), 4, If(ar, "الأربعاء", "Wednesday"), 5, If(ar, "الخميس", "Thursday"), 6, If(ar, "الجمعة", "Friday"), If(ar, "السبت", "Saturday"))
+                                    & " - " & Text(Today(), "dd") & " " &
+                                    Switch(Month(Today()), 1, If(ar, "يناير", "January"), 2, If(ar, "فبراير", "February"), 3, If(ar, "مارس", "March"), 4, If(ar, "أبريل", "April"), 5, If(ar, "مايو", "May"), 6, If(ar, "يونيو", "June"), 7, If(ar, "يوليو", "July"), 8, If(ar, "أغسطس", "August"), 9, If(ar, "سبتمبر", "September"), 10, If(ar, "أكتوبر", "October"), 11, If(ar, "نوفمبر", "November"), If(ar, "ديسمبر", "December"))
+                                    & " " & Text(Today(), "yyyy")
+                                )
+                              Visible: =App.Width >= 1100
+                              Width: =260
+                  - conAttMineBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =1
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =If(App.Width >= 1100, LayoutDirection.Horizontal, LayoutDirection.Vertical)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =If(App.Width >= 1100, LayoutOverflow.Hide, LayoutOverflow.Scroll)
+                        Width: =Parent.Width
+                      Children:
+                        - conAttMineSide:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width >= 1100, Parent.Height, 420)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =If(App.Width >= 1100, (Parent.Width - 8) / 3, Parent.Width)
+                            Children:
+                              - conAttToday:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    BorderColor: =fxThemeColor("Border")
+                                    BorderThickness: =1
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("Surface")
+                                    FillPortions: =0
+                                    Height: =310
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =12
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =12
+                                    RadiusBottomLeft: =gblTheme.Radius.XL
+                                    RadiusBottomRight: =gblTheme.Radius.XL
+                                    RadiusTopLeft: =gblTheme.Radius.XL
+                                    RadiusTopRight: =gblTheme.Radius.XL
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conAttTodayHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =32
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =8
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - icoAttToday:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                Height: =24
+                                                Icon: ="Clock"
+                                                IconColor: =fxThemeColor("Primary")
+                                                Width: =24
+                                          - lblAttTodayTitle:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Bold
+                                                Height: =24
+                                                Size: =gblTheme.Typography.Body
+                                                Text: =If(gblLanguage = "Arabic", "حضور اليوم", "Today's Attendance")
+                                                Width: =Parent.Width - 150
+                                          - tmrAttClock:
+                                              Control: Timer@2.1.0
+                                              Properties:
+                                                AutoStart: =true
+                                                Duration: =1000
+                                                Height: =1
+                                                OnTimerEnd: =Set(varClockTick, !varClockTick)
+                                                Repeat: =true
+                                                Visible: =false
+                                                Width: =1
+                                          - lblAttClock:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Right
+                                                Color: =fxThemeColor("Primary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Bold
+                                                Height: =24
+                                                Size: =gblTheme.Typography.Body
+                                                Text: =Text(Now(), "hh:mm:ss AM/PM") & If(varClockTick, "", "")
+                                                Width: =110
+                                    - lblAttTodayMessage:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =40
+                                          Size: =gblTheme.Typography.BodySmall
+                                          Text: |-
+                                            =If(
+                                                IsBlank(varTodayAttendance.CheckInTime),
+                                                If(gblLanguage = "Arabic", "لم تسجل حضورك اليوم.", "You have not marked yourself as present today."),
+                                                If(
+                                                    IsBlank(varTodayAttendance.CheckOutTime),
+                                                    If(gblLanguage = "Arabic", "تم تسجيلك حاضرًا اليوم.", "You are marked present today."),
+                                                    If(gblLanguage = "Arabic", "تم إكمال حضور اليوم.", "Today's attendance is complete.")
+                                                )
+                                            )
+                                          Width: =Parent.Width
+                                    - lblAttTodayStatus:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: |-
+                                            =fxToneInk(
+                                                Switch(
+                                                    varTodayAttendance.Status.Value,
+                                                    "Present", "success",
+                                                    "Late", "warning",
+                                                    "Pending Approval", "pending",
+                                                    "Leave", "info",
+                                                    "Absent", "danger",
+                                                    "Exception", "info",
+                                                    ""
+                                                )
+                                            )
+                                          Fill: |-
+                                            =fxToneFill(
+                                                Switch(
+                                                    varTodayAttendance.Status.Value,
+                                                    "Present", "success",
+                                                    "Late", "warning",
+                                                    "Pending Approval", "pending",
+                                                    "Leave", "info",
+                                                    "Absent", "danger",
+                                                    "Exception", "info",
+                                                    ""
+                                                )
+                                            )
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =34
+                                          RadiusBottomLeft: =gblTheme.Radius.Medium
+                                          RadiusBottomRight: =gblTheme.Radius.Medium
+                                          RadiusTopLeft: =gblTheme.Radius.Medium
+                                          RadiusTopRight: =gblTheme.Radius.Medium
+                                          Size: =gblTheme.Typography.Body
+                                          Text: |-
+                                            =If(
+                                                IsBlank(varTodayAttendance),
+                                                If(gblLanguage = "Arabic", "لم يتم تسجيل الحضور", "Not checked in"),
+                                                Switch(
+                                                    varTodayAttendance.Status.Value,
+                                                    "Present", If(gblLanguage = "Arabic", "حاضر", "Present"),
+                                                    "Late", If(gblLanguage = "Arabic", "متأخر", "Late"),
+                                                    "Pending Approval", If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending Approval"),
+                                                    "Leave", If(gblLanguage = "Arabic", "إجازة", "Leave"),
+                                                    "Absent", If(gblLanguage = "Arabic", "غائب", "Absent"),
+                                                    "Exception", If(gblLanguage = "Arabic", "استثناء", "Exception"),
+                                                    Coalesce(varTodayAttendance.Status.Value, "-")
+                                                )
+                                            )
+                                          Width: =Parent.Width
+                                    - galAttTodayStats:
+                                        Control: Gallery@2.15.0
+                                        Variant: Horizontal
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "ملخص اليوم", "Today summary")
+                                          BorderStyle: =BorderStyle.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =84
+                                          Items: |-
+                                            =Table(
+                                                {k: If(gblLanguage = "Arabic", "تسجيل الحضور", "Check-In"), v: If(IsBlank(varTodayAttendance.CheckInTime), "--", Text(varTodayAttendance.CheckInTime, "hh:mm AM/PM")), ic: "Clock"},
+                                                {k: If(gblLanguage = "Arabic", "تسجيل الانصراف", "Check-Out"), v: If(IsBlank(varTodayAttendance.CheckOutTime), "--", Text(varTodayAttendance.CheckOutTime, "hh:mm AM/PM")), ic: "ArrowExit"},
+                                                {k: If(gblLanguage = "Arabic", "ساعات العمل", "Work Hours"), v: If(IsBlank(varTodayAttendance.WorkedHours), "--", Text(varTodayAttendance.WorkedHours, "0.00") & " h"), ic: "Clock"}
+                                            )
+                                          ShowScrollbar: =false
+                                          TemplatePadding: =4
+                                          TemplateSize: =If(Parent.Width < 360, Parent.Width, Parent.Width / 3)
+                                          Width: =Parent.Width
+                                        Children:
+                                          - conAttTodayStat:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                Fill: =fxThemeColor("SurfaceHover")
+                                                Height: =76
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Vertical
+                                                LayoutGap: =2
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                PaddingBottom: =6
+                                                PaddingTop: =6
+                                                RadiusBottomLeft: =gblTheme.Radius.Large
+                                                RadiusBottomRight: =gblTheme.Radius.Large
+                                                RadiusTopLeft: =gblTheme.Radius.Large
+                                                RadiusTopRight: =gblTheme.Radius.Large
+                                                Width: =Parent.TemplateWidth
+                                              Children:
+                                                - icoAttTodayStat:
+                                                    Control: ModernIcon@1.1.1
+                                                    Properties:
+                                                      Height: =18
+                                                      Icon: =ThisItem.ic
+                                                      IconColor: =fxThemeColor("Primary")
+                                                      Width: =18
+                                                - lblAttTodayStatLabel:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      Align: =Align.Center
+                                                      Color: =fxThemeColor("TextMuted")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      Height: =16
+                                                      Size: =10
+                                                      Text: =ThisItem.k
+                                                      Width: =Parent.Width
+                                                - lblAttTodayStatValue:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      Align: =Align.Center
+                                                      Color: =fxThemeColor("TextPrimary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Bold
+                                                      Height: =20
+                                                      Size: =gblTheme.Typography.BodySmall
+                                                      Text: =ThisItem.v
+                                                      Width: =Parent.Width
+                                    - btnAttCheck:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "تسجيل الحضور أو الانصراف", "Check in or check out")
+                                          Appearance: =ButtonAppearance.Primary
+                                          BasePaletteColor: |-
+                                            =If(
+                                                IsBlank(varTodayAttendance.CheckInTime),
+                                                fxThemeColor("Success"),
+                                                If(IsBlank(varTodayAttendance.CheckOutTime), fxThemeColor("Danger"), fxThemeColor("TextMuted"))
+                                            )
+                                          DisplayMode: |-
+                                            =If(
+                                                And(!IsBlank(varTodayAttendance), !IsBlank(varTodayAttendance.CheckOutTime)),
+                                                DisplayMode.Disabled,
+                                                DisplayMode.Edit
+                                            )
+                                          Height: =44
+                                          Icon: =If(IsBlank(varTodayAttendance.CheckInTime), "CheckmarkCircle", If(IsBlank(varTodayAttendance.CheckOutTime), "ArrowExit", "Checkmark"))
+                                          OnSelect: |-
+                                            =Set(varAttendanceAction, If(IsBlank(varTodayAttendance.CheckInTime), "CheckIn", "CheckOut"));
+                                            Set(varLocationCaptured, Location);
+                                            If(
+                                                Or(
+                                                    IsBlank(varLocationCaptured.Latitude),
+                                                    And(varLocationCaptured.Latitude = 0, varLocationCaptured.Longitude = 0)
+                                                ),
+                                                Notify(If(gblLanguage = "Arabic", "تعذر تحديد موقعك. يرجى تفعيل خدمة الموقع والمحاولة مرة أخرى.", "Unable to get your location. Please enable location services and try again."), NotificationType.Error),
+                                                Set(varOfficeRadius, LookUp(colAttendanceOffices, ID = varCurrentEmployeeOfficeId).GeofenceRadiusMeters);
+                                                Set(
+                                                    varDistanceMeters,
+                                                    With(
+                                                        {
+                                                            office: LookUp(colAttendanceOffices, ID = varCurrentEmployeeOfficeId),
+                                                            devLat: varLocationCaptured.Latitude,
+                                                            devLong: varLocationCaptured.Longitude
+                                                        },
+                                                        With(
+                                                            {
+                                                                lat1: Radians(devLat),
+                                                                lat2: Radians(office.Latitude),
+                                                                dLat: Radians(office.Latitude - devLat),
+                                                                dLong: Radians(office.Longitude - devLong)
+                                                            },
+                                                            With(
+                                                                {a: Power(Sin(dLat / 2), 2) + Cos(lat1) * Cos(lat2) * Power(Sin(dLong / 2), 2)},
+                                                                6371000 * 2 * Asin(Sqrt(Min(1, Max(0, a))))
+                                                            )
+                                                        )
+                                                    )
+                                                );
+                                                If(
+                                                    varAttendanceAction = "CheckIn",
+                                                    If(
+                                                        varDistanceMeters > varOfficeRadius,
+                                                        Notify(
+                                                            If(
+                                                                gblLanguage = "Arabic",
+                                                                "تم رفض تسجيل الحضور. أنت خارج النطاق بمسافة " & Round(varDistanceMeters - varOfficeRadius, 0) & " متر." & Char(10) & "مسافتك: " & Round(varDistanceMeters, 0) & " متر." & Char(10) & "النطاق المطلوب: " & Round(varOfficeRadius, 0) & " متر.",
+                                                                "Check-in rejected. You are " & Round(varDistanceMeters - varOfficeRadius, 0) & " meters outside the required range." & Char(10) & "Your distance: " & Round(varDistanceMeters, 0) & " meters." & Char(10) & "Required range: " & Round(varOfficeRadius, 0) & " meters."
+                                                            ),
+                                                            NotificationType.Error
+                                                        ),
+                                                        With(
+                                                            {
+                                                                lateMin: If(
+                                                                    IsBlank(varAttendanceSettings.WorkStartTime),
+                                                                    0,
+                                                                    Max(0, DateDiff(DateValue(Today()) + TimeValue(varAttendanceSettings.WorkStartTime), Now(), TimeUnit.Minutes))
+                                                                )
+                                                            },
+                                                            Set(
+                                                                varTodayAttendance,
+                                                                Patch(
+                                                                    AttendanceRecords,
+                                                                    If(IsBlank(varTodayAttendance), Defaults(AttendanceRecords), varTodayAttendance),
+                                                                    {
+                                                                        EmployeeNumber: gblUser.EmployeeNumber,
+                                                                        EmployeeID: gblUser.ID,
+                                                                        Date: If(IsBlank(varTodayAttendance.Date), Today(), varTodayAttendance.Date),
+                                                                        OfficeID: varCurrentEmployeeOfficeId,
+                                                                        ProjectID: gblUser.ProjectID,
+                                                                        DepartmentID: gblCurrentEmployee.Department.Id,
+                                                                        Employee: {Id: gblUser.ID, Value: gblUser.FullName},
+                                                                        CheckInTime: Now(),
+                                                                        DeviceTimestamp: Now(),
+                                                                        CheckInLat: varLocationCaptured.Latitude,
+                                                                        CheckInLong: varLocationCaptured.Longitude,
+                                                                        DistanceFromOfficeMeters: varDistanceMeters,
+                                                                        IsWithinGeofence: true,
+                                                                        LateMinutes: lateMin,
+                                                                        Status: {Value: If(lateMin > Coalesce(varAttendanceSettings.LateThresholdMinutes, 0), "Late", "Present")},
+                                                                        SyncStatus: {Value: "Synced"}
+                                                                    }
+                                                                )
+                                                            );
+                                                            Refresh(AttendanceRecords);
+                                                            Remove(colUserAttendance, LookUp(colUserAttendance, ID = varTodayAttendance.ID));
+                                                            Collect(colUserAttendance, varTodayAttendance);
+                                                            Remove(colAttendanceAll, LookUp(colAttendanceAll, ID = varTodayAttendance.ID));
+                                                            Collect(colAttendanceAll, varTodayAttendance);
+                                                            Notify(
+                                                                If(
+                                                                    lateMin > Coalesce(varAttendanceSettings.LateThresholdMinutes, 0),
+                                                                    If(gblLanguage = "Arabic", "تم تسجيل الحضور. أنت متأخر " & lateMin & " دقيقة.", "Checked in successfully. You are " & lateMin & " minutes late."),
+                                                                    If(gblLanguage = "Arabic", "تم تسجيل الحضور بنجاح.", "Checked in successfully.")
+                                                                ),
+                                                                NotificationType.Success
+                                                            )
+                                                        )
+                                                    ),
+                                                    Set(
+                                                        varTodayAttendance,
+                                                        Patch(
+                                                            AttendanceRecords,
+                                                            varTodayAttendance,
+                                                            {
+                                                                CheckOutTime: Now(),
+                                                                CheckOutLat: varLocationCaptured.Latitude,
+                                                                CheckOutLong: varLocationCaptured.Longitude,
+                                                                WorkedHours: Round(DateDiff(varTodayAttendance.CheckInTime, Now(), TimeUnit.Minutes) / 60, 2)
+                                                            }
+                                                        )
+                                                    );
+                                                    Refresh(AttendanceRecords);
+                                                    Remove(colUserAttendance, LookUp(colUserAttendance, ID = varTodayAttendance.ID));
+                                                    Collect(colUserAttendance, varTodayAttendance);
+                                                    Remove(colAttendanceAll, LookUp(colAttendanceAll, ID = varTodayAttendance.ID));
+                                                    Collect(colAttendanceAll, varTodayAttendance);
+                                                    Notify(If(gblLanguage = "Arabic", "تم تسجيل الانصراف بنجاح.", "Checked out successfully."), NotificationType.Success)
+                                                )
+                                            )
+                                          Text: |-
+                                            =If(
+                                                IsBlank(varTodayAttendance.CheckInTime),
+                                                If(gblLanguage = "Arabic", "تسجيل الحضور", "Mark Present"),
+                                                If(
+                                                    IsBlank(varTodayAttendance.CheckOutTime),
+                                                    If(gblLanguage = "Arabic", "تسجيل الانصراف", "Check Out"),
+                                                    If(gblLanguage = "Arabic", "مكتمل لليوم", "Completed for Today")
+                                                )
+                                            )
+                                          Width: =Parent.Width
+                              - conAttQuick:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    BorderColor: =fxThemeColor("Border")
+                                    BorderThickness: =1
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("Surface")
+                                    FillPortions: =0
+                                    Height: =96
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =12
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =12
+                                    RadiusBottomLeft: =gblTheme.Radius.XL
+                                    RadiusBottomRight: =gblTheme.Radius.XL
+                                    RadiusTopLeft: =gblTheme.Radius.XL
+                                    RadiusTopRight: =gblTheme.Radius.XL
+                                    Width: =Parent.Width
+                                  Children:
+                                    - lblAttQuickTitle:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =20
+                                          Size: =gblTheme.Typography.Body
+                                          Text: =If(gblLanguage = "Arabic", "إجراءات سريعة", "Quick Actions")
+                                          Width: =Parent.Width
+                                    - btnAttNewLeave:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "طلب إجازة جديد", "New leave request")
+                                          Appearance: =ButtonAppearance.Secondary
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =40
+                                          Icon: ="Add"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, Blank());
+                                            Set(gblCanEditLeave, true);
+                                            Set(gblLeaveRequestMode, "New");
+                                            Set(gblLeaveBalance, Blank());
+                                            Set(VarNewLeave, true);
+                                            Navigate(scrLeaveManagement, ScreenTransition.Cover)
+                                          Text: =If(gblLanguage = "Arabic", "طلب إجازة جديد", "New Leave Request")
+                                          Width: =Parent.Width
+                        - conAttHistory:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =If(App.Width >= 1100, Parent.Height, 560)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =12
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =12
+                              RadiusBottomLeft: =gblTheme.Radius.XL
+                              RadiusBottomRight: =gblTheme.Radius.XL
+                              RadiusTopLeft: =gblTheme.Radius.XL
+                              RadiusTopRight: =gblTheme.Radius.XL
+                              Width: =If(App.Width >= 1100, (Parent.Width - 8) * 2 / 3, Parent.Width)
+                            Children:
+                              - conAttHistoryHead:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =44
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - lblAttHistoryTitle:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =36
+                                          Size: =gblTheme.Typography.Body
+                                          Text: =If(gblLanguage = "Arabic", "سجل الحضور", "Attendance History")
+                                          Width: =Parent.Width - 210
+                                    - cmbAttPeriod:
+                                        Control: ModernCombobox@1.1.2
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "الفترة", "Period")
+                                          DefaultSelectedItems: =Filter(colAttendancePeriods, Value = Coalesce(varAttendancePeriod, "This Month"))
+                                          Height: =36
+                                          InputTextPlaceholder: =If(gblLanguage = "Arabic", "الفترة", "Period")
+                                          IsSearchable: =false
+                                          ItemDisplayText: =ThisItem.Label
+                                          Items: =colAttendancePeriods
+                                          OnChange: =Set(varAttendancePeriod, Self.Selected.Value)
+                                          SelectMultiple: =false
+                                          Width: =150
+                                    - btnAttHistoryRefresh:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث السجل", "Refresh history")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =36
+                                          Icon: ="ArrowClockwise"
+                                          OnSelect: |-
+                                            =Refresh(AttendanceRecords);
+                                            ClearCollect(colUserAttendance, Filter(AttendanceRecords, EmployeeNumber = gblUser.EmployeeNumber));
+                                            Set(
+                                                varTodayAttendance,
+                                                LookUp(
+                                                    colUserAttendance,
+                                                    And(Date >= Today(), Date < DateAdd(Today(), 1, TimeUnit.Days))
+                                                )
+                                            )
+                                          Text: =""
+                                          Width: =36
+                              - galAttSummary:
+                                  Control: Gallery@2.15.0
+                                  Variant: Horizontal
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "ملخص الفترة", "Period summary")
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =64
+                                    Items: |-
+                                      =With(
+                                          {rows: galAttHistory.AllItems},
+                                          Table(
+                                              {k: If(gblLanguage = "Arabic", "حاضر", "Present"), v: CountRows(Filter(rows, Status.Value = "Present")), Tone: "success"},
+                                              {k: If(gblLanguage = "Arabic", "متأخر", "Late"), v: CountRows(Filter(rows, Status.Value = "Late")), Tone: "warning"},
+                                              {k: If(gblLanguage = "Arabic", "إجازة", "Leave"), v: CountRows(Filter(rows, Status.Value = "Leave")), Tone: "info"},
+                                              {k: If(gblLanguage = "Arabic", "غائب", "Absent"), v: CountRows(Filter(rows, Status.Value = "Absent")), Tone: "danger"}
+                                          )
+                                      )
+                                    ShowScrollbar: =false
+                                    TemplatePadding: =4
+                                    TemplateSize: =If(Parent.Width < 520, Parent.Width / 2, Parent.Width / 4)
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conAttSummary:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("SurfaceHover")
+                                          Height: =56
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingLeft: =8
+                                          PaddingRight: =8
+                                          RadiusBottomLeft: =gblTheme.Radius.Large
+                                          RadiusBottomRight: =gblTheme.Radius.Large
+                                          RadiusTopLeft: =gblTheme.Radius.Large
+                                          RadiusTopRight: =gblTheme.Radius.Large
+                                          Width: =Parent.TemplateWidth
+                                        Children:
+                                          - lblAttSummaryValue:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxToneInk(ThisItem.Tone)
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Bold
+                                                Height: =26
+                                                Size: =18
+                                                Text: =ThisItem.v
+                                                Width: =Parent.Width
+                                          - lblAttSummaryLabel:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("TextMuted")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                Height: =16
+                                                Size: =10
+                                                Text: =ThisItem.k
+                                                Width: =Parent.Width
+                              - lblAttHistoryEmpty:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    FillPortions: =0
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =48
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: =If(gblLanguage = "Arabic", "لا توجد سجلات حضور في هذه الفترة.", "No attendance records for this period.")
+                                    Visible: =CountRows(galAttHistory.AllItems) = 0
+                                    Width: =Parent.Width
+                              - galAttHistory:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "سجل الحضور", "Attendance history")
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =1
+                                    Items: |-
+                                      =SortByColumns(
+                                          Filter(
+                                              colUserAttendance,
+                                              Or(
+                                                  varAttendancePeriod = "All",
+                                                  And(
+                                                      Or(IsBlank(varAttendancePeriod), varAttendancePeriod = "This Month"),
+                                                      Month(Date) = Month(Today()),
+                                                      Year(Date) = Year(Today())
+                                                  ),
+                                                  And(
+                                                      varAttendancePeriod = "Last Month",
+                                                      Month(Date) = Month(DateAdd(Today(), -1, TimeUnit.Months)),
+                                                      Year(Date) = Year(DateAdd(Today(), -1, TimeUnit.Months))
+                                                  ),
+                                                  And(varAttendancePeriod = "Last 3 Months", Date >= DateAdd(Today(), -3, TimeUnit.Months)),
+                                                  And(varAttendancePeriod = "This Year", Year(Date) = Year(Today()))
+                                              )
+                                          ),
+                                          "Date",
+                                          SortOrder.Descending
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    ShowScrollbar: =true
+                                    TemplatePadding: =0
+                                    TemplateSize: =If(App.Width >= 1100, 52, 68)
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conAttHistoryRow:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =fxThemeColor("BorderLight")
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("Surface")
+                                          Height: =Parent.TemplateHeight - 4
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =8
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingLeft: =4
+                                          PaddingRight: =8
+                                          Width: =Parent.TemplateWidth
+                                        Children:
+                                          - conAttHistoryBar:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                Fill: |-
+                                                  =fxToneInk(
+                                                      Switch(
+                                                          ThisItem.Status.Value,
+                                                          "Present", "success",
+                                                          "Late", "warning",
+                                                          "Leave", "info",
+                                                          "Absent", "danger",
+                                                          "Exception", "info",
+                                                          "Pending Approval", "pending",
+                                                          ""
+                                                      )
+                                                  )
+                                                FillPortions: =0
+                                                Height: =Parent.Height - 12
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                RadiusBottomLeft: =gblTheme.Radius.Small
+                                                RadiusBottomRight: =gblTheme.Radius.Small
+                                                RadiusTopLeft: =gblTheme.Radius.Small
+                                                RadiusTopRight: =gblTheme.Radius.Small
+                                                Width: =4
+                                          - lblAttHistoryDate:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =If(App.Width >= 1100, 22, 40)
+                                                Size: =gblTheme.Typography.BodySmall
+                                                Text: |-
+                                                  =With(
+                                                      {ar: gblLanguage = "Arabic"},
+                                                      If(DateValue(ThisItem.Date) = Today(), If(ar, "اليوم", "Today") & " - ", "") &
+                                                      Switch(Weekday(ThisItem.Date), 1, If(ar, "الأحد", "Sun"), 2, If(ar, "الإثنين", "Mon"), 3, If(ar, "الثلاثاء", "Tue"), 4, If(ar, "الأربعاء", "Wed"), 5, If(ar, "الخميس", "Thu"), 6, If(ar, "الجمعة", "Fri"), If(ar, "السبت", "Sat"))
+                                                      & ", " & Text(ThisItem.Date, "dd") & " " &
+                                                      Switch(Month(ThisItem.Date), 1, If(ar, "يناير", "Jan"), 2, If(ar, "فبراير", "Feb"), 3, If(ar, "مارس", "Mar"), 4, If(ar, "أبريل", "Apr"), 5, If(ar, "مايو", "May"), 6, If(ar, "يونيو", "Jun"), 7, If(ar, "يوليو", "Jul"), 8, If(ar, "أغسطس", "Aug"), 9, If(ar, "سبتمبر", "Sep"), 10, If(ar, "أكتوبر", "Oct"), 11, If(ar, "نوفمبر", "Nov"), If(ar, "ديسمبر", "Dec"))
+                                                      & If(
+                                                          App.Width >= 1100,
+                                                          "",
+                                                          "  " & If(IsBlank(ThisItem.CheckInTime), "--", Text(ThisItem.CheckInTime, "hh:mm AM/PM")) & " - " & If(IsBlank(ThisItem.CheckOutTime), "--", Text(ThisItem.CheckOutTime, "hh:mm AM/PM"))
+                                                      )
+                                                  )
+                                                Width: =If(App.Width >= 1100, Parent.Width * 0.28, Parent.Width - 120)
+                                          - lblAttHistoryIn:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("Primary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =22
+                                                Size: =gblTheme.Typography.BodySmall
+                                                Text: =If(IsBlank(ThisItem.CheckInTime), "--", Text(ThisItem.CheckInTime, "hh:mm AM/PM"))
+                                                Visible: =App.Width >= 1100
+                                                Width: =90
+                                          - lblAttHistoryOut:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("Primary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =22
+                                                Size: =gblTheme.Typography.BodySmall
+                                                Text: =If(IsBlank(ThisItem.CheckOutTime), "--", Text(ThisItem.CheckOutTime, "hh:mm AM/PM"))
+                                                Visible: =App.Width >= 1100
+                                                Width: =90
+                                          - lblAttHistoryHours:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Bold
+                                                Height: =22
+                                                Size: =gblTheme.Typography.BodySmall
+                                                Text: =If(IsBlank(ThisItem.WorkedHours), "--", Text(ThisItem.WorkedHours, "0.00") & " h")
+                                                Visible: =App.Width >= 1100
+                                                Width: =70
+                                          - lblAttHistoryStatus:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Center
+                                                Color: |-
+                                                  =fxToneInk(
+                                                      Switch(ThisItem.Status.Value, "Present", "success", "Late", "warning", "Pending Approval", "pending", "Leave", "info", "Absent", "danger", "Exception", "info", "")
+                                                  )
+                                                Fill: |-
+                                                  =fxToneFill(
+                                                      Switch(ThisItem.Status.Value, "Present", "success", "Late", "warning", "Pending Approval", "pending", "Leave", "info", "Absent", "danger", "Exception", "info", "")
+                                                  )
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =26
+                                                RadiusBottomLeft: =gblTheme.Radius.Round
+                                                RadiusBottomRight: =gblTheme.Radius.Round
+                                                RadiusTopLeft: =gblTheme.Radius.Round
+                                                RadiusTopRight: =gblTheme.Radius.Round
+                                                Size: =11
+                                                Text: |-
+                                                  =Switch(
+                                                      ThisItem.Status.Value,
+                                                      "Present", If(gblLanguage = "Arabic", "حاضر", "Present"),
+                                                      "Late", If(gblLanguage = "Arabic", "متأخر", "Late"),
+                                                      "Pending Approval", If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending"),
+                                                      "Leave", If(gblLanguage = "Arabic", "إجازة", "Leave"),
+                                                      "Absent", If(gblLanguage = "Arabic", "غائب", "Absent"),
+                                                      "Exception", If(gblLanguage = "Arabic", "استثناء", "Exception"),
+                                                      "Holiday", If(gblLanguage = "Arabic", "عطلة رسمية", "Holiday"),
+                                                      "Weekend", If(gblLanguage = "Arabic", "عطلة أسبوعية", "Weekend"),
+                                                      Coalesce(ThisItem.Status.Value, "-")
+                                                  )
+                                                Width: =96
+            - conAttAll:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =1
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =AttView = "All"
+                  Width: =Parent.Width
+                Children:
+                  - conAttAllHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - lblAttAllTitle:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =32
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: |-
+                                =Switch(
+                                    varHRScope,
+                                    "All", If(gblLanguage = "Arabic", "النطاق: الكل", "Scope: All"),
+                                    "Own", If(gblLanguage = "Arabic", "النطاق: خاص بي", "Scope: Own"),
+                                    "Project", If(gblLanguage = "Arabic", "النطاق: المشروع", "Scope: Project"),
+                                    Coalesce(varHRScope, "")
+                                )
+                              Width: =Parent.Width - 160
+                        - btnAttFilters:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "التصفية", "Filters")
+                              Appearance: =If(Coalesce(varAttFlt, true), ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Filter"
+                              OnSelect: =Set(varAttFlt, !Coalesce(varAttFlt, true))
+                              Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تصفية", "Filters"))
+                              Width: =If(App.Width < 700, 44, 110)
+                        - btnAttAllRefresh:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث الحضور", "Refresh attendance")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="ArrowClockwise"
+                              OnSelect: |-
+                                =Refresh(AttendanceRecords);
+                                Refresh(Employees);
+                                Refresh(Departments);
+                                ClearCollect(colAttendanceDepartments, Departments);
+                                ClearCollect(colAttendanceOffices, Offices);
+                                Clear(colAttendanceEmployees);
+                                If(
+                                    varHRScope = "Own",
+                                    Collect(colAttendanceEmployees, Filter(Employees, ID = gblUser.ID)),
+                                    If(
+                                        Or(varHRScope = "All", varUserHasAllProjects),
+                                        Collect(colAttendanceEmployees, Employees),
+                                        ForAll(
+                                            colUserAccessibleProjects As proj,
+                                            Collect(colAttendanceEmployees, Filter(Employees, ProjectID = proj.ID))
+                                        )
+                                    )
+                                );
+                                ClearCollect(colUserAttendance, Filter(AttendanceRecords, EmployeeNumber = gblUser.EmployeeNumber));
+                                Clear(colAttendanceAll);
+                                If(
+                                    varHRScope = "Own",
+                                    Collect(colAttendanceAll, colUserAttendance),
+                                    If(
+                                        Or(varHRScope = "All", varUserHasAllProjects),
+                                        Collect(colAttendanceAll, AttendanceRecords),
+                                        ForAll(
+                                            colUserAccessibleProjects As proj,
+                                            Collect(colAttendanceAll, Filter(AttendanceRecords, ProjectID = proj.ID))
+                                        )
+                                    )
+                                );
+                                Set(varAttendancePage, 1)
+                              Text: =""
+                              Width: =36
+                  - conAttFilters:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 320, If(App.Width < 1100, 148, 56))
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutWrap: =true
+                        PaddingBottom: =8
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Visible: =Coalesce(varAttFlt, true)
+                        Width: =Parent.Width
+                      Children:
+                        - cmbAttEmployee:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Filter(colAttendanceEmployees, Status.Value = "Active")
+                              OnChange: =Set(varAttendancePage, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, 180)
+                        - cmbAttDepartment:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "القسم", "Department")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "القسم", "Department")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =colAttendanceDepartments
+                              OnChange: =Set(varAttendancePage, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, 160)
+                        - cmbAttProject:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              DefaultSelectedItems: =If(Or(varUserHasAllProjects, IsBlank(gblSProject)), Blank(), [gblSProject])
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.ProjectCode
+                              Items: =colAttendanceProjects
+                              OnChange: |-
+                                =If(
+                                    And(!varUserHasAllProjects, IsBlank(Self.Selected)),
+                                    Reset(cmbAttProject)
+                                );
+                                Set(gblSProject, Self.Selected);
+                                Set(varAttendancePage, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, 160)
+                        - cmbAttStatus:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(AttendanceRecords.Status)
+                              OnChange: =Set(varAttendancePage, 1)
+                              SelectMultiple: =false
+                              Width: =If(App.Width < 700, Parent.Width, 140)
+                        - dpAttFrom:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "من تاريخ", "From date")
+                              Height: =36
+                              OnChange: =Set(varAttendancePage, 1)
+                              Placeholder: =If(gblLanguage = "Arabic", "من تاريخ", "From date")
+                              Width: =If(App.Width < 700, Parent.Width, 150)
+                        - dpAttTo:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إلى تاريخ", "To date")
+                              Height: =36
+                              OnChange: =Set(varAttendancePage, 1)
+                              Placeholder: =If(gblLanguage = "Arabic", "إلى تاريخ", "To date")
+                              Width: =If(App.Width < 700, Parent.Width, 150)
+                        - btnAttClear:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "مسح جميع عوامل التصفية", "Clear all filters")
+                              Appearance: =ButtonAppearance.Secondary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Dismiss"
+                              OnSelect: |-
+                                =Reset(cmbAttEmployee);
+                                Reset(cmbAttDepartment);
+                                If(varUserHasAllProjects, Reset(cmbAttProject));
+                                Reset(cmbAttStatus);
+                                Reset(dpAttFrom);
+                                Reset(dpAttTo);
+                                Set(varAttendancePage, 1)
+                              Text: =If(gblLanguage = "Arabic", "مسح الكل", "Clear all")
+                              Width: =If(App.Width < 700, Parent.Width, 120)
+                  - conAttTable:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =Parent.Width
+                      Children:
+                        - conAttTableHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Visible: =Parent.Width >= 900
+                              Width: =Parent.Width
+                            Children:
+                              - lblAttColDate:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "التاريخ", "DATE")
+                                    Width: =90
+                              - lblAttColOffice:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "المكتب", "OFFICE")
+                                    Width: =90
+                              - lblAttColEmployee:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الموظف", "EMPLOYEE")
+                              - lblAttColDepartment:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "القسم", "DEPARTMENT")
+                                    Width: =110
+                              - lblAttColProject:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "المشروع", "PROJECT")
+                                    Width: =90
+                              - lblAttColIn:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الحضور", "CHECK IN")
+                                    Width: =80
+                              - lblAttColOut:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الانصراف", "CHECK OUT")
+                                    Width: =80
+                              - lblAttColStatus:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الحالة", "STATUS")
+                                    Width: =88
+                              - lblAttColLate:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "التأخير", "LATE")
+                                    Width: =70
+                              - lblAttColHours:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الساعات", "HOURS")
+                                    Width: =70
+                        - galAttAll:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "سجلات الحضور", "Attendance records")
+                              BorderStyle: =BorderStyle.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Items: |-
+                                =With(
+                                    {
+                                        rows: SortByColumns(
+                                            Filter(
+                                                colAttendanceAll,
+                                                Or(
+                                                    varHRScope = "Own",
+                                                    And(varHRScope = "All", Or(varUserHasAllProjects, ProjectID = gblSProject.ID)),
+                                                    And(varHRScope <> "Own", varHRScope <> "All", ProjectID = gblSProject.ID)
+                                                ),
+                                                Or(IsBlank(cmbAttEmployee.Selected), EmployeeID = cmbAttEmployee.Selected.ID),
+                                                Or(IsBlank(cmbAttDepartment.Selected), DepartmentID = cmbAttDepartment.Selected.ID),
+                                                Or(IsBlank(cmbAttProject.Selected), ProjectID = cmbAttProject.Selected.ID),
+                                                Or(IsBlank(cmbAttStatus.Selected), Status.Value = cmbAttStatus.Selected.Value),
+                                                Or(IsBlank(dpAttFrom.SelectedDate), Date >= dpAttFrom.SelectedDate),
+                                                Or(IsBlank(dpAttTo.SelectedDate), Date < DateAdd(dpAttTo.SelectedDate, 1, TimeUnit.Days))
+                                            ),
+                                            "Date",
+                                            SortOrder.Descending
+                                        ),
+                                        pageSize: Coalesce(varAttendancePageSize, 15),
+                                        pageNumber: Coalesce(varAttendancePage, 1)
+                                    },
+                                    FirstN(
+                                        LastN(
+                                            rows,
+                                            Max(0, CountRows(rows) - ((pageNumber - 1) * pageSize))
+                                        ),
+                                        pageSize
+                                    )
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowScrollbar: =true
+                              TemplatePadding: =If(Parent.Width >= 900, 0, 8)
+                              TemplateSize: =If(Parent.Width >= 900, 44, 128)
+                              Width: =Parent.Width
+                              WrapCount: =If(Parent.Width >= 900, 1, If(Parent.Width >= 640, 2, 1))
+                            Children:
+                              - conAttRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    BorderColor: =fxThemeColor("BorderLight")
+                                    BorderThickness: =If(Parent.TemplateWidth >= 900, 0, 1)
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("Surface")
+                                    Height: =Parent.TemplateHeight - If(Parent.TemplateWidth >= 900, 0, 8)
+                                    LayoutAlignItems: =If(Parent.TemplateWidth >= 900, LayoutAlignItems.Center, LayoutAlignItems.Stretch)
+                                    LayoutDirection: =If(Parent.TemplateWidth >= 900, LayoutDirection.Horizontal, LayoutDirection.Vertical)
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =If(Parent.TemplateWidth >= 900, 0, 8)
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    PaddingTop: =If(Parent.TemplateWidth >= 900, 0, 8)
+                                    RadiusBottomLeft: =If(Parent.TemplateWidth >= 900, 0, gblTheme.Radius.Large)
+                                    RadiusBottomRight: =If(Parent.TemplateWidth >= 900, 0, gblTheme.Radius.Large)
+                                    RadiusTopLeft: =If(Parent.TemplateWidth >= 900, 0, gblTheme.Radius.Large)
+                                    RadiusTopRight: =If(Parent.TemplateWidth >= 900, 0, gblTheme.Radius.Large)
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - lblAttDate:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: =Text(ThisItem.Date, "dd mmm yyyy")
+                                          Width: =If(Parent.Width >= 900, 90, Parent.Width)
+                                    - lblAttOffice:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(colAttendanceOffices, ID = ThisItem.OfficeID).Title, "-")
+                                          Visible: =Parent.Width >= 900
+                                          Width: =90
+                                    - lblAttEmployee:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FillPortions: =If(Parent.Width >= 900, 1, 0)
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          Size: =12
+                                          Text: =Coalesce(ThisItem.Employee.Value, "-")
+                                          Width: =If(Parent.Width >= 900, 80, Parent.Width - 100)
+                                    - lblAttStatus:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: |-
+                                            =fxToneInk(
+                                                Switch(ThisItem.Status.Value, "Present", "success", "Late", "warning", "Absent", "danger", "Leave", "info", "Holiday", "info", "Weekend", "", "Pending Approval", "pending", "Exception", "info", "")
+                                            )
+                                          Fill: |-
+                                            =fxToneFill(
+                                                Switch(ThisItem.Status.Value, "Present", "success", "Late", "warning", "Absent", "danger", "Leave", "info", "Holiday", "info", "Weekend", "", "Pending Approval", "pending", "Exception", "info", "")
+                                            )
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =22
+                                          RadiusBottomLeft: =gblTheme.Radius.Round
+                                          RadiusBottomRight: =gblTheme.Radius.Round
+                                          RadiusTopLeft: =gblTheme.Radius.Round
+                                          RadiusTopRight: =gblTheme.Radius.Round
+                                          Size: =10
+                                          Text: |-
+                                            =Switch(
+                                                ThisItem.Status.Value,
+                                                "Present", If(gblLanguage = "Arabic", "حاضر", "Present"),
+                                                "Late", If(gblLanguage = "Arabic", "متأخر", "Late"),
+                                                "Absent", If(gblLanguage = "Arabic", "غائب", "Absent"),
+                                                "Leave", If(gblLanguage = "Arabic", "إجازة", "Leave"),
+                                                "Holiday", If(gblLanguage = "Arabic", "عطلة رسمية", "Holiday"),
+                                                "Weekend", If(gblLanguage = "Arabic", "عطلة أسبوعية", "Weekend"),
+                                                "Pending Approval", If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending"),
+                                                "Exception", If(gblLanguage = "Arabic", "استثناء", "Exception"),
+                                                Coalesce(ThisItem.Status.Value, "-")
+                                            )
+                                          Width: =88
+                                    - lblAttDepartment:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: |-
+                                            =Coalesce(LookUp(colAttendanceDepartments, ID = ThisItem.DepartmentID).Title, "-")
+                                            & If(Parent.Width >= 900, "", " · " & Coalesce(LookUp(colAttendanceProjects, ID = ThisItem.ProjectID).ProjectCode, "-"))
+                                          Width: =If(Parent.Width >= 900, 110, Parent.Width)
+                                    - lblAttProject:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(colAttendanceProjects, ID = ThisItem.ProjectID).ProjectCode, "-")
+                                          Visible: =Parent.Width >= 900
+                                          Width: =90
+                                    - lblAttIn:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: |-
+                                            =If(IsBlank(ThisItem.CheckInTime), "-", Text(ThisItem.CheckInTime, "hh:mm AM/PM"))
+                                            & If(
+                                                Parent.Width >= 900,
+                                                "",
+                                                " → " & If(IsBlank(ThisItem.CheckOutTime), "-", Text(ThisItem.CheckOutTime, "hh:mm AM/PM"))
+                                                & " · " & If(IsBlank(ThisItem.LateMinutes), "-", Round(ThisItem.LateMinutes, 2) & If(gblLanguage = "Arabic", " د", " min"))
+                                                & " · " & If(IsBlank(ThisItem.WorkedHours), "-", Round(ThisItem.WorkedHours, 2) & If(gblLanguage = "Arabic", " ساعة", " hrs"))
+                                            )
+                                          Width: =If(Parent.Width >= 900, 80, Parent.Width)
+                                    - lblAttOut:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: =If(IsBlank(ThisItem.CheckOutTime), "-", Text(ThisItem.CheckOutTime, "hh:mm AM/PM"))
+                                          Visible: =Parent.Width >= 900
+                                          Width: =80
+                                    - lblAttLate:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: =If(IsBlank(ThisItem.LateMinutes), "-", Round(ThisItem.LateMinutes, 2) & If(gblLanguage = "Arabic", " د", " min"))
+                                          Visible: =Parent.Width >= 900
+                                          Width: =70
+                                    - lblAttHours:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          Size: =11
+                                          Text: =If(IsBlank(ThisItem.WorkedHours), "-", Round(ThisItem.WorkedHours, 2) & If(gblLanguage = "Arabic", " ساعة", " hrs"))
+                                          Visible: =Parent.Width >= 900
+                                          Width: =70
+                        - conAttEmpty:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =140
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =CountRows(galAttAll.AllItems) = 0
+                              Width: =Parent.Width
+                            Children:
+                              - icoAttEmpty:
+                                  Control: ModernIcon@1.1.1
+                                  Properties:
+                                    Height: =36
+                                    Icon: ="Calendar"
+                                    IconColor: =fxThemeColor("TextMuted")
+                                    Width: =36
+                              - lblAttEmptyTitle:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =24
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =If(gblLanguage = "Arabic", "لا توجد سجلات حضور", "No attendance records found")
+                                    Width: =Parent.Width
+                              - lblAttEmptySub:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =24
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: =If(gblLanguage = "Arabic", "جرّب تغيير عوامل التصفية أو نطاق التاريخ.", "Try changing the filters or the date range.")
+                                    Width: =Parent.Width
+                        - conAttFooter:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              FillPortions: =0
+                              Height: =48
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              Width: =Parent.Width
+                            Children:
+                              - lblAttCount:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =24
+                                    Size: =11
+                                    Text: =If(gblLanguage = "Arabic", "عرض " & CountRows(galAttAll.AllItems) & " سجل", "Showing " & CountRows(galAttAll.AllItems) & " records")
+                                    Width: =Parent.Width - 160
+                              - btnAttPrev:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الصفحة السابقة", "Previous page")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    DisplayMode: =If(varAttendancePage > 1, DisplayMode.Edit, DisplayMode.Disabled)
+                                    Height: =36
+                                    Icon: ="ChevronLeft"
+                                    OnSelect: =Set(varAttendancePage, varAttendancePage - 1)
+                                    Text: =""
+                                    Width: =36
+                              - lblAttPage:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =24
+                                    Size: =11
+                                    Text: =If(gblLanguage = "Arabic", "صفحة ", "Page ") & varAttendancePage
+                                    Width: =70
+                              - btnAttNext:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الصفحة التالية", "Next page")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    DisplayMode: =If(CountRows(galAttAll.AllItems) = Coalesce(varAttendancePageSize, 15), DisplayMode.Edit, DisplayMode.Disabled)
+                                    Height: =36
+                                    Icon: ="ChevronRight"
+                                    OnSelect: =Set(varAttendancePage, varAttendancePage + 1)
+                                    Text: =""
+                                    Width: =36

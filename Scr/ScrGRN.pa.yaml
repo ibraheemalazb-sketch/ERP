@@ -1,0 +1,2872 @@
+Screens:
+  ScrGRN:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Procurement");
+        Set(varCurrentScreen, "Procurement");
+        Set(VarScreen, "Procurement");
+        Set(varProcurementTab, "GRNs");
+        Set(varNavSelectedID, 34);
+        Set(varProcurementEntity, "GRN");
+        Set(varProcurementMode, "View");
+        Set(varGrQuick, Blank());
+        Set(varGrMenuId, 0);
+        Set(varGrFilters, false);
+        Set(varGrView, If(App.Width < 700, "list", "table"));
+        Set(varGrPane, "Details");
+        Reset(cmpGrView);
+        Reset(cmpGrTable);
+        Reset(cmpGrNew);
+        Reset(cmpGrStep);
+        If(IsBlank(varGrStatus), Set(varGrStatus, "All"));
+        If(IsBlank(varGrProjectID), Set(varGrProjectID, 0));
+        If(IsBlank(varGrReceiver), Set(varGrReceiver, "All"));
+        Set(varGrMailOpen, false);
+        Set(varGrMailBusy, false);
+        UpdateContext({locGrHistTop: 50});
+        Reset(cmpGrHistory);
+        Select(btnGrReload)
+    Children:
+      - conGrReload:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Height: =1
+            Width: =1
+          Children:
+            - btnGrReload:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =IfError(
+                        If(
+                            varProcurementScope = "Own",
+                            ClearCollect(
+                                colGoodsReceipts,
+                                FirstN(
+                                    SortByColumns(
+                                        Filter(
+                                            GoodsReceivedNotes,
+                                            And(
+                                                ProjectID = gblUser.ProjectID,
+                                                ReceivedByID = gblCurrentEmployee.ID
+                                            )
+                                        ),
+                                        "ID",
+                                        SortOrder.Descending
+                                    ),
+                                    500
+                                )
+                            ),
+                            If(
+                                varProcurementScope = "Project",
+                                ClearCollect(
+                                    colGoodsReceipts,
+                                    Filter(
+                                        FirstN(SortByColumns(GoodsReceivedNotes, "ID", SortOrder.Descending), 500),
+                                        Project.Value in colProjects.ProjectCode
+                                    )
+                                ),
+                                ClearCollect(
+                                    colGoodsReceipts,
+                                    FirstN(SortByColumns(GoodsReceivedNotes, "ID", SortOrder.Descending), 500)
+                                )
+                            )
+                        ),
+                        Notify(
+                            If(gblLanguage = "Arabic", "تعذر تحميل الاستلامات.", "Goods receipts could not be loaded."),
+                            NotificationType.Error
+                        )
+                    );
+                    IfError(
+                        ClearCollect(
+                            colGoodsReceiptLines,
+                            Filter(
+                                FirstN(SortByColumns(GoodsReceivedNoteLines, "ID", SortOrder.Descending), 500),
+                                GRN.Id in colGoodsReceipts.ID
+                            )
+                        ),
+                        Notify(
+                            If(gblLanguage = "Arabic", "تعذر تحميل بنود الاستلام.", "Receipt lines could not be loaded."),
+                            NotificationType.Warning
+                        )
+                    );
+                    IfError(
+                        ClearCollect(
+                            colProcPeople,
+                            ForAll(
+                                FirstN(
+                                    SortByColumns(
+                                        Filter(Employees, Status.Value = "Active"),
+                                        "FullName",
+                                        SortOrder.Ascending
+                                    ),
+                                    200
+                                ),
+                                {
+                                    ID: ID,
+                                    FullName: FullName,
+                                    Email: Email,
+                                    EmployeeNumber: Coalesce(EmployeeNumber, "")
+                                }
+                            )
+                        ),
+                        Notify(
+                            If(gblLanguage = "Arabic", "تعذر تحميل الموظفين.", "People could not be loaded."),
+                            NotificationType.Warning
+                        )
+                    );
+                    With(
+                        {row: LookUp(colGoodsReceipts, ID = varCurrentGRN.ID)},
+                        If(
+                            Not(IsBlank(row)),
+                            Set(varCurrentGRN, row);
+                            UpdateContext({locGrHistTop: 50});
+                            Reset(cmpGrHistory)
+                        )
+                    )
+                  Text: ="Reload"
+                  Width: =1
+      - conGrNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+          Children:
+            - cmpGrNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - conGrPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =12
+            PaddingBottom: =If(App.Width < 700, cmpGrPhone.Height, 0)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 16)
+            PaddingRight: =12
+            PaddingTop: =cmpGrTop.Height + 12
+            Width: =Parent.Width
+          Children:
+            - conGrList:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =IsBlank(varCurrentGRN)
+                  Width: =Parent.Width
+                Children:
+                  - conGrHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.SetByContainer
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =48
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =12
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - conGrTitles:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =44
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =5
+                              PaddingRight: =5
+                              Width: =Parent.Width
+                            Children:
+                              - lblGrTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =24
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =15
+                                    Text: =If(gblLanguage = "Arabic", "كل إشعارات الاستلام", "All goods receipts")
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblGrCount:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =20
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: |-
+                                      =Concatenate(
+                                          Text(
+                                              CountRows(
+                                                  Filter(
+                                                      colGoodsReceipts,
+                                                      And(
+                                                          Or(IsBlank(varGrStatus), varGrStatus = "All", Status.Value = varGrStatus),
+                                                          Or(Coalesce(varGrProjectID, 0) = 0, ProjectID = varGrProjectID),
+                                                          Or(Or(IsBlank(varGrReceiver), varGrReceiver = "All"), ReceivedBy.Value = varGrReceiver),
+                                                          Or(
+                                                              IsBlank(Trim(txtGrSearch.Text)),
+                                                              Trim(txtGrSearch.Text) in Coalesce(GRNNumber, ""),
+                                                              Trim(txtGrSearch.Text) in Coalesce(PONumber, ""),
+                                                              Trim(txtGrSearch.Text) in Coalesce(Supplier.Value, ""),
+                                                              Trim(txtGrSearch.Text) in Coalesce(Project.Value, "")
+                                                          )
+                                                      )
+                                                  )
+                                              )
+                                          ),
+                                          If(gblLanguage = "Arabic", " من ", " of "),
+                                          Text(CountRows(colGoodsReceipts)),
+                                          If(gblLanguage = "Arabic", " إشعار", " receipts")
+                                      )
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                        - btnGrNew:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              Icon: ="Add"
+                              LayoutMinWidth: =140
+                              OnSelect: |-
+                                =Set(varProcurementEntity, "GRN");
+                                Set(varProcurementMode, "New");
+                                Set(varCurrentGRN, Blank());
+                                Set(varSelectedPO, Blank());
+                                Set(varSourcePO, Blank());
+                                Set(varGrQuick, Blank());
+                                Set(varGrPane, "Details");
+                                Navigate(scrGRNEditor, ScreenTransition.Cover)
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              Text: =If(gblLanguage = "Arabic", "استلام", "Goods receipt")
+                              Visible: =App.Width >= 700
+                              Width: =160
+                  - Container5:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =conGrTools.Height+If(varGrFilters,conGrFilterRow.Height,0)+If(App.Width<700,galGrChips.Height,0)+Self.PaddingBottom*2.5
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =7
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        PaddingBottom: =8
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =8
+                      Children:
+                        - conGrTools:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.SetByContainer
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 50, 44)
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - txtGrSearch:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "بحث في الاستلامات", "Search goods receipts")
+                                    Height: =40
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "ابحث في الاستلامات", "Search receipts...")
+                                    Width: =If(App.Width < 700, Max(160, Parent.Width - 120), Max(200, Parent.Width - 378))
+                              - btnGrFilters:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =If(varGrFilters, ButtonAppearance.Primary, ButtonAppearance.Outline)
+                                    Height: =40
+                                    Icon: ="Filter"
+                                    OnSelect: =Set(varGrFilters, Not(varGrFilters))
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تصفية", "Filters"))
+                                    Width: =If(App.Width < 700, 44, 110)
+                              - btnGrRefresh:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Outline
+                                    Height: =40
+                                    Icon: ="ArrowSync"
+                                    OnSelect: =Select(btnGrReload)
+                                    Text: =""
+                                    Tooltip: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                                    Width: =44
+                              - cmpGrView:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpSegmentedControl
+                                  Properties:
+                                    DefaultValue: =varGrView
+                                    DisplayMode: ="Both"
+                                    EqualWidth: =true
+                                    Height: =40
+                                    IconPosition: ="Left"
+                                    OnChange: =Set(varGrView, cmpGrView.SelectedValue)
+                                    Options: |-
+                                      =Table(
+                                          {Value: "table", Label: If(gblLanguage = "Arabic", "جدول", "Table"), Icon: "Table"},
+                                          {Value: "list", Label: If(gblLanguage = "Arabic", "قائمة", "List"), Icon: "List"}
+                                      )
+                                    Size: ="Medium"
+                                    Visible: =App.Width >= 700
+                                    Width: =188
+                        - galGrChips:
+                            Control: Gallery@2.15.0
+                            Variant: Horizontal
+                            Properties:
+                              AlignInContainer: =AlignInContainer.SetByContainer
+                              FillPortions: =0
+                              Height: =36
+                              Items: |-
+                                =Table(
+                                    {K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")},
+                                    {K: "Submitted", L: If(gblLanguage = "Arabic", "مقدم", "Submitted")},
+                                    {K: "Approved", L: If(gblLanguage = "Arabic", "معتمد", "Approved")},
+                                    {K: "Posted", L: If(gblLanguage = "Arabic", "مرحّل", "Posted")}
+                                )
+                              LayoutMinWidth: =0
+                              ShowScrollbar: =false
+                              TemplatePadding: =0
+                              TemplateSize: =128
+                              Visible: =App.Width < 700
+                              Width: =Parent.Width
+                            Children:
+                              - btnGrChip:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: |-
+                                      =If(
+                                          Coalesce(varGrStatus, "All") = ThisItem.K,
+                                          ButtonAppearance.Primary,
+                                          ButtonAppearance.Outline
+                                      )
+                                    Height: =30
+                                    OnSelect: |-
+                                      =Set(varGrStatus, ThisItem.K)
+                                    Text: =ThisItem.L
+                                    Width: =120
+                        - conGrFilterRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.SetByContainer
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 150, 50)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =5
+                              LayoutMinHeight: =44
+                              LayoutMinWidth: =0
+                              LayoutWrap: =true
+                              PaddingBottom: =5
+                              PaddingTop: =5
+                              Visible: =varGrFilters
+                              Width: =Parent.Width
+                            Children:
+                              - cmbGrProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          Coalesce(varGrProjectID, 0) = 0,
+                                          Filter(colProjects, false),
+                                          Filter(colProjects, ID = varGrProjectID)
+                                      )
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                                    ItemDisplayText: =ThisItem.ProjectCode
+                                    Items: =colProjects
+                                    LayoutMinWidth: =160
+                                    OnChange: |-
+                                      =If(
+                                          And(
+                                              IsBlank(Self.Selected.ID),
+                                              Not(Coalesce(LookUp(colUserPermissions, Module.Value = "Procurement").CanViewAll, true))
+                                          ),
+                                          Reset(cmbGrProject),
+                                          Set(varGrProjectID, Coalesce(Self.Selected.ID, 0))
+                                      )
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - cmbGrStatus:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    DefaultSelectedItems: |-
+                                      =Table({K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")})
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.L
+                                    Items: |-
+                                      =Table(
+                                          {K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")},
+                                          {K: "Draft", L: If(gblLanguage = "Arabic", "مسودة", "Draft")},
+                                          {K: "Submitted", L: If(gblLanguage = "Arabic", "مقدم", "Submitted")},
+                                          {K: "Approved", L: If(gblLanguage = "Arabic", "معتمد", "Approved")},
+                                          {K: "Posted", L: If(gblLanguage = "Arabic", "مرحّل", "Posted")},
+                                          {K: "Completed", L: If(gblLanguage = "Arabic", "مكتمل", "Completed")},
+                                          {K: "Rejected", L: If(gblLanguage = "Arabic", "مرفوض", "Rejected")},
+                                          {K: "Cancelled", L: If(gblLanguage = "Arabic", "ملغي", "Cancelled")}
+                                      )
+                                    LayoutMinWidth: =0
+                                    OnChange: =Set(varGrStatus, Coalesce(Self.Selected.K, "All"))
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - cmbGrReceiver:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المستلم", "Received by")
+                                    DefaultSelectedItems: =Filter(colProcPeople, And(varGrReceiver <> "All", FullName = varGrReceiver))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المستلمين", "All receivers")
+                                    IsSearchable: =true
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =colProcPeople
+                                    LayoutMinWidth: =160
+                                    OnChange: =Set(varGrReceiver, Coalesce(Self.Selected.FullName, "All"))
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - btnGrClear:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =40
+                                    Icon: ="Dismiss"
+                                    OnSelect: |-
+                                      =Reset(txtGrSearch);
+                                      Reset(cmbGrStatus);
+                                      Set(varGrStatus, "All");
+                                      Reset(cmbGrProject);
+                                      Set(varGrProjectID, 0);
+                                      Reset(cmbGrReceiver);
+                                      Set(varGrReceiver, "All")
+                                    Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                                    Width: =100
+                  - cmpGrTable:
+                      Control: CanvasComponent
+                      ComponentName: cmpMyTable
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Stretch
+                        CardHeight: =148
+                        ContextMenuItems: |-
+                          =Table(
+                              {ItemKey: "view", ItemDisplayName: If(gblLanguage = "Arabic", "عرض سريع", "Quick view"), ItemVisible: true},
+                              {ItemKey: "edit", ItemDisplayName: If(gblLanguage = "Arabic", "تعديل", "Edit"), ItemVisible: true}
+                          )
+                        EmptySubtitle: =If(gblLanguage = "Arabic", "جرّب بحثاً أو تصفية مختلفة.", "Try a different search or filter.")
+                        EmptyTitle: =If(gblLanguage = "Arabic", "لا توجد إشعارات استلام", "No goods receipts")
+                        EnableHover: =true
+                        EnableMenu: =true
+                        HeaderAction: =""
+                        HeaderColumn1: =If(gblLanguage = "Arabic", "تاريخ الاستلام", "Receipt date")
+                        HeaderColumn2: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        HeaderColumn3: =""
+                        HeaderHeight: =40
+                        HeaderPerson: =If(gblLanguage = "Arabic", "المستلم", "Received by")
+                        HeaderPriority: =If(gblLanguage = "Arabic", "الفحص", "Inspection")
+                        HeaderStatus: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        HeaderSubtitle: =If(gblLanguage = "Arabic", "القيمة", "Value")
+                        HeaderTitle: =If(gblLanguage = "Arabic", "رقم الاستلام", "GRN number")
+                        HeaderWhen: =If(gblLanguage = "Arabic", "أمر الشراء", "Purchase order")
+                        Height: =Max(550, App.Height - cmpGrTop.Height - If(App.Width < 700, cmpGrPhone.Height, 0) - 240)
+                        Items: |-
+                          =ForAll(
+                              Filter(
+                                  colGoodsReceipts,
+                                  And(
+                                      Or(IsBlank(varGrStatus), varGrStatus = "All", Status.Value = varGrStatus),
+                                      Or(Coalesce(varGrProjectID, 0) = 0, ProjectID = varGrProjectID),
+                                      Or(Or(IsBlank(varGrReceiver), varGrReceiver = "All"), ReceivedBy.Value = varGrReceiver),
+                                      Or(
+                                          IsBlank(Trim(txtGrSearch.Text)),
+                                          Trim(txtGrSearch.Text) in Coalesce(GRNNumber, ""),
+                                          Trim(txtGrSearch.Text) in Coalesce(PONumber, ""),
+                                          Trim(txtGrSearch.Text) in Coalesce(Supplier.Value, ""),
+                                          Trim(txtGrSearch.Text) in Coalesce(Project.Value, "")
+                                      )
+                                  )
+                              ) As req,
+                              {
+                                  RowKey: Text(req.ID),
+                                  Title: Coalesce(req.GRNNumber, "-"),
+                                  Subtitle: Concatenate(Text(Coalesce(req.TotalReceived, 0), "#,##0.00"), " $"),
+                                  Column1: If(IsBlank(req.ReceiptDate), "-", Text(req.ReceiptDate, "dd-mmm-yyyy")),
+                                  Column2: Coalesce(req.Project.Value, "-"),
+                                  Column3: "",
+                                  Status: Coalesce(req.Status.Value, "-"),
+                                  Tone: Switch(
+                                      req.Status.Value,
+                                      "Approved", "approved",
+                                      "Completed", "completed",
+                                      "Posted", "info",
+                                      "Rejected", "rejected",
+                                      "Cancelled", "danger",
+                                      "Submitted", "in progress",
+                                      "pending"
+                                  ),
+                                  Priority: Coalesce(req.InspectionStatus.Value, "-"),
+                                  PriorityTone: "medium",
+                                  Person: Coalesce(req.ReceivedBy.Value, "-"),
+                                  WhenText: Coalesce(req.PONumber, "-"),
+                                  ProgressDone: 0,
+                                  ProgressTotal: 0,
+                                  IconName: "Box"
+                              }
+                          )
+                        LayoutMinHeight: =360
+                        LayoutMinWidth: =0
+                        OnMenuItemSelect: |-
+                          =With(
+                              {row: LookUp(colGoodsReceipts, ID = Value(cmpGrTable.SelectedItem.RowKey))},
+                              Switch(
+                                  cmpGrTable.SelectedMenuItem.ItemKey,
+                                  "view", Set(varGrQuick, row),
+                                  "edit",
+                                  Set(varCurrentGRN, row);
+                                  Set(varProcurementEntity, "GRN");
+                                  Set(varProcurementMode, "Edit");
+                                  Set(varGrPane, "Details");
+                                  Set(varGrQuick, Blank());
+                                  Navigate(scrGRNEditor, ScreenTransition.Cover)
+                              )
+                          )
+                        OnRowSelect: |-
+                          =With(
+                              {row: LookUp(colGoodsReceipts, ID = Value(cmpGrTable.SelectedItem.RowKey))},
+                              If(
+                                  varGrQuick.ID = row.ID,
+                                  Set(varGrQuick, Blank()),
+                                  Set(varGrQuick, row)
+                              )
+                          )
+                        RowHeight: =45
+                        ShowAction: =true
+                        ShowColumn1: =true
+                        ShowColumn2: =true
+                        ShowColumn3: =false
+                        ShowHeader: =true
+                        ShowId: =false
+                        ShowPerson: =true
+                        ShowPriority: =true
+                        ShowProgress: =false
+                        ShowStatus: =true
+                        ShowSubtitle: =true
+                        ShowViewToggle: =false
+                        ShowWhen: =true
+                        SubtitleAsPill: =true
+                        TitleBold: =true
+                        ViewMode: =If(App.Width < 700, "list", Coalesce(varGrView, "table"))
+                        Width: =Parent.Width
+                        WidthAction: =48
+                        WidthColumn1: =130
+                        WidthColumn2: =80
+                        WidthColumn3: =110
+                        WidthPerson: =160
+                        WidthPriority: =80
+                        WidthStatus: =80
+                        WidthSubtitle: =80
+                        WidthTitle: =160
+                        WidthWhen: =130
+            - conGrDetail:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =700
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =24
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  Visible: =Not(IsBlank(varCurrentGRN))
+                  Width: =Parent.Width
+                Children:
+                  - Container9:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =12
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =8
+                        PaddingTop: =8
+                      Children:
+                        - conGrHeader:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: |-
+                                =conGrDetailTop.Height+conGrTitleRow.Height+lblGrMeta.Height+conGrProgress.Height+ 1* Self.LayoutGap
+                                + Self.PaddingTop
+                                + Self.PaddingBottom
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =12
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =12
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Width: =Min(Parent.Width, 1120)
+                            Children:
+                              - conGrHwarper:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0
+                                    Height: |-
+                                      =conGrDetailTop.Height+conGrTitleRow.Height+lblGrMeta.Height+ 3* Self.LayoutGap
+                                      + Self.PaddingTop
+                                      + Self.PaddingBottom
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                  Children:
+                                    - conGrDetailTop:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =36
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =12
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - btnGrBack:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Align: =Align.Left
+                                                Appearance: =ButtonAppearance.Transparent
+                                                BasePaletteColor: =fxThemeColor("Primary")
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =36
+                                                Icon: ="ArrowLeft"
+                                                OnSelect: |-
+                                                  =Set(varCurrentGRN, Blank());
+                                                  UpdateContext({locGrHistTop: 50});
+                                                  Reset(cmpGrHistory);
+                                                  Set(varGrQuick, Blank());
+                                                  Set(varGrMenuId, 0)
+                                                Text: =If(gblLanguage = "Arabic", "العودة إلى الاستلام", "Back to receipts")
+                                                Width: =180
+                                          - lblGrTopGap:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                FillPortions: =1
+                                                Height: =8
+                                                LayoutMinWidth: =0
+                                                Text: =""
+                                          - btnGrEdit:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =ButtonAppearance.Secondary
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =36
+                                                Icon: ="Edit"
+                                                OnSelect: |-
+                                                  =Set(varProcurementEntity, "GRN");
+                                                  Set(varProcurementMode, "Edit");
+                                                  Set(varGrPane, "Details");
+                                                  Navigate(scrGRNEditor, ScreenTransition.Cover)
+                                                Text: =If(gblLanguage = "Arabic", "تعديل الاستلام", "Edit receipt")
+                                                Visible: =varCurrentGRN.Status.Value = "Draft"
+                                                Width: =140
+                                    - conGrTitleRow:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =36
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =12
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - lblGrDetailTitle:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                FillPortions: =1
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Bold
+                                                Height: =28
+                                                LayoutMinWidth: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                PaddingRight: =0
+                                                PaddingTop: =0
+                                                Size: =18
+                                                Text: =Coalesce(varCurrentGRN.GRNNumber, "-")
+                                                Wrap: =false
+                                          - conGrDetailStatus:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                DropShadow: =DropShadow.None
+                                                Fill: |-
+                                                  =fxToneFill(
+                                                      Switch(
+                                                          varCurrentGRN.Status.Value,
+                                                          "Approved", "approved",
+                                                          "Completed", "completed",
+                                                          "Posted", "info",
+                                                          "Rejected", "rejected",
+                                                          "Cancelled", "danger",
+                                                          "Submitted", "in progress",
+                                                          "pending"
+                                                      )
+                                                  )
+                                                FillPortions: =0
+                                                Height: =28
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutJustifyContent: =LayoutJustifyContent.Center
+                                                RadiusBottomLeft: =gblTheme.Radius.Round
+                                                RadiusBottomRight: =gblTheme.Radius.Round
+                                                RadiusTopLeft: =gblTheme.Radius.Round
+                                                RadiusTopRight: =gblTheme.Radius.Round
+                                                Width: =132
+                                              Children:
+                                                - lblGrDetailStatus:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Align: =Align.Center
+                                                      Color: |-
+                                                        =fxToneInk(
+                                                            Switch(
+                                                                varCurrentGRN.Status.Value,
+                                                                "Approved", "approved",
+                                                                "Completed", "completed",
+                                                                "Posted", "info",
+                                                                "Rejected", "rejected",
+                                                                "Cancelled", "danger",
+                                                                "Submitted", "in progress",
+                                                                "pending"
+                                                            )
+                                                        )
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =Parent.Height
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =8
+                                                      PaddingRight: =8
+                                                      PaddingTop: =0
+                                                      Size: =12
+                                                      Text: =Coalesce(varCurrentGRN.Status.Value, "-")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
+                                    - lblGrMeta:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =22
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: |-
+                                            =Concatenate(
+                                                Coalesce(varCurrentGRN.GRNNumber, "-"),
+                                                "   •   ",
+                                                Coalesce(varCurrentGRN.Supplier.Value, "-"),
+                                                "   •   ",
+                                                Coalesce(varCurrentGRN.ReceivedBy.Value, "-"),
+                                                "   •   ",
+                                                Coalesce(varCurrentGRN.InspectionStatus.Value, "-")
+                                            )
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                              - conGrProgress:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    BorderColor: =fxThemeColor("Border")
+                                    BorderThickness: =1
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =100
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =5
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =5
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conGrProgHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =22
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinWidth: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - lblGrProgName:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =fxThemeColor("TextPrimary")
+                                                FillPortions: =1
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =20
+                                                LayoutMinWidth: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                PaddingRight: =0
+                                                PaddingTop: =0
+                                                Size: =12
+                                                Text: |-
+                                                  =If(gblLanguage = "Arabic", "مسار الاستلام", "Receipt progress")
+                                                Wrap: =false
+                                          - lblGrProgPct:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Right
+                                                Color: =fxThemeColor("Primary")
+                                                Font: =gblTheme.Typography.FontFamily
+                                                FontWeight: =gblTheme.FontWeights.Medium
+                                                Height: =20
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                PaddingRight: =0
+                                                PaddingTop: =0
+                                                Size: =12
+                                                Text: |-
+                                                  =Concatenate(
+                                                      Text(
+                                                          Round(
+                                                              Switch(
+                                                                  varCurrentGRN.Status.Value,
+                                                                  "Submitted", 1,
+                                                                  "Approved", 2,
+                                                                  "Posted", 3,
+                                                                  "Completed", 3,
+                                                                  0
+                                                              )
+                                                              / 3 * 100,
+                                                              0
+                                                          )
+                                                      ),
+                                                      If(gblLanguage = "Arabic", "٪ مكتمل", "% complete")
+                                                  )
+                                                Width: =110
+                                                Wrap: =false
+                                    - cmpGrStep:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpStepper
+                                        Properties:
+                                          ClickableSteps: ="None"
+                                          CurrentStep: |-
+                                            =Switch(
+                                                varCurrentGRN.Status.Value,
+                                                "Submitted", 1,
+                                                "Approved", 2,
+                                                "Posted", 3,
+                                                "Completed", 3,
+                                                0
+                                            )
+                                          Density: ="Full"
+                                          Height: =56
+                                          LayoutMinWidth: =0
+                                          Size: ="Small"
+                                          StepLabels: |-
+                                            =Table(
+                                                {Label: If(gblLanguage = "Arabic", "مقدم", "Submitted")},
+                                                {Label: If(gblLanguage = "Arabic", "معتمد", "Approved")},
+                                                {Label: If(gblLanguage = "Arabic", "مرحّل", "Posted")}
+                                            )
+                                          Type: ="Step"
+                                          Width: =Parent.Width
+                        - conGrBody:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              LayoutDirection: =If(App.Width < 1100, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =16
+                              LayoutMinHeight: |-
+                                =With(
+                                    {
+                                        mainMin:
+                                            If(conGrTabs.Visible, conGrTabs.Height + 16, 0)
+                                            + 16
+                                            + lblGrHeight.Height
+                                    },
+                                    If(
+                                        App.Width>700,
+                                        Max(conGrSide.Height, mainMin),
+                                        conGrSide.Height + mainMin + Self.LayoutGap
+                                    )
+                                )
+                              LayoutMinWidth: =0
+                              Width: =Min(Parent.Width, 1120)
+                            Children:
+                              - conGrMain:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =lblGrHeight.Height
+                                    LayoutMinWidth: =0
+                                    Width: =If(App.Width < 1100, Parent.Width, Max(360, Parent.Width - 336))
+                                  Children:
+                                    - conGrTabs:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =fxThemeColor("Border")
+                                          BorderStyle: =BorderStyle.None
+                                          DropShadow: =DropShadow.None
+                                          Fill: =RGBA(0,0,0,0)
+                                          FillPortions: =0
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =4
+                                          PaddingLeft: =5
+                                          PaddingRight: =5
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width
+                                        Children:
+                                          - btnGrTabDetails:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =If(varGrPane = "Details", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                                FillPortions: =1
+                                                OnSelect: =Set(varGrPane, "Details")
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                                Text: =If(gblLanguage = "Arabic", "التفاصيل", "Request details")
+                                          - btnGrTabItems:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =If(varGrPane = "Items", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                                FillPortions: =1
+                                                OnSelect: =Set(varGrPane, "Items")
+                                                Text: =If(gblLanguage = "Arabic", "البنود", "Items")
+                                                Visible: =false
+                                          - btnGrTabTalk:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =If(varGrPane = "Discussion", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                                FillPortions: =1
+                                                OnSelect: =Set(varGrPane, "Discussion")
+                                                Text: =If(gblLanguage = "Arabic", "  النقاش والتعليقات", "Discussion-Comments")
+                                    - conGrForm:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =fxThemeColor("Border")
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          Fill: =fxThemeColor("Surface")
+                                          FillPortions: =0
+                                          Height: =350+500
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutGap: =3
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutOverflowY: =LayoutOverflow.Scroll
+                                          PaddingBottom: =8
+                                          PaddingLeft: =8
+                                          PaddingRight: =8
+                                          PaddingTop: =8
+                                          RadiusBottomLeft: =gblTheme.Radius.Large
+                                          RadiusBottomRight: =gblTheme.Radius.Large
+                                          RadiusTopLeft: =gblTheme.Radius.Large
+                                          RadiusTopRight: =gblTheme.Radius.Large
+                                          Visible: =varGrPane = "Details"
+                                          Width: =If(App.Width < 1100, Parent.Width, Max(360, Parent.Width - 336))
+                                        Children:
+                                          - conGrMainInfo:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                FillPortions: =0
+                                                Height: =300
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Vertical
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingLeft: =8
+                                                PaddingRight: =8
+                                              Children:
+                                                - conGrFormHead:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Color: =fxThemeColor("TextPrimary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =24
+                                                      PaddingBottom: =0
+                                                      PaddingRight: =0
+                                                      PaddingTop: =0
+                                                      Text: =If(gblLanguage = "Arabic", "تفاصيل الاستلام", "Receipt details")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
+                                                - conGrFormR1:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =Color.Transparent
+                                                      FillPortions: =0
+                                                      Height: =68
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutGap: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      Width: =Parent.Width
+                                                    Children:
+                                                      - conGrFPo:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFPoK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "أمر الشراء", "Purchase order")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFPoV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =36
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.PONumber, Coalesce(varCurrentGRN.PO.Value, "-"))
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =true
+                                                - conGrFormR2:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =Color.Transparent
+                                                      FillPortions: =0
+                                                      Height: =50
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutGap: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      Width: =Parent.Width
+                                                    Children:
+                                                      - conGrFSup:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFSupK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "المورد", "Supplier")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFSupV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.Supplier.Value, "-")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                      - conGrFProject:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFProjectK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFProjectV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.Project.Value, "-")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                - conGrFormR3:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =Color.Transparent
+                                                      FillPortions: =0
+                                                      Height: =50
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutGap: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      Width: =Parent.Width
+                                                    Children:
+                                                      - conGrFWh:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFWhK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "المستودع", "Warehouse")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFWhV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.Warehouse.Value, "-")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                      - conGrFDate:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFDateK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "تاريخ الاستلام", "Receipt date")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFDateV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =If(IsBlank(varCurrentGRN.ReceiptDate), "-", Text(varCurrentGRN.ReceiptDate, "dd mmm yyyy"))
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                - conGrFormR4:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =Color.Transparent
+                                                      FillPortions: =0
+                                                      Height: =50
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutGap: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      Width: =Parent.Width
+                                                    Children:
+                                                      - conGrFBy:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFByK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "المستلم", "Received by")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFByV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.ReceivedBy.Value, "-")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                      - conGrFNote:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFNoteK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "إشعار التسليم", "Delivery note")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFNoteV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.DeliveryNoteNumber, "-")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                - conGrFormR5:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =Color.Transparent
+                                                      FillPortions: =0
+                                                      Height: =50
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutGap: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      Width: =Parent.Width
+                                                    Children:
+                                                      - conGrFInsp:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFInspK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "الفحص", "Inspection")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFInspV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Coalesce(varCurrentGRN.InspectionStatus.Value, "-")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                      - conGrFVal:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =52
+                                                            LayoutDirection: =LayoutDirection.Vertical
+                                                            LayoutGap: =2
+                                                            LayoutMinHeight: =0
+                                                            LayoutMinWidth: =0
+                                                            Width: =Parent.Width
+                                                          Children:
+                                                            - conGrFValK:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextMuted")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  Height: =16
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =If(gblLanguage = "Arabic", "القيمة", "Received value")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                                            - conGrFValV:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =22
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.BodySmall
+                                                                  Text: =Concatenate(Text(Coalesce(varCurrentGRN.TotalReceived, 0), "#,##0.00"), " $")
+                                                                  Width: =Parent.Width
+                                                                  Wrap: =false
+                                          - conGrItems:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                BorderColor: =fxThemeColor("Border")
+                                                DropShadow: =DropShadow.None
+                                                Fill: =fxThemeColor("Surface")
+                                                Height: =420
+                                                LayoutAlignItems: =LayoutAlignItems.Stretch
+                                                LayoutDirection: =LayoutDirection.Vertical
+                                                LayoutMinHeight: =200
+                                                LayoutMinWidth: =280
+                                                LayoutOverflowX: =LayoutOverflow.Scroll
+                                                RadiusBottomLeft: =gblTheme.Radius.Large
+                                                RadiusBottomRight: =gblTheme.Radius.Large
+                                                RadiusTopLeft: =gblTheme.Radius.Large
+                                                RadiusTopRight: =gblTheme.Radius.Large
+                                                Visible: =And(varGrPane = "Details", CountRows(Filter(colGoodsReceiptLines, GRN.Id = varCurrentGRN.ID)) > 0)
+                                                Width: =Parent.Width
+                                              Children:
+                                                - conGrItemsHead:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Color: =fxThemeColor("TextPrimary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =24
+                                                      PaddingBottom: =0
+                                                      PaddingRight: =0
+                                                      PaddingTop: =0
+                                                      Size: =14
+                                                      Text: =If(gblLanguage = "Arabic", "بنود الاستلام", "Receipt items")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
+                                                - conGrItemHead:
+                                                    Control: GroupContainer@1.5.0
+                                                    Variant: AutoLayout
+                                                    Properties:
+                                                      DropShadow: =DropShadow.None
+                                                      Fill: =fxThemeColor("SurfaceHover")
+                                                      FillPortions: =0
+                                                      Height: =35
+                                                      LayoutAlignItems: =LayoutAlignItems.Center
+                                                      LayoutDirection: =LayoutDirection.Horizontal
+                                                      LayoutGap: =8
+                                                      LayoutMinWidth: =460
+                                                      PaddingLeft: =16
+                                                      PaddingRight: =16
+                                                      Width: =Max(Parent.Width, 460)
+                                                    Children:
+                                                      - lblGrIhDesc:
+                                                          Control: Label@2.5.1
+                                                          Properties:
+                                                            Color: =fxThemeColor("TextMuted")
+                                                            FillPortions: =1
+                                                            Font: =gblTheme.Typography.FontFamily
+                                                            FontWeight: =gblTheme.FontWeights.Medium
+                                                            Height: =20
+                                                            LayoutMinWidth: =140
+                                                            PaddingBottom: =0
+                                                            PaddingLeft: =0
+                                                            PaddingRight: =0
+                                                            PaddingTop: =0
+                                                            Size: =gblTheme.Typography.Caption
+                                                            Text: =If(gblLanguage = "Arabic", "الصنف", "Item")
+                                                            Wrap: =false
+                                                      - lblGrIhOrd:
+                                                          Control: Label@2.5.1
+                                                          Properties:
+                                                            Align: =Align.Right
+                                                            Color: =fxThemeColor("TextMuted")
+                                                            Font: =gblTheme.Typography.FontFamily
+                                                            FontWeight: =gblTheme.FontWeights.Medium
+                                                            Height: =20
+                                                            LayoutMinWidth: =64
+                                                            PaddingBottom: =0
+                                                            PaddingLeft: =0
+                                                            PaddingRight: =0
+                                                            PaddingTop: =0
+                                                            Size: =gblTheme.Typography.Caption
+                                                            Text: =If(gblLanguage = "Arabic", "المطلوب", "Ordered")
+                                                            Width: =80
+                                                            Wrap: =false
+                                                      - lblGrIhRec:
+                                                          Control: Label@2.5.1
+                                                          Properties:
+                                                            Align: =Align.Right
+                                                            Color: =fxThemeColor("TextMuted")
+                                                            Font: =gblTheme.Typography.FontFamily
+                                                            FontWeight: =gblTheme.FontWeights.Medium
+                                                            Height: =20
+                                                            LayoutMinWidth: =64
+                                                            PaddingBottom: =0
+                                                            PaddingLeft: =0
+                                                            PaddingRight: =0
+                                                            PaddingTop: =0
+                                                            Size: =gblTheme.Typography.Caption
+                                                            Text: =If(gblLanguage = "Arabic", "المستلم", "Received")
+                                                            Width: =80
+                                                            Wrap: =false
+                                                      - lblGrIhRej:
+                                                          Control: Label@2.5.1
+                                                          Properties:
+                                                            Align: =Align.Right
+                                                            Color: =fxThemeColor("TextMuted")
+                                                            Font: =gblTheme.Typography.FontFamily
+                                                            FontWeight: =gblTheme.FontWeights.Medium
+                                                            Height: =20
+                                                            LayoutMinWidth: =64
+                                                            PaddingBottom: =0
+                                                            PaddingLeft: =0
+                                                            PaddingRight: =0
+                                                            PaddingTop: =0
+                                                            Size: =gblTheme.Typography.Caption
+                                                            Text: =If(gblLanguage = "Arabic", "المرفوض", "Rejected")
+                                                            Width: =80
+                                                            Wrap: =false
+                                                - galGrLines:
+                                                    Control: Gallery@2.15.0
+                                                    Variant: Vertical
+                                                    Properties:
+                                                      Fill: =Color.Transparent
+                                                      Height: =Parent.Height - 40
+                                                      Items: =Filter(colGoodsReceiptLines, GRN.Id = varCurrentGRN.ID)
+                                                      TemplatePadding: =0
+                                                      TemplateSize: =44
+                                                      Width: =Max(Parent.Width, 460)
+                                                    Children:
+                                                      - conGrLine:
+                                                          Control: GroupContainer@1.5.0
+                                                          Variant: AutoLayout
+                                                          Properties:
+                                                            DropShadow: =DropShadow.None
+                                                            Fill: =Color.Transparent
+                                                            Height: =Parent.TemplateHeight
+                                                            LayoutAlignItems: =LayoutAlignItems.Center
+                                                            LayoutDirection: =LayoutDirection.Horizontal
+                                                            LayoutGap: =8
+                                                            PaddingLeft: =16
+                                                            PaddingRight: =16
+                                                            Width: =Parent.TemplateWidth
+                                                          Children:
+                                                            - lblGrLnDesc:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  FillPortions: =1
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =20
+                                                                  LayoutMinWidth: =140
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =Coalesce(ThisItem.ItemDescription, "-")
+                                                                  Wrap: =false
+                                                            - lblGrLnOrd:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Align: =Align.Right
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =20
+                                                                  LayoutMinWidth: =64
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =Text(Coalesce(ThisItem.OrderedQuantity, 0))
+                                                                  Width: =80
+                                                                  Wrap: =false
+                                                            - lblGrLnRec:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Align: =Align.Right
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =20
+                                                                  LayoutMinWidth: =64
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =Text(Coalesce(ThisItem.ReceivedQuantity, 0))
+                                                                  Width: =80
+                                                                  Wrap: =false
+                                                            - lblGrLnRej:
+                                                                Control: Label@2.5.1
+                                                                Properties:
+                                                                  Align: =Align.Right
+                                                                  Color: =fxThemeColor("TextPrimary")
+                                                                  Font: =gblTheme.Typography.FontFamily
+                                                                  FontWeight: =gblTheme.FontWeights.Medium
+                                                                  Height: =20
+                                                                  LayoutMinWidth: =64
+                                                                  PaddingBottom: =0
+                                                                  PaddingLeft: =0
+                                                                  PaddingRight: =0
+                                                                  PaddingTop: =0
+                                                                  Size: =gblTheme.Typography.Caption
+                                                                  Text: =Text(Coalesce(ThisItem.RejectedQuantity, 0))
+                                                                  Width: =80
+                                                                  Wrap: =false
+                                    - cmpGrComments:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpComments
+                                        Properties:
+                                          Height: =480
+                                          LayoutMinWidth: =0
+                                          ModuleName: ="Procurement"
+                                          People: =colProcPeople
+                                          RecordID: =Coalesce(varCurrentGRN.ID, 0)
+                                          RecordNumber: =Coalesce(varCurrentGRN.GRNNumber, "")
+                                          RecordType: ="GRN"
+                                          RelatedEntity: ="GoodsReceipt"
+                                          Involved: |-
+                                            =With(
+                                                {
+                                                    po: LookUp(PurchaseOrders, ID = varCurrentGRN.POID),
+                                                    pr: LookUp(PurchaseRequests, ID = LookUp(PurchaseOrders, ID = varCurrentGRN.POID).PRID)
+                                                },
+                                                Filter(
+                                                    Table(
+                                                        {UserID: Coalesce(varCurrentGRN.ReceivedByID, 0), UserName: Coalesce(varCurrentGRN.ReceivedBy.Value, "")},
+                                                        {UserID: Coalesce(po.PreparedByID, 0), UserName: Coalesce(po.PreparedBy.Value, "")},
+                                                        {UserID: Coalesce(pr.RequesterID, 0), UserName: Coalesce(pr.Requester.Value, "")},
+                                                        {UserID: Coalesce(pr.SupervisorID, 0), UserName: Coalesce(pr.Supervisor.Value, "")},
+                                                        {UserID: Coalesce(pr.ApproverID, 0), UserName: Coalesce(pr.Approver.Value, "")},
+                                                        {UserID: Coalesce(pr.FinancialApproverID, 0), UserName: Coalesce(pr.FinancialApprover.Value, "")},
+                                                        {UserID: Coalesce(pr.ReceivedByID, 0), UserName: Coalesce(pr.ReceivedBy.Value, "")}
+                                                    ),
+                                                    UserID > 0
+                                                )
+                                            )
+                                          Title: =If(gblLanguage = "Arabic", "النقاش", "Discussion")
+                                          Visible: =varGrPane = "Discussion"
+                                          Width: =Parent.Width
+                              - conGrSide:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.SetByContainer
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =cmpGrFlow.Height+cmpGrQuick.Height
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =12
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =If(App.Width < 1100, Parent.Width, 320)
+                                  Children:
+                                    - cmpGrFlow:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpApprovalFlow
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Center
+                                          EmptyText: =If(gblLanguage = "Arabic", "لا توجد خطوات", "No steps yet")
+                                          Height: =400
+                                          Items: |-
+                                            =Table(
+                                                {
+                                                    Sequence: 1,
+                                                    Decision: Coalesce(varCurrentGRN.InspectionStatus, varCurrentGRN.Status),
+                                                    Approver: varCurrentGRN.ReceivedBy,
+                                                    Requester: varCurrentGRN.ReceivedBy,
+                                                    DecisionDate: varCurrentGRN.ReceiptDate,
+                                                    AssignedDate: varCurrentGRN.ReceiptDate
+                                                }
+                                            )
+                                          Title: =If(gblLanguage = "Arabic", "حالة الاستلام", "Receipt status")
+                                          Width: =If(App.Width<700,Parent.Width-Parent.PaddingLeft*2,Min(320, Parent.Width))
+                                    - cmpGrQuick:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpQuickActions
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Start
+                                          Height: =320
+                                          Items: |-
+                                            =Table(
+                                                {ActionKey: "Print", Label: If(gblLanguage = "Arabic", "طباعة", "Print"), Icon: "Print", Visible: true},
+                                                {ActionKey: "SendEmail", Label: If(gblLanguage = "Arabic", "إرسال بريد", "Send Email"), Icon: "Mail", Visible: true},
+                                                {ActionKey: "AttachDocument", Label: If(gblLanguage = "Arabic", "إرفاق مستند", "Attach Document"), Icon: "Paperclip", Visible: true},
+                                                {ActionKey: "AddComment", Label: If(gblLanguage = "Arabic", "إضافة تعليق", "Add Comment"), Icon: "Message", Visible: true},
+                                                {ActionKey: "Edit", Label: If(gblLanguage = "Arabic", "تعديل", "Edit"), Icon: "Edit", Visible: varCurrentGRN.Status.Value = "Draft"}
+                                            )
+                                          OnSelect: |-
+                                            =Switch(
+                                                cmpGrQuick.SelectedAction.ActionKey,
+                                                "Print",
+                                                Notify(
+                                                    Concatenate(If(gblLanguage = "Arabic", "طباعة ", "Print "), Coalesce(varCurrentGRN.GRNNumber, "")),
+                                                    NotificationType.Information
+                                                ),
+                                                "SendEmail",
+                                                Set(varGrMailOpen, true),
+                                                "AttachDocument",
+                                                Set(varProcurementEntity, "GRN");
+                                                Set(varProcurementMode, If(varCurrentGRN.Status.Value = "Draft", "Edit", "View"));
+                                                Navigate(scrGRNEditor, ScreenTransition.Cover),
+                                                "AddComment",
+                                                Set(varGrPane, "Discussion"),
+                                                "Edit",
+                                                Set(varProcurementEntity, "GRN");
+                                                Set(varProcurementMode, "Edit");
+                                                Navigate(scrGRNEditor, ScreenTransition.Cover)
+                                            )
+                                          Title: =If(gblLanguage = "Arabic", "إجراءات سريعة", "Quick actions")
+                                          Width: =If(App.Width<700,Parent.Width-Parent.PaddingLeft*2,Min(320, Parent.Width))
+                                    - cmpGrHistory:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpHistoryTimeline
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Start
+                                          EntityID: =Coalesce(varCurrentGRN.ID, 0)
+                                          EntityType: ="GRN"
+                                          FilterMode: ="entity"
+                                          Height: =420
+                                          LogList: ="Procurement"
+                                          OnLoadMore: |-
+                                            =UpdateContext({locGrHistTop: Coalesce(locGrHistTop, 50) + 50})
+                                          ShowSensitive: =false
+                                          TopN: =Coalesce(locGrHistTop, 50)
+                                          Width: =If(App.Width<700,Parent.Width-Parent.PaddingLeft*2,Min(320, Parent.Width))
+      - cmpGrNew:
+          Control: CanvasComponent
+          ComponentName: cmpFloatingActionButton
+          Properties:
+            Color: =fxThemeColor("Primary")
+            Height: =56
+            Icon: ="Plus"
+            Label: =If(gblLanguage = "Arabic", "استلام", "Goods receipt")
+            OnSelect: |-
+              =Set(varProcurementEntity, "GRN");
+              Set(varProcurementMode, "New");
+              Set(varCurrentGRN, Blank());
+              Set(varSelectedPO, Blank());
+              Set(varSourcePO, Blank());
+              Set(varGrQuick, Blank());
+              Set(varGrPane, "Details");
+              Navigate(scrGRNEditor, ScreenTransition.Cover)
+            Size: ="regular"
+            SpeedDialItems: |-
+              =Filter(
+                  Table({Icon: "Plus", Label: "New", Color: RGBA(0, 0, 0, 1)}),
+                  false
+              )
+            Style: ="standard"
+            Visible: =And(App.Width < 700, IsBlank(varCurrentGRN))
+            Width: =56
+            X: =Parent.Width - 76
+            Y: =Parent.Height - If(App.Width < 700, cmpGrPhone.Height, 16) - 72
+      - cmpGrMail:
+          Control: CanvasComponent
+          ComponentName: cmpSendEmail
+          Properties:
+            Busy: =varGrMailBusy
+            ContextLine: =Coalesce(varCurrentGRN.GRNNumber, "")
+            DefaultSubject: |-
+              =Concatenate(
+                  If(gblLanguage = "Arabic", "استلام ", "Goods receipt "),
+                  Coalesce(varCurrentGRN.GRNNumber, "")
+              )
+            Directory: |-
+              =ForAll(
+                  colProcPeople,
+                  {DisplayName: FullName, Mail: Email, JobTitle: ""}
+              )
+            Height: =App.Height
+            OnCancel: |-
+              =Set(varGrMailOpen, false);
+              Reset(cmpGrMail)
+            OnSend: |-
+              =Set(varGrMailBusy, true);
+              Notify(
+                  Concatenate(If(gblLanguage = "Arabic", "الرسالة جاهزة: ", "Message ready: "), cmpGrMail.Subject),
+                  NotificationType.Success
+              );
+              Set(varGrMailBusy, false);
+              Set(varGrMailOpen, false);
+              Reset(cmpGrMail)
+            Title: =If(gblLanguage = "Arabic", "رسالة عن الاستلام", "Message about this receipt")
+            Visible: =varGrMailOpen
+            Width: =App.Width
+      - lblGrHeight:
+          Control: ModernText@1.0.0
+          Properties:
+            Height: |-
+              =Switch(
+                  varGrPane,
+                  "Details", conGrForm.Height + 2 * 8,
+                  "Discussion", cmpGrComments.Height + 2 * 16,
+                  If(App.Width>700, 10 * 30, 12 * 30)
+              )
+            Visible: =false
+            X: =40
+            Y: =40
+      - cmpGrPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height
+      - cmpGrTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="ShoppingCart"
+            ModuleName: =If(gblLanguage = "Arabic", "المشتريات", "Procurement")
+            OnSelectTitle: |-
+              =Set(varProcurementTab, "Main");
+              Set(varNavSelectedID, 31);
+              Navigate(scrProcurement, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "المشتريات", "Procurement")
+            ScreenTitle: =If(gblLanguage = "Arabic", "إشعارات الاستلام", "Goods receipts")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+      - conGrQuickScrim:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Height: =Parent.Height
+            Visible: =And(IsBlank(varCurrentGRN), Not(IsBlank(varGrQuick)))
+            Width: =Parent.Width
+            X: =If(App.Width < 700, 0, Parent.Width - Self.Width)
+          Children:
+            - btnGrScrim:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =RGBA(0, 0, 0, 0)
+                  BorderStyle: =BorderStyle.None
+                  BorderThickness: =0
+                  Color: =RGBA(255, 255, 255, 1)
+                  DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                  DisabledColor: =RGBA(161, 159, 157, 1)
+                  DisabledFill: =RGBA(242, 242, 241, 0)
+                  Fill: =RGBA(0, 0, 0, 0.24)
+                  Font: =Font.'Segoe UI'
+                  Height: =Parent.Height
+                  HoverBorderColor: =RGBA(0, 0, 0, 0)
+                  HoverColor: =RGBA(255, 255, 255, 1)
+                  HoverFill: =RGBA(0, 0, 0, 0)
+                  OnSelect: =Set(varGrQuick, Blank())
+                  PressedBorderColor: =RGBA(0, 69, 120, 1)
+                  PressedColor: =RGBA(255, 255, 255, 1)
+                  PressedFill: =RGBA(0, 0, 0, 0)
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  Text: =""
+                  Width: =Parent.Width
+            - conGrQuick:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  Height: =If(App.Width < 700, Parent.Height * 0.83, Parent.Height)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =If(App.Width < 700, 0, gblTheme.Radius.XL)
+                  RadiusBottomRight: =If(App.Width < 700, 0, gblTheme.Radius.XL)
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Visible: =And(IsBlank(varCurrentGRN), Not(IsBlank(varGrQuick)))
+                  Width: =If(App.Width < 700, Parent.Width, Min(380, Parent.Width - 24))
+                  X: =If(App.Width < 700, 0, Parent.Width - Self.Width)
+                  Y: =If(App.Width < 700, Parent.Height * 0.17, 0)
+                Children:
+                  - conGrQuickHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - conGrQuickMark:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =36
+                            Children:
+                              - imgGrQuickMark:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =18
+                                    Image: =fxSvg("Box", fxThemeInk("Primary"))
+                                    Width: =18
+                        - conGrQuickK:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =22
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =14
+                              Text: =If(gblLanguage = "Arabic", "عرض سريع", "Quick view")
+                              Wrap: =false
+                        - conGrQuickX:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              Icon: ="Dismiss"
+                              OnSelect: =Set(varGrQuick, Blank())
+                              Text: =""
+                              Tooltip: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                              Width: =36
+                  - conGrQuickNo:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =18
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =12
+                        Text: =Coalesce(varGrQuick.GRNNumber, "-")
+                        Width: =Parent.Width
+                        Wrap: =false
+                  - conGrQuickTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =44
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =14
+                        Text: =Coalesce(varGrQuick.Supplier.Value, "-")
+                        Width: =Parent.Width
+                  - conGrQuickChips:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =28
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        Width: =Parent.Width
+                      Children:
+                        - conGrQuickStatus:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =fxToneFill(
+                                    Switch(
+                                        varGrQuick.Status.Value,
+                                        "Approved", "approved",
+                                        "Completed", "completed",
+                                        "Posted", "info",
+                                        "Rejected", "rejected",
+                                        "Cancelled", "danger",
+                                        "Submitted", "in progress",
+                                        "pending"
+                                    )
+                                )
+                              FillPortions: =0
+                              Height: =26
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Round
+                              RadiusBottomRight: =gblTheme.Radius.Round
+                              RadiusTopLeft: =gblTheme.Radius.Round
+                              RadiusTopRight: =gblTheme.Radius.Round
+                              Width: =120
+                            Children:
+                              - lblGrQuickStatus:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: |-
+                                      =fxToneInk(
+                                          Switch(
+                                              varGrQuick.Status.Value,
+                                              "Approved", "approved",
+                                              "Completed", "completed",
+                                              "Posted", "info",
+                                              "Rejected", "rejected",
+                                              "Cancelled", "danger",
+                                              "Submitted", "in progress",
+                                              "pending"
+                                          )
+                                      )
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =Parent.Height
+                                    PaddingBottom: =0
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(varGrQuick.Status.Value, "-")
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                        - conGrQuickPri:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =fxToneFill(
+                                    Switch(varGrQuick.InspectionStatus.Value, "Approved", "approved", "Rejected", "rejected", "pending")
+                                )
+                              FillPortions: =0
+                              Height: =26
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Round
+                              RadiusBottomRight: =gblTheme.Radius.Round
+                              RadiusTopLeft: =gblTheme.Radius.Round
+                              RadiusTopRight: =gblTheme.Radius.Round
+                              Width: =96
+                            Children:
+                              - lblGrQuickPri:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: |-
+                                      =fxToneInk(
+                                          Switch(varGrQuick.InspectionStatus.Value, "Approved", "approved", "Rejected", "rejected", "pending")
+                                      )
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =Parent.Height
+                                    PaddingBottom: =0
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(varGrQuick.InspectionStatus.Value, "-")
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                  - conGrQuickFacts:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Max(180, Parent.Height - 250)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        Width: =Parent.Width
+                      Children:
+                        - conGrQf1:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.Width
+                            Children:
+                              - conGrQf1Ico:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =36
+                                  Children:
+                                    - imgconGrQf1:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("User", fxThemeInk("Primary"))
+                                          Width: =18
+                              - conGrQf1Tx:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - conGrQf1K:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =If(gblLanguage = "Arabic", "المورد", "Supplier")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - conGrQf1V:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(varGrQuick.Supplier.Value, "-")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                        - conGrQf2:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.Width
+                            Children:
+                              - conGrQf2Ico:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =36
+                                  Children:
+                                    - imgconGrQf2:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Receipt", fxThemeInk("Primary"))
+                                          Width: =18
+                              - conGrQf2Tx:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - conGrQf2K:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =If(gblLanguage = "Arabic", "أمر الشراء", "Purchase order")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - conGrQf2V:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(varGrQuick.PONumber, "-")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                        - conGrQf3:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.Width
+                            Children:
+                              - conGrQf3Ico:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =36
+                                  Children:
+                                    - imgconGrQf3:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Folder", fxThemeInk("Primary"))
+                                          Width: =18
+                              - conGrQf3Tx:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - conGrQf3K:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - conGrQf3V:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(varGrQuick.Project.Value, "-")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                        - conGrQf4:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.Width
+                            Children:
+                              - conGrQf4Ico:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =36
+                                  Children:
+                                    - imgconGrQf4:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Calendar", fxThemeInk("Primary"))
+                                          Width: =18
+                              - conGrQf4Tx:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - conGrQf4K:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =If(gblLanguage = "Arabic", "تاريخ الاستلام", "Receipt date")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - conGrQf4V:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =If(IsBlank(varGrQuick.ReceiptDate), "-", Text(varGrQuick.ReceiptDate, "dd mmm yyyy"))
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                        - conGrQf5:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.Width
+                            Children:
+                              - conGrQf5Ico:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =36
+                                  Children:
+                                    - imgconGrQf5:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("User", fxThemeInk("Primary"))
+                                          Width: =18
+                              - conGrQf5Tx:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - conGrQf5K:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =If(gblLanguage = "Arabic", "المستلم", "Received by")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - conGrQf5V:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(varGrQuick.ReceivedBy.Value, "-")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                        - conGrQf6:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.Width
+                            Children:
+                              - conGrQf6Ico:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =fxThemeColor("PrimaryLight")
+                                    FillPortions: =0
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    RadiusBottomLeft: =gblTheme.Radius.Medium
+                                    RadiusBottomRight: =gblTheme.Radius.Medium
+                                    RadiusTopLeft: =gblTheme.Radius.Medium
+                                    RadiusTopRight: =gblTheme.Radius.Medium
+                                    Width: =36
+                                  Children:
+                                    - imgconGrQf6:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Money", fxThemeInk("Primary"))
+                                          Width: =18
+                              - conGrQf6Tx:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - conGrQf6K:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =If(gblLanguage = "Arabic", "القيمة", "Received value")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - conGrQf6V:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Concatenate(Text(Coalesce(varGrQuick.TotalReceived, 0), "#,##0.00"), " $")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                  - conGrQuickOpen:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =40
+                        Icon: ="Eye"
+                        OnSelect: |-
+                          =Set(varCurrentGRN, varGrQuick);
+                          UpdateContext({locGrHistTop: 50});
+                          Reset(cmpGrHistory);
+                          Set(varProcurementEntity, "GRN");
+                          Set(varProcurementMode, "View");
+                          Set(varGrPane, "Details");
+                          Set(varGrQuick, Blank());
+                          Set(varGrMenuId, 0)
+                        Text: =If(gblLanguage = "Arabic", "فتح الاستلام", "Open receipt")
+                        Width: =Parent.Width

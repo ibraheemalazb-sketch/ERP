@@ -1,0 +1,1915 @@
+Screens:
+  ScrApprovalCenter:
+    Properties:
+      Fill: |-
+        =If(
+            gblTheme.Mode = "Dark",
+            gblTheme.Dark.Colors.Background,
+            gblTheme.Light.Colors.Background
+        )
+      LoadingSpinnerColor: =RGBA(0, 120, 212, 1)
+      OnVisible: |-
+        =Set(gblSelectedApproval, Blank());
+        Set(ShowFilter, false);
+        Set(varApprovalSearch, "");
+        Set(varApprovalModule, Blank());
+        Set(varApprovalRequestType, Blank());
+        Set(varApprovalEntityType, Blank());
+        Set(varApprovalDecision, "Pending");
+        Set(
+            varApprovalView,
+            If(App.Width < 700, "Card", "Table")
+        );
+        Reset(cmpApprovalTable);
+        If(
+            IsBlank(gblMenuExpanded),
+            Set(gblMenuExpanded, true)
+        );
+        If(
+            !IsBlank(gblUser.ID),
+            ClearCollect(
+                colApprovalCenter,
+                Sort(
+                    Filter(
+                        ApprovalHistory,
+                        ApproverID = gblUser.ID
+                    ),
+                    AssignedDate,
+                    SortOrder.Descending
+                )
+            )
+        )
+    Children:
+      - conApprovalPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutJustifyContent: =LayoutJustifyContent.Start
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            LayoutWrap: =false
+            PaddingBottom: =If(App.Width < 700, cmpApprovalPhoneNav.Height, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpApprovalTopBar.Height + 8
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - lblApprovalTitle:
+                Control: ModernText@1.0.0
+                Properties:
+                  AccessibleLabel: =Self.Text
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.TextPrimary,
+                        gblTheme.Light.Colors.TextPrimary
+                    )
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  FontWeight: =gblTheme.FontWeights.Medium
+                  Height: =22
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =16
+                  Text: =If(gblLanguage = "Arabic", "مركز الموافقات", "Approval Center")
+            - lblApprovalCount:
+                Control: ModernText@1.0.0
+                Properties:
+                  AccessibleLabel: =Self.Text
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.TextMuted,
+                        gblTheme.Light.Colors.TextMuted
+                    )
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =16
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =11
+                  Text: |-
+                    =Text(
+                        CountRows(
+                            Filter(
+                                colApprovalCenter,
+                                Decision.Value = "Pending"
+                            )
+                        )
+                    ) & " " & If(gblLanguage = "Arabic", "بانتظار القرار", "pending")
+                  Width: =Parent.Width
+            - cmpApprovalKpi:
+                Control: CanvasComponent
+                ComponentName: cmpKPIwNav
+                Properties:
+                  AlignInContainer: =AlignInContainer.Stretch
+                  AnimationEffect: ="None"
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 4,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "ClipboardCheck",
+                            Value: CountRows(Filter(colApprovalCenter, Decision.Value = "Pending")),
+                            Label: If(gblLanguage = "Arabic", "قيد الانتظار", "Pending"),
+                            Subtitle: If(gblLanguage = "Arabic", "بانتظار قرارك", "Awaiting your decision"),
+                            Screen: "Pending",
+                            IconBg: "",
+                            IconColor: If(gblTheme.Mode = "Dark", "rgb(121,176,255)", "rgb(27,86,229)"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "Check",
+                            Value: CountRows(Filter(colApprovalCenter, Decision.Value = "Approved")),
+                            Label: If(gblLanguage = "Arabic", "تمت الموافقة", "Approved"),
+                            Subtitle: If(gblLanguage = "Arabic", "قرارات مكتملة", "Decisions completed"),
+                            Screen: "Approved",
+                            IconBg: "",
+                            IconColor: If(gblTheme.Mode = "Dark", "rgb(74,222,128)", "rgb(22,163,74)"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Warning",
+                            Value: CountRows(Filter(colApprovalCenter, Decision.Value = "Rejected")),
+                            Label: If(gblLanguage = "Arabic", "مرفوض", "Rejected"),
+                            Subtitle: If(gblLanguage = "Arabic", "طلبات مرفوضة", "Requests turned down"),
+                            Screen: "Rejected",
+                            IconBg: "",
+                            IconColor: If(gblTheme.Mode = "Dark", "rgb(248,113,113)", "rgb(220,38,38)"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Clock",
+                            Value: CountRows(
+                                Filter(
+                                    colApprovalCenter,
+                                    Decision.Value = "Pending",
+                                    AssignedDate < DateAdd(Now(), -2, TimeUnit.Days)
+                                )
+                            ),
+                            Label: If(gblLanguage = "Arabic", "متأخرة", "Waiting"),
+                            Subtitle: If(gblLanguage = "Arabic", "أكثر من يومين", "Open more than 2 days"),
+                            Screen: "Overdue",
+                            IconBg: "",
+                            IconColor: If(gblTheme.Mode = "Dark", "rgb(251,191,36)", "rgb(217,119,6)"),
+                            SparklineData: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  FontsSizesTitle: =12
+                  Height: |-
+                    =With(
+                        {
+                            cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4))
+                        },
+                        RoundUp(4 / cols, 0) * 108
+                    )
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "ClipboardCheck",
+                            SVG: ""
+                        }
+                    )
+                  IconsSize: =20
+                  IsLoading: =false
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnCardClick: |-
+                    =Set(
+                        varApprovalDecision,
+                        Switch(
+                            varClickScreen,
+                            "Approved", "Approved",
+                            "Rejected", "Rejected",
+                            "Pending"
+                        )
+                    )
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+            - conApprovalToolbar:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.Border,
+                        gblTheme.Light.Colors.Border
+                    )
+                  BorderThickness: =1
+                  AlignInContainer: =AlignInContainer.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: |-
+                    =If(
+                        gblTheme.Mode = "Dark",
+                        gblTheme.Dark.Colors.Surface,
+                        gblTheme.Light.Colors.Surface
+                    )
+                  FillPortions: =0
+                  Height: |-
+                    =conApprovalToolbarRow.Height + If(
+                        ShowFilter,
+                        conApprovalFilterRow.Height + Self.LayoutGap,
+                        0
+                    ) + Self.PaddingTop + Self.PaddingBottom
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =false
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                  Width: =Parent.Width
+                Children:
+                  - conApprovalToolbarRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Stretch
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutWrap: =false
+                      Children:
+                        - txtApprovalSearch:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "البحث في سجل الموافقات", "Search approval history")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =Appearance.Outline
+                              FillPortions: =1
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =160
+                              OnChange: =Set(varApprovalSearch, Self.Text)
+                              Placeholder: =If(gblLanguage = "Arabic", "رقم الطلب أو العنوان", "Request number or title")
+                              Size: =12
+                        - cmbApprovalStatus:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "القرار", "Decision")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =Appearance.Outline
+                              FillPortions: =0
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              DefaultSelectedItems: =Filter(Choices(ApprovalHistory.Decision), Value = varApprovalDecision)
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل القرارات", "All decisions")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ApprovalHistory.Decision)
+                              OnChange: =Set(varApprovalDecision, Self.Selected.Value)
+                              SelectMultiple: =false
+                              Size: =12
+                              Width: =150
+                        - btnApprovalRefresh:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =ButtonAppearance.Transparent
+                              FillPortions: =0
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Height: =36
+                              Icon: ="ArrowSync"
+                              OnSelect: |-
+                                =Refresh(ApprovalHistory);
+                                If(
+                                    !IsBlank(gblUser.ID),
+                                    ClearCollect(
+                                        colApprovalCenter,
+                                        Sort(
+                                            Filter(
+                                                ApprovalHistory,
+                                                ApproverID = gblUser.ID
+                                            ),
+                                            AssignedDate,
+                                            SortOrder.Descending
+                                        )
+                                    )
+                                )
+                              Text: =""
+                              Tooltip: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                              Width: =36
+                        - btnApprovalFilters:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "عوامل التصفية", "Filters")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =If(ShowFilter, ButtonAppearance.Primary, ButtonAppearance.Outline)
+                              FillPortions: =0
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Height: =36
+                              Icon: ="Filter"
+                              OnSelect: =Set(ShowFilter, !Coalesce(ShowFilter, false))
+                              Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تصفية", "Filters"))
+                              Tooltip: =If(gblLanguage = "Arabic", "إظهار التصفية", "Show filters")
+                              Width: =If(App.Width < 700, 36, 96)
+                        - conApprovalViewToggle:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              BorderColor: |-
+                                =If(
+                                    gblTheme.Mode = "Dark",
+                                    gblTheme.Dark.Colors.Border,
+                                    gblTheme.Light.Colors.Border
+                                )
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =2
+                              PaddingBottom: =2
+                              PaddingLeft: =2
+                              PaddingRight: =2
+                              PaddingTop: =2
+                              RadiusBottomLeft: =8
+                              RadiusBottomRight: =8
+                              RadiusTopLeft: =8
+                              RadiusTopRight: =8
+                              Width: =If(App.Width < 700, 76, 168)
+                            Children:
+                              - btnApprovalTableView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "جدول", "Table")
+                                    Appearance: =If(varApprovalView = "Table", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                    Height: =30
+                                    Icon: ="Table"
+                                    OnSelect: =Set(varApprovalView, "Table")
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "جدول", "Table"))
+                                    Tooltip: =If(gblLanguage = "Arabic", "جدول", "Table")
+                                    Visible: =App.Width >= 700
+                                    Width: =72
+                              - btnApprovalCardView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "بطاقة", "Card")
+                                    Appearance: =If(varApprovalView = "Card", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                    Height: =30
+                                    Icon: ="Grid"
+                                    OnSelect: =Set(varApprovalView, "Card")
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "بطاقة", "Card"))
+                                    Tooltip: =If(gblLanguage = "Arabic", "بطاقة", "Card")
+                                    Width: =If(App.Width < 700, 34, 64)
+                              - btnApprovalListView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "قائمة", "List")
+                                    Appearance: =If(varApprovalView = "List", ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                                    Height: =30
+                                    Icon: ="List"
+                                    OnSelect: =Set(varApprovalView, "List")
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "قائمة", "List"))
+                                    Tooltip: =If(gblLanguage = "Arabic", "قائمة", "List")
+                                    Width: =If(App.Width < 700, 34, 64)
+                  - conApprovalFilterRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Stretch
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 156, 36)
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutWrap: =false
+                        Visible: =ShowFilter = true
+                      Children:
+                        - cmbApprovalModule:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الوحدة", "Module")
+                              Appearance: =Appearance.Outline
+                              DefaultSelectedItems: =Filter(Choices(ApprovalHistory.Module), Value = varApprovalModule)
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الوحدات", "All modules")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ApprovalHistory.Module)
+                              OnChange: =Set(varApprovalModule, Self.Selected.Value)
+                              SelectMultiple: =false
+                              Size: =12
+                              Width: =If(App.Width < 700, Parent.Width, 180)
+                        - cmbApprovalRequestType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "نوع الطلب", "Request type")
+                              Appearance: =Appearance.Outline
+                              DefaultSelectedItems: =Filter(Choices(ApprovalHistory.RequestType), Value = varApprovalRequestType)
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل أنواع الطلبات", "All request types")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ApprovalHistory.RequestType)
+                              OnChange: =Set(varApprovalRequestType, Self.Selected.Value)
+                              SelectMultiple: =false
+                              Size: =12
+                              Width: =If(App.Width < 700, Parent.Width, 180)
+                        - cmbApprovalEntityType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "نوع الكيان", "Entity type")
+                              Appearance: =Appearance.Outline
+                              DefaultSelectedItems: =Filter(Choices(ApprovalHistory.EntityType), Value = varApprovalEntityType)
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الكيانات", "All entity types")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ApprovalHistory.EntityType)
+                              OnChange: =Set(varApprovalEntityType, Self.Selected.Value)
+                              SelectMultiple: =false
+                              Size: =12
+                              Width: =If(App.Width < 700, Parent.Width, 180)
+                        - btnApprovalClearFilters:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "مسح جميع عوامل التصفية", "Clear all filters")
+                              Appearance: =ButtonAppearance.Outline
+                              Height: =36
+                              OnSelect: |-
+                                =Set(varApprovalSearch, "");
+                                Set(varApprovalModule, Blank());
+                                Set(varApprovalRequestType, Blank());
+                                Set(varApprovalEntityType, Blank());
+                                Set(varApprovalDecision, Blank());
+                                Reset(txtApprovalSearch);
+                                Reset(cmbApprovalModule);
+                                Reset(cmbApprovalRequestType);
+                                Reset(cmbApprovalEntityType);
+                                Reset(cmbApprovalStatus)
+                              Text: =If(gblLanguage = "Arabic", "مسح الكل", "Clear all")
+                              Tooltip: =Self.Text
+                              Width: =96
+            - conApprovalBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  AlignInContainer: =AlignInContainer.Stretch
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =1
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =0
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =false
+                Children:
+                  - cmpApprovalTable:
+                      Control: CanvasComponent
+                      ComponentName: cmpMyTable
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Stretch
+                        CardHeight: =210
+                        EmptySubtitle: =If(gblLanguage = "Arabic", "لا توجد طلبات تطابق البحث أو التصفية.", "No requests match the current search or filters.")
+                        EmptyTitle: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              Switch(
+                                  Coalesce(varApprovalDecision, ""),
+                                  "Pending", "لا توجد موافقات معلقة",
+                                  "Approved", "لا توجد موافقات معتمدة",
+                                  "Rejected", "لا توجد موافقات مرفوضة",
+                                  "لا توجد طلبات موافقة"
+                              ),
+                              Switch(
+                                  Coalesce(varApprovalDecision, ""),
+                                  "Pending", "No pending approvals",
+                                  "Approved", "No approved requests",
+                                  "Rejected", "No rejected requests",
+                                  "No approval requests"
+                              )
+                          )
+                        EnableHover: =true
+                        EnableMenu: =false
+                        FillPortions: =1
+                        HeaderAction: =If(gblLanguage = "Arabic", "إجراء", "ACTIONS")
+                        HeaderColumn2: =If(gblLanguage = "Arabic", "المستوى", "LEVEL")
+                        HeaderHeight: =40
+                        HeaderId: =If(gblLanguage = "Arabic", "المعرف", "ID")
+                        HeaderPerson: =If(gblLanguage = "Arabic", "مقدم الطلب", "REQUESTER")
+                        HeaderStatus: =If(gblLanguage = "Arabic", "القرار", "DECISION")
+                        HeaderSubtitle: =If(gblLanguage = "Arabic", "الوحدة", "MODULE")
+                        HeaderTitle: =If(gblLanguage = "Arabic", "نوع الطلب", "REQUEST TYPE")
+                        HeaderWhen: =If(gblLanguage = "Arabic", "تاريخ الإسناد", "ASSIGNED DATE")
+                        Height: =Max(Parent.Height, 360)
+                        Items: |-
+                          =ForAll(
+                              Sort(
+                                  Filter(
+                                      colApprovalCenter,
+                                      Or(
+                                          IsBlank(varApprovalSearch),
+                                          StartsWith(Title, varApprovalSearch),
+                                          StartsWith(Coalesce(RequestNumber, ""), varApprovalSearch)
+                                      ),
+                                      Or(
+                                          IsBlank(varApprovalModule),
+                                          Module.Value = varApprovalModule
+                                      ),
+                                      Or(
+                                          IsBlank(varApprovalRequestType),
+                                          RequestType.Value = varApprovalRequestType
+                                      ),
+                                      Or(
+                                          IsBlank(varApprovalEntityType),
+                                          EntityType.Value = varApprovalEntityType
+                                      ),
+                                      Or(
+                                          IsBlank(varApprovalDecision),
+                                          Decision.Value = varApprovalDecision
+                                      )
+                                  ),
+                                  AssignedDate,
+                                  SortOrder.Descending
+                              ) As row,
+                              {
+                                  RowKey: Text(row.ID),
+                                  Title: Coalesce(row.RequestType.Value, "-"),
+                                  Subtitle: Coalesce(row.Module.Value, "-"),
+                                  Column1: "",
+                                  Column2: Coalesce(row.ApprovalLevel.Value, "-"),
+                                  Column3: "",
+                                  Status: Coalesce(row.Decision.Value, "Pending"),
+                                  Tone: Coalesce(row.Decision.Value, "Pending"),
+                                  Priority: "",
+                                  PriorityTone: "",
+                                  Person: Coalesce(row.Requester.Value, "-"),
+                                  WhenText: If(IsBlank(row.AssignedDate), "-", Text(row.AssignedDate, "dd mmm yyyy")),
+                                  ProgressDone: 0,
+                                  ProgressTotal: 0,
+                                  IconName: Switch(
+                                      row.Module.Value,
+                                      "Procurement", "ShoppingCart",
+                                      "HR", "Users",
+                                      "Projects", "List",
+                                      "Finance", "Money",
+                                      "MEAL", "Chart",
+                                      "ClipboardCheck"
+                                  )
+                              }
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnRowSelect: |-
+                          =Set(
+                              gblSelectedApproval,
+                              LookUp(
+                                  colApprovalCenter,
+                                  ID = Value(cmpApprovalTable.SelectedItem.RowKey)
+                              )
+                          )
+                        PersonAsAvatar: =true
+                        RowHeight: =56
+                        ShowAction: =true
+                        ShowColumn1: =false
+                        ShowColumn2: =true
+                        ShowColumn3: =false
+                        ShowHeader: =true
+                        ShowId: =true
+                        ShowPerson: =true
+                        ShowPriority: =false
+                        ShowProgress: =false
+                        ShowStatus: =true
+                        ShowSubtitle: =true
+                        ShowViewToggle: =false
+                        ShowWhen: =true
+                        SubtitleAsPill: =true
+                        TitleBold: =false
+                        ViewMode: =varApprovalView
+                        Width: =Parent.Width
+                        WidthAction: =72
+                        WidthColumn2: =150
+                        WidthId: =64
+                        WidthPerson: =200
+                        WidthStatus: =120
+                        WidthSubtitle: =140
+                        WidthTitle: =160
+                        WidthWhen: =140
+      - conApprovalNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: |-
+              =If(
+                  gblTheme.Mode = "Dark",
+                  gblTheme.Dark.Colors.Surface,
+                  gblTheme.Light.Colors.Surface
+              )
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpApprovalNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "Home",
+                            SVG: ""
+                        }
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpApprovalTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {
+                              flag: Lower(Trim(Coalesce(IsRead, "no")))
+                          },
+                          And(
+                              flag <> "yes",
+                              flag <> "true",
+                              flag <> "1"
+                          )
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {
+                              flag: Lower(Trim(Coalesce(IsRead, "no")))
+                          },
+                          And(
+                              flag <> "yes",
+                              flag <> "true",
+                              flag <> "1"
+                          )
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="ClipboardCheck"
+            ModuleName: |-
+              =If(
+                  gblLanguage = "Arabic",
+                  "الرئيسية",
+                  "Home"
+              )
+            OnSelectTitle: =Navigate(ScrHome, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "مركز الموافقات", "Approval Center")
+            ScreenTitle: =If(gblLanguage = "Arabic", "مركز الموافقات", "Approval Center")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpApprovalPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table(
+                  {
+                      Name: "Home",
+                      SVG: ""
+                  }
+              )
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conApprovalDetails:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(0, 0, 0, 0.35)
+            Height: =Parent.Height
+            Visible: =!IsBlank(gblSelectedApproval)
+            Width: =If(App.Width < 700, Parent.Width, Parent.Width * 0.42)
+            X: =Parent.Width - Self.Width
+            Y: =0
+          Children:
+            - btnApprovalScrim:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =Parent.Height
+                  OnSelect: =Set(gblSelectedApproval, Blank())
+                  Text: =""
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+            - conApprovalDetailsCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =RGBA(226, 232, 240, 1)
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =RGBA(255, 255, 255, 1)
+                  Height: =If(App.Width < 700, Parent.Height * 0.9, Parent.Height)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =20
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  LayoutWrap: =false
+                  PaddingBottom: =18
+                  PaddingLeft: =If(App.Width < 700, 10, 12)
+                  PaddingRight: =If(App.Width < 700, 10, 12)
+                  PaddingTop: =18
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =If(App.Width < 700, 15, 0)
+                  RadiusTopRight: =If(App.Width < 700, 15, 0)
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =Parent.Height - Self.Height
+                Children:
+                  - conApprovalDetailsHeader:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Stretch
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =85
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - conApprovalDetailsHeaderRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =44
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - conApprovalDetailsBadge:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(239, 246, 255, 1)
+                                    FillPortions: =0
+                                    Height: =40
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    RadiusBottomLeft: =13
+                                    RadiusBottomRight: =13
+                                    RadiusTopLeft: =13
+                                    RadiusTopRight: =13
+                                    Width: =40
+                                  Children:
+                                    - icoApprovalDetailsBadge:
+                                        Control: ModernIcon@1.1.1
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Center
+                                          Height: =22
+                                          Icon: ="DocumentCheckmark"
+                                          IconColor: =RGBA(59, 130, 246, 1)
+                                          IconStyle: =IconStyle.Filled
+                                          Width: =22
+                              - conApprovalDetailsTitles:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =1
+                                    Height: =44
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - lblApprovalDetailsTitle:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Bold
+                                          Height: =22
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Size: =If(App.Width < 700, 12, 14)
+                                          Text: =If(gblLanguage = "Arabic", "تفاصيل الموافقة", "Approval Details")
+                                          Wrap: =false
+                                    - lblApprovalDetailsRequest:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(100, 116, 139, 1)
+                                          Font: =Font.'Segoe UI'
+                                          Height: =16
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Size: =10
+                                          Text: |-
+                                            =Coalesce(gblSelectedApproval.Module.Value, "-") & " " & If(gblLanguage = "Arabic", "رقم الطلب", "Request No.") & " " & Coalesce(gblSelectedApproval.RequestNumber, "-")
+                                          Wrap: =false
+                              - icoApprovalClose:
+                                  Control: ModernIcon@1.1.1
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    BorderColor: =RGBA(215, 58, 60, 1)
+                                    BorderThickness: =1
+                                    Fill: =RGBA(215, 58, 60, 1)
+                                    FillPortions: =0
+                                    Height: =36
+                                    Icon: ="Dismiss"
+                                    IconColor: =RGBA(255, 255, 255, 1)
+                                    IconStyle: =IconStyle.Filled
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(gblSelectedApproval, Blank())
+                                    PaddingBottom: =8
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    PaddingTop: =8
+                                    RadiusBottomLeft: =4
+                                    RadiusBottomRight: =4
+                                    RadiusTopLeft: =4
+                                    RadiusTopRight: =4
+                                    Tooltip: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                                    Width: =36
+                        - conApprovalDetailsStatus:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - conApprovalDetailsEntity:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =1
+                                    Height: =18
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - icoApprovalDetailsEntity:
+                                        Control: ModernIcon@1.1.1
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Center
+                                          Height: =14
+                                          Icon: ="Tag"
+                                          IconColor: =RGBA(100, 116, 139, 1)
+                                          Width: =14
+                                    - lblApprovalDetailsEntity:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(100, 116, 139, 1)
+                                          FillPortions: =1
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =18
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Size: =11
+                                          Text: |-
+                                            =If(gblLanguage = "Arabic", "نوع الطلب", "Entity") & ": " & Coalesce(gblSelectedApproval.EntityType.Value, "-")
+                                          Wrap: =false
+                              - conApprovalDetailsDecision:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    DropShadow: =DropShadow.None
+                                    Fill: |-
+                                      =Switch(
+                                          gblSelectedApproval.Decision.Value,
+                                          "Approved", RGBA(220, 252, 231, 1),
+                                          "Rejected", RGBA(254, 226, 226, 1),
+                                          RGBA(255, 251, 235, 1)
+                                      )
+                                    FillPortions: =0
+                                    Height: =30
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutJustifyContent: =LayoutJustifyContent.Center
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    RadiusBottomLeft: =15
+                                    RadiusBottomRight: =15
+                                    RadiusTopLeft: =15
+                                    RadiusTopRight: =15
+                                  Children:
+                                    - icoApprovalDetailsDecision:
+                                        Control: ModernIcon@1.1.1
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Center
+                                          Height: =16
+                                          Icon: |-
+                                            =Switch(
+                                                gblSelectedApproval.Decision.Value,
+                                                "Approved", "CheckmarkCircle",
+                                                "Rejected", "DismissCircle",
+                                                "Clock"
+                                            )
+                                          IconColor: |-
+                                            =Switch(
+                                                gblSelectedApproval.Decision.Value,
+                                                "Approved", RGBA(21, 128, 61, 1),
+                                                "Rejected", RGBA(185, 28, 28, 1),
+                                                RGBA(146, 64, 14, 1)
+                                            )
+                                          IconStyle: =IconStyle.Filled
+                                          Width: =16
+                                    - lblApprovalDetailsDecision:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: |-
+                                            =Switch(
+                                                gblSelectedApproval.Decision.Value,
+                                                "Approved", RGBA(21, 128, 61, 1),
+                                                "Rejected", RGBA(185, 28, 28, 1),
+                                                RGBA(146, 64, 14, 1)
+                                            )
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Bold
+                                          Height: =30
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          Size: =10
+                                          Text: |-
+                                            =If(
+                                                gblLanguage = "Arabic",
+                                                Switch(
+                                                    Coalesce(gblSelectedApproval.Decision.Value, ""),
+                                                    "Approved", "تمت الموافقة",
+                                                    "Rejected", "مرفوض",
+                                                    "Pending", "قيد الانتظار",
+                                                    "قيد المراجعة"
+                                                ),
+                                                Switch(
+                                                    Coalesce(gblSelectedApproval.Decision.Value, ""),
+                                                    "Approved", "Approved",
+                                                    "Rejected", "Rejected",
+                                                    "Pending", "Pending",
+                                                    "In Review"
+                                                )
+                                            )
+                                          Wrap: =false
+                  - conApprovalDetailsBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =1
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                      Children:
+                        - conApprovalRequestRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 220, 100)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutWrap: =true
+                            Children:
+                              - conApprovalRequester:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(248, 250, 252, 1)
+                                    FillPortions: =0
+                                    Height: =100
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =120
+                                    PaddingBottom: =5
+                                    PaddingLeft: =10
+                                    PaddingRight: =10
+                                    PaddingTop: =5
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =150
+                                  Children:
+                                    - conApprovalRequesterHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =18
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - icoApprovalRequester:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                Height: =14
+                                                Icon: ="Person"
+                                                IconColor: =RGBA(100, 116, 139, 1)
+                                                Width: =14
+                                          - lblApprovalRequester:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(100, 116, 139, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =10
+                                                Text: =If(gblLanguage = "Arabic", "مقدم الطلب", "Requester")
+                                                Wrap: =false
+                                    - lblApprovalRequesterValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =If(App.Width < 700, 10, 11)
+                                          Text: |-
+                                            =If(
+                                                IsBlank(gblSelectedApproval.Requester),
+                                                If(IsBlank(gblSelectedApproval.RequesterID), "-", Text(gblSelectedApproval.RequesterID)),
+                                                gblSelectedApproval.Requester.Value
+                                            )
+                                          Wrap: =false
+                              - conApprovalAssigned:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(248, 250, 252, 1)
+                                    FillPortions: =0
+                                    Height: =100
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =64
+                                    LayoutMinWidth: =150
+                                    PaddingBottom: =5
+                                    PaddingLeft: =10
+                                    PaddingRight: =10
+                                    PaddingTop: =5
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =If(App.Width < 700, Parent.Width, 150)
+                                  Children:
+                                    - conApprovalAssignedHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =18
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - icoApprovalAssigned:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                Height: =14
+                                                Icon: ="Calendar"
+                                                IconColor: =RGBA(100, 116, 139, 1)
+                                                Width: =14
+                                          - lblApprovalAssigned:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(100, 116, 139, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =10
+                                                Text: =If(gblLanguage = "Arabic", "تاريخ الإسناد", "Assigned Date")
+                                                Wrap: =false
+                                    - lblApprovalAssignedValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =If(App.Width < 700, 10, 11)
+                                          Text: =If(IsBlank(gblSelectedApproval.AssignedDate), "-", Text(gblSelectedApproval.AssignedDate, "dd mmm yyyy, hh:mm"))
+                                          Wrap: =false
+                              - conApprovalElapsed:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: |-
+                                      =Switch(
+                                          gblSelectedApproval.Decision.Value,
+                                          "Approved", RGBA(220, 252, 231, 1),
+                                          "Rejected", RGBA(254, 226, 226, 1),
+                                          RGBA(255, 251, 235, 1)
+                                      )
+                                    FillPortions: =0
+                                    Height: =100
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =3
+                                    LayoutMinHeight: =64
+                                    LayoutMinWidth: =150
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    Width: =If(App.Width < 700, Parent.Width, 150)
+                                    RadiusBottomLeft: =12
+                                    RadiusBottomRight: =12
+                                    RadiusTopLeft: =12
+                                    RadiusTopRight: =12
+                                  Children:
+                                    - icoApprovalElapsed:
+                                        Control: ModernIcon@1.1.1
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Center
+                                          Height: =28
+                                          Icon: ="Clock"
+                                          IconColor: |-
+                                            =Switch(
+                                                gblSelectedApproval.Decision.Value,
+                                                "Approved", RGBA(21, 128, 61, 1),
+                                                "Rejected", RGBA(185, 28, 28, 1),
+                                                RGBA(146, 64, 14, 1)
+                                            )
+                                          IconStyle: =IconStyle.Filled
+                                          Width: =28
+                                    - conApprovalElapsedText:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =1
+                                          Height: =48
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutGap: =2
+                                          LayoutJustifyContent: =LayoutJustifyContent.Center
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - lblApprovalElapsed:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: |-
+                                                  =Switch(
+                                                      gblSelectedApproval.Decision.Value,
+                                                      "Approved", RGBA(21, 128, 61, 1),
+                                                      "Rejected", RGBA(185, 28, 28, 1),
+                                                      RGBA(146, 64, 14, 1)
+                                                  )
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =16
+                                                Size: =10
+                                                Text: =If(gblLanguage = "Arabic", "الوقت المنقضي", "Time Passed")
+                                                Wrap: =false
+                                          - lblApprovalElapsedValue:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(15, 23, 42, 1)
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =20
+                                                Size: =11
+                                                Text: |-
+                                                  =If(
+                                                      IsBlank(gblSelectedApproval.AssignedDate),
+                                                      "-",
+                                                      With(
+                                                          {
+                                                              hours: DateDiff(
+                                                                  gblSelectedApproval.AssignedDate,
+                                                                  If(IsBlank(gblSelectedApproval.DecisionDate), Now(), gblSelectedApproval.DecisionDate),
+                                                                  TimeUnit.Hours
+                                                              )
+                                                          },
+                                                          Text(RoundDown(hours / 24, 0), "0") & If(gblLanguage = "Arabic", " يوم، ", " days, ") & Text(Mod(hours, 24), "0") & If(gblLanguage = "Arabic", " ساعة", " hours")
+                                                      )
+                                                  )
+                                                Wrap: =false
+                        - lblApprovalInformation:
+                            Control: Label@2.5.1
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Color: =RGBA(30, 41, 59, 1)
+                              FillPortions: =0
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =26
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =If(App.Width < 700, 11, 12)
+                              Text: =If(gblLanguage = "Arabic", "معلومات الموافقة", "Approval Information")
+                              Wrap: =false
+                        - conApprovalInfoRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 360, 180)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutWrap: =true
+                            Children:
+                              - conApprovalApprover:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(248, 250, 252, 1)
+                                    FillPortions: =0
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =64
+                                    LayoutMinWidth: =140
+                                    PaddingBottom: =10
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =10
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =If(App.Width < 700, Parent.Width, 200)
+                                  Children:
+                                    - conApprovalApproverHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =18
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - icoApprovalApprover:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                Height: =14
+                                                Icon: ="PersonCheckmark"
+                                                IconColor: =RGBA(100, 116, 139, 1)
+                                                Width: =14
+                                          - lblApprovalApprover:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(100, 116, 139, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =9
+                                                Text: =If(gblLanguage = "Arabic", "المعتمد", "Approver")
+                                                Wrap: =false
+                                    - lblApprovalApproverValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =11
+                                          Text: |-
+                                            =If(
+                                                IsBlank(gblSelectedApproval.Approver),
+                                                Coalesce(gblSelectedApproval.ApproverEmail, "-"),
+                                                gblSelectedApproval.Approver.Value
+                                            )
+                                          Wrap: =false
+                              - conApprovalDecisionDate:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(248, 250, 252, 1)
+                                    FillPortions: =0
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =64
+                                    LayoutMinWidth: =140
+                                    PaddingBottom: =10
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =10
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =If(App.Width < 700, Parent.Width, 200)
+                                  Children:
+                                    - conApprovalDecisionDateHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =18
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - icoApprovalDecisionDate:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                Height: =14
+                                                Icon: ="CalendarCheckmark"
+                                                IconColor: =RGBA(100, 116, 139, 1)
+                                                Width: =14
+                                          - lblApprovalDecisionDate:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(100, 116, 139, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =9
+                                                Text: =If(gblLanguage = "Arabic", "تاريخ القرار", "Decision Date")
+                                                Wrap: =false
+                                    - lblApprovalDecisionDateValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =11
+                                          Text: =If(IsBlank(gblSelectedApproval.DecisionDate), "-", Text(gblSelectedApproval.DecisionDate, "dd mmm yyyy, hh:mm"))
+                                          Wrap: =false
+                              - conApprovalActionCard:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(248, 250, 252, 1)
+                                    FillPortions: =0
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =64
+                                    LayoutMinWidth: =140
+                                    PaddingBottom: =10
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =10
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =If(App.Width < 700, Parent.Width, 200)
+                                  Children:
+                                    - conApprovalActionHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =18
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - icoApprovalAction:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                Height: =14
+                                                Icon: ="ArrowReply"
+                                                IconColor: =RGBA(100, 116, 139, 1)
+                                                Width: =14
+                                          - lblApprovalAction:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(100, 116, 139, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =9
+                                                Text: =If(gblLanguage = "Arabic", "الإجراء", "Action")
+                                                Wrap: =false
+                                    - lblApprovalActionValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =11
+                                          Text: =Coalesce(gblSelectedApproval.Action.Value, "-")
+                                          Wrap: =false
+                              - conApprovalLevelCard:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =RGBA(248, 250, 252, 1)
+                                    FillPortions: =0
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =64
+                                    LayoutMinWidth: =140
+                                    PaddingBottom: =10
+                                    PaddingLeft: =12
+                                    PaddingRight: =12
+                                    PaddingTop: =10
+                                    RadiusBottomLeft: =10
+                                    RadiusBottomRight: =10
+                                    RadiusTopLeft: =10
+                                    RadiusTopRight: =10
+                                    Width: =If(App.Width < 700, Parent.Width, 200)
+                                  Children:
+                                    - conApprovalLevelHead:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =18
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                        Children:
+                                          - icoApprovalLevel:
+                                              Control: ModernIcon@1.1.1
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Center
+                                                Height: =14
+                                                Icon: ="ArrowTrending"
+                                                IconColor: =RGBA(100, 116, 139, 1)
+                                                Width: =14
+                                          - lblApprovalLevel:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Color: =RGBA(100, 116, 139, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Semibold
+                                                Height: =18
+                                                Size: =9
+                                                Text: =If(gblLanguage = "Arabic", "مستوى الموافقة", "Approval Level")
+                                                Wrap: =false
+                                    - lblApprovalLevelValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(15, 23, 42, 1)
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =22
+                                          Size: =11
+                                          Text: =Coalesce(gblSelectedApproval.ApprovalLevel.Value, "-")
+                                          Wrap: =false
+                        - conApprovalCommentsCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Stretch
+                              DropShadow: =DropShadow.None
+                              Fill: =RGBA(248, 250, 252, 1)
+                              FillPortions: =0
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =12
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =12
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                            Children:
+                              - conApprovalCommentsHead:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =18
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - icoApprovalComments:
+                                        Control: ModernIcon@1.1.1
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Center
+                                          Height: =14
+                                          Icon: ="Comment"
+                                          IconColor: =RGBA(100, 116, 139, 1)
+                                          Width: =14
+                                    - lblApprovalComments:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =RGBA(100, 116, 139, 1)
+                                          FillPortions: =1
+                                          Font: =Font.'Segoe UI'
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =18
+                                          Size: =9
+                                          Text: =If(gblLanguage = "Arabic", "التعليقات", "Comments")
+                                          Wrap: =false
+                              - lblApprovalCommentsValue:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =RGBA(15, 23, 42, 1)
+                                    Font: =Font.'Segoe UI'
+                                    Height: =60
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =11
+                                    Text: =Coalesce(gblSelectedApproval.Comments, "-")
+                  - conApprovalActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Stretch
+                        DropShadow: =DropShadow.None
+                        Fill: =RGBA(248, 250, 252, 1)
+                        FillPortions: =0
+                        Height: =If(App.Width < 560, 100, 50)
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutWrap: =true
+                        PaddingBottom: =8
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =8
+                        RadiusBottomLeft: =10
+                        RadiusBottomRight: =10
+                        RadiusTopLeft: =10
+                        RadiusTopRight: =10
+                      Children:
+                        - btnApprovalApprove:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "موافقة", "Approve")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =RGBA(22, 163, 74, 1)
+                              FillPortions: =1
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =42
+                              Icon: ="Checkmark"
+                              IconStyle: =IconStyle.Filled
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =110
+                              OnSelect: |-
+                                =With(
+                                    {
+                                        saved: Patch(
+                                            ApprovalHistory,
+                                            LookUp(ApprovalHistory, ID = gblSelectedApproval.ID),
+                                            {
+                                                Decision: {Value: "Approved"},
+                                                DecisionDate: Now()
+                                            }
+                                        )
+                                    },
+                                    Patch(
+                                        colApprovalCenter,
+                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID),
+                                        {
+                                            Decision: saved.Decision,
+                                            DecisionDate: saved.DecisionDate
+                                        }
+                                    );
+                                    Set(
+                                        gblSelectedApproval,
+                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID)
+                                    )
+                                )
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "موافقة", "Approve")
+                              Visible: =gblSelectedApproval.Decision.Value = "Pending"
+                        - btnApprovalReject:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "رفض", "Reject")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =ButtonAppearance.Outline
+                              BasePaletteColor: =RGBA(220, 38, 38, 1)
+                              FillPortions: =1
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =42
+                              Icon: ="Dismiss"
+                              IconStyle: =IconStyle.Filled
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =110
+                              OnSelect: |-
+                                =With(
+                                    {
+                                        saved: Patch(
+                                            ApprovalHistory,
+                                            LookUp(ApprovalHistory, ID = gblSelectedApproval.ID),
+                                            {
+                                                Decision: {Value: "Rejected"},
+                                                DecisionDate: Now()
+                                            }
+                                        )
+                                    },
+                                    Patch(
+                                        colApprovalCenter,
+                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID),
+                                        {
+                                            Decision: saved.Decision,
+                                            DecisionDate: saved.DecisionDate
+                                        }
+                                    );
+                                    Set(
+                                        gblSelectedApproval,
+                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID)
+                                    )
+                                )
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "رفض", "Reject")
+                              Visible: =gblSelectedApproval.Decision.Value = "Pending"
+                        - btnApprovalOpenRequest:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "فتح الطلب", "Show information")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =ButtonAppearance.Outline
+                              BasePaletteColor: =RGBA(100, 116, 139, 1)
+                              FillPortions: =If(gblSelectedApproval.Decision.Value = "Pending", 1, 3)
+                              Font: =Font.'Segoe UI'
+                              FontWeight: =FontWeight.Semibold
+                              Height: =42
+                              Icon: ="Open"
+                              IconStyle: =IconStyle.Filled
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =110
+                              OnSelect: |-
+                                =Set(varApprovalItemId, Value(gblSelectedApproval.RequestItemID));
+                                Switch(
+                                    gblSelectedApproval.Module.Value,
+                                    "Procurement",
+                                    Switch(
+                                        gblSelectedApproval.EntityType.Value,
+                                        "PurchaseRequest",
+                                        Set(varCurrentPR, LookUp(PurchaseRequests, ID = varApprovalItemId));
+                                        Set(varProcurementEntity, "PurchaseRequest");
+                                        Set(varProcurementMode, "View");
+                                        Set(varProcurementTab, "PRs");
+                                        Set(varNavSelectedID, 32);
+                                        Set(varProcProject, LookUp(Projects, ID = varCurrentPR.Project.Id));
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(scrPRs, ScreenTransition.None),
+                                        "PurchaseOrder",
+                                        Set(varCurrentPO, LookUp(PurchaseOrders, ID = varApprovalItemId));
+                                        Set(varProcurementEntity, "PurchaseOrder");
+                                        Set(varProcurementMode, "View");
+                                        Set(varProcurementTab, "POs");
+                                        Set(varNavSelectedID, 33);
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(scrPOs, ScreenTransition.None),
+                                        "GoodsReceipt",
+                                        Set(varCurrentGRN, LookUp(GoodsReceivedNotes, ID = varApprovalItemId));
+                                        Set(varProcurementEntity, "GRN");
+                                        Set(varProcurementMode, "View");
+                                        Set(varProcurementTab, "GRNs");
+                                        Set(varNavSelectedID, 34);
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(ScrGRN, ScreenTransition.None),
+                                        Notify(If(gblLanguage = "Arabic", "لا توجد شاشة لهذا الطلب", "No screen is linked for this request"), NotificationType.Information)
+                                    ),
+                                    "HR",
+                                    Switch(
+                                        gblSelectedApproval.EntityType.Value,
+                                        "Employee",
+                                        Set(gblSelectedEmployee, LookUp(Employees, ID = varApprovalItemId));
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(scrAllEmployees, ScreenTransition.None),
+                                        "LeaveRequest",
+                                        Set(varCurrentLeave, LookUp(LeaveRequests, ID = varApprovalItemId));
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(scrLeaveManagement, ScreenTransition.None),
+                                        Notify(If(gblLanguage = "Arabic", "لا توجد شاشة لهذا الطلب", "No screen is linked for this request"), NotificationType.Information)
+                                    ),
+                                    "Projects",
+                                    Switch(
+                                        gblSelectedApproval.EntityType.Value,
+                                        "Project",
+                                        Set(varCurrentProject, LookUp(Projects, ID = varApprovalItemId));
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(ScrAllProjects, ScreenTransition.None),
+                                        "ProjectTask",
+                                        Set(varCurrentTask, LookUp(ProjectsTasks, ID = varApprovalItemId));
+                                        Set(gblSelectedApproval, Blank());
+                                        Navigate(scrTasks, ScreenTransition.None),
+                                        Notify(If(gblLanguage = "Arabic", "لا توجد شاشة لهذا الطلب", "No screen is linked for this request"), NotificationType.Information)
+                                    ),
+                                    Notify(If(gblLanguage = "Arabic", "لا توجد شاشة لهذا الطلب", "No screen is linked for this request"), NotificationType.Information)
+                                )
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "فتح الطلب", "Show Information")

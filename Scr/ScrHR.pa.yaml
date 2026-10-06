@@ -1,0 +1,1013 @@
+Screens:
+  ScrHR:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "HR");
+        Set(VarHRmodule, "HRHome");
+        If(IsBlank(varLeavePeriod), Set(varLeavePeriod, "Month"));
+        Set(
+            varLeaveStart,
+            Switch(
+                varLeavePeriod,
+                "Week",
+                DateAdd(Today(), 1 - Weekday(Today(), StartOfWeek.Monday), TimeUnit.Days),
+                "Year",
+                Date(Year(Today()), 1, 1),
+                Date(Year(Today()), Month(Today()), 1)
+            )
+        );
+        Set(
+            varLeaveEnd,
+            Switch(
+                varLeavePeriod,
+                "Week",
+                DateAdd(varLeaveStart, 7, TimeUnit.Days),
+                "Year",
+                DateAdd(varLeaveStart, 1, TimeUnit.Years),
+                DateAdd(varLeaveStart, 1, TimeUnit.Months)
+            )
+        );
+        Set(gblIsHR, gblCurrentEmployee.Department.Value = "Human Resources");
+        Set(varAttendanceTab, "My Attendance");
+        Set(varCurrentEmployeeId, gblCurrentEmployee.ID);
+        Set(varCurrentEmployeeOfficeId, gblCurrentEmployee.Office.Id);
+        Set(varCheckInGPSRequired, true);
+        ClearCollect(
+            colLeavePeriods,
+            {PeriodKey: "Week", PeriodLabel: If(gblLanguage = "Arabic", "هذا الأسبوع", "This Week")},
+            {PeriodKey: "Month", PeriodLabel: If(gblLanguage = "Arabic", "هذا الشهر", "This Month")},
+            {PeriodKey: "Year", PeriodLabel: If(gblLanguage = "Arabic", "هذه السنة", "This Year")}
+        );
+        ClearCollect(
+            colHRSections,
+            {Section: "01-Recruitment", TitleKey: "hr_employee_file", Icon: "People", IconColor: fxThemeColor("Primary")},
+            {Section: "02-Employment", TitleKey: "hr_employment", Icon: "Document", IconColor: fxThemeColor("Success")},
+            {Section: "03-Education & Qualifications", TitleKey: "hr_education", Icon: "Certificate", IconColor: fxThemeColor("Primary")},
+            {Section: "04-Performance & Training", TitleKey: "hr_performance", Icon: "Document", IconColor: fxThemeColor("Primary")},
+            {Section: "07-Other HR Documents", TitleKey: "hr_other_documents", Icon: "FolderOpen", IconColor: fxThemeColor("Primary")}
+        );
+        ClearCollect(
+            colHRDocTypes,
+            {Section: "01-Recruitment", DocType: "Job Application", TranslationKey: "hr_job_application", Icon: "SaveCopy"},
+            {Section: "01-Recruitment", DocType: "Job Description", TranslationKey: "hr_job_description", Icon: "BookContacts"},
+            {Section: "01-Recruitment", DocType: "CV", TranslationKey: "hr_cv", Icon: "Document"},
+            {Section: "01-Recruitment", DocType: "Cover Letter", TranslationKey: "hr_cover_letter", Icon: "Mail"},
+            {Section: "01-Recruitment", DocType: "Job Advertisement", TranslationKey: "hr_job_advertisement", Icon: "Link"},
+            {Section: "01-Recruitment", DocType: "Shortlist", TranslationKey: "hr_shortlist", Icon: "DocumentCheckmark"},
+            {Section: "01-Recruitment", DocType: "Tests", TranslationKey: "hr_tests", Icon: "Compose"},
+            {Section: "01-Recruitment", DocType: "References", TranslationKey: "hr_references", Icon: "People"},
+            {Section: "01-Recruitment", DocType: "Interview", TranslationKey: "hr_interview", Icon: "People"},
+            {Section: "02-Employment", DocType: "Job Offer", TranslationKey: "hr_job_offer", Icon: "Document"},
+            {Section: "02-Employment", DocType: "Employment Contract", TranslationKey: "hr_employment_contract", Icon: "Document"},
+            {Section: "02-Employment", DocType: "Code of Conduct", TranslationKey: "hr_code_conduct", Icon: "Shield"},
+            {Section: "02-Employment", DocType: "Conflict of Interest", TranslationKey: "hr_conflict_interest", Icon: "Warning"},
+            {Section: "03-Education & Qualifications", DocType: "Academic Certificate", TranslationKey: "hr_academic_certificate", Icon: "TextBulletListSquareSparkle"},
+            {Section: "03-Education & Qualifications", DocType: "Professional Certificate", TranslationKey: "hr_professional_certificate", Icon: "BriefcaseMedical"},
+            {Section: "03-Education & Qualifications", DocType: "Training Certificate", TranslationKey: "hr_training_certificate", Icon: "BookContacts"},
+            {Section: "04-Performance & Training", DocType: "Performance Appraisal", TranslationKey: "hr_performance_appraisal", Icon: "DocumentCheckmark"},
+            {Section: "04-Performance & Training", DocType: "Performance Review", TranslationKey: "hr_performance_review", Icon: "ClipboardTask"},
+            {Section: "04-Performance & Training", DocType: "Performance Improvement Plan", TranslationKey: "hr_pip", Icon: "Target"},
+            {Section: "04-Performance & Training", DocType: "Recognition & Awards", TranslationKey: "hr_recognition_awards", Icon: "Award"},
+            {Section: "04-Performance & Training", DocType: "Other Performance Documents", TranslationKey: "hr_other_performance_documents", Icon: "Document"},
+            {Section: "07-Other HR Documents", DocType: "Other HR Document", TranslationKey: "hr_other_document", Icon: "Document"}
+        );
+        ClearCollect(colTranslationSource, ERP_Translations);
+        ClearCollect(
+            colTranslations,
+            Filter(
+                colTranslationSource,
+                Or(
+                    Module.Value = "HR",
+                    Module.Value = "Attendance",
+                    Module.Value = "Navigation",
+                    Module.Value = "Human Resources",
+                    Module.Value = "Common"
+                )
+            )
+        );
+        If(
+            varHRScope = "Project",
+            Clear(colUserAccessibleProjects);
+            ForAll(
+                Filter(colUserProjectAccess, AllProjects = false) As access,
+                With(
+                    {proj: LookUp(Projects, ID = access.ProjectID)},
+                    If(!IsBlank(proj.ID), Collect(colUserAccessibleProjects, proj))
+                )
+            )
+        );
+        Clear(colEmployees);
+        If(
+            varHRScope = "Own",
+            Collect(colEmployees, Filter(Employees, ID = gblUser.ID)),
+            If(
+                varHRScope = "All",
+                Collect(colEmployees, Employees),
+                ForAll(
+                    colUserAccessibleProjects As proj,
+                    Collect(colEmployees, Filter(Employees, ProjectID = proj.ID))
+                )
+            )
+        );
+        If(
+            And(varHRScope = "Project", IsEmpty(colEmployees), !IsBlank(gblSProject.ID)),
+            Collect(colEmployees, Filter(Employees, ProjectID = gblSProject.ID))
+        );
+        Set(varActiveEmployees, CountRows(colEmployees));
+        Clear(colLeaveRequests);
+        If(
+            varHRScope = "Own",
+            Collect(colLeaveRequests, Filter(LeaveRequests, EmployeeID = gblUser.ID)),
+            If(
+                varHRScope = "All",
+                Collect(colLeaveRequests, LeaveRequests),
+                ForAll(
+                    colEmployees As emp,
+                    Collect(colLeaveRequests, Filter(LeaveRequests, EmployeeID = emp.ID))
+                )
+            )
+        );
+        Clear(colAttendanceRecords);
+        If(
+            varHRScope = "Own",
+            Collect(colAttendanceRecords, Filter(AttendanceRecords, EmployeeID = gblUser.ID)),
+            If(
+                varHRScope = "All",
+                Collect(colAttendanceRecords, AttendanceRecords),
+                ForAll(
+                    colEmployees As emp,
+                    Collect(colAttendanceRecords, Filter(AttendanceRecords, EmployeeID = emp.ID))
+                )
+            )
+        );
+        ClearCollect(
+            colLeaveOverview,
+            Filter(
+                colLeaveRequests,
+                And(
+                    Status.Value = "Approved",
+                    StartDate < varLeaveEnd,
+                    EndDate >= varLeaveStart
+                )
+            )
+        );
+        ClearCollect(
+            colLeaveChart,
+            {LeaveType: "Annual Leave", Total: CountIf(colLeaveOverview, LeaveType.Value = "Annual")},
+            {LeaveType: "Sick Leave", Total: CountIf(colLeaveOverview, LeaveType.Value = "Sick")},
+            {LeaveType: "Emergency", Total: CountIf(colLeaveOverview, LeaveType.Value = "Emergency")},
+            {LeaveType: "Other Leave", Total: CountIf(colLeaveOverview, Or(LeaveType.Value = "Other Leave", LeaveType.Value = "Other"))}
+        );
+        Select(btnHRRefreshActivities);
+        Select(btnHRRefreshEvents)
+    Children:
+      - conHRNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpHRNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "Home",
+                            SVG: ""
+                        }
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpHRTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="People"
+            ModuleName: =If(gblLanguage = "Arabic", "الرئيسية", "Home")
+            OnSelectTitle: =Navigate(ScrHome, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            ScreenTitle: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpHRPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table(
+                  {
+                      Name: "Home",
+                      SVG: ""
+                  }
+              )
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conHRPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutJustifyContent: =LayoutJustifyContent.Start
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            LayoutWrap: =false
+            PaddingBottom: =If(App.Width < 700, cmpHRPhoneNav.Height + 12, 16)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpHRTopBar.Height + 12
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - cmpHRKpi:
+                Control: CanvasComponent
+                ComponentName: cmpKPIwNav
+                Properties:
+                  AlignInContainer: =AlignInContainer.Stretch
+                  AnimationEffect: ="None"
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 4,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "Users",
+                            Value: CountRows(colEmployees),
+                            Label: If(gblLanguage = "Arabic", "إجمالي الموظفين", "Total Employees"),
+                            Subtitle: If(gblLanguage = "Arabic", "الموظفون النشطون حالياً", "Currently active employees"),
+                            Screen: "scrAllEmployees",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "Calendar",
+                            Value: CountRows(
+                                Filter(
+                                    colLeaveRequests,
+                                    And(
+                                        StartDate <= Today(),
+                                        EndDate >= Today(),
+                                        Status.Value = "Approved"
+                                    )
+                                )
+                            ),
+                            Label: If(gblLanguage = "Arabic", "في إجازة اليوم", "On Leave Today"),
+                            Subtitle: If(gblLanguage = "Arabic", "إجازات معتمدة سارية اليوم", "Approved leaves active today"),
+                            Screen: "scrLeaveManagement",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Clock",
+                            Value: CountRows(Filter(colLeaveRequests, Status.Value = "Pending")),
+                            Label: If(gblLanguage = "Arabic", "الطلبات المعلقة", "Pending Requests"),
+                            Subtitle: If(gblLanguage = "Arabic", "بانتظار الموافقة", "Awaiting your approval"),
+                            Screen: "scrLeaveManagement",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Activity",
+                            Value: CountRows(colHRActivities),
+                            Label: If(gblLanguage = "Arabic", "الأنشطة", "Activities"),
+                            Subtitle: If(gblLanguage = "Arabic", "آخر الأنشطة والتحديثات", "Latest activities and updates"),
+                            Screen: "scrActivities",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  FontsSizesTitle: =12
+                  Height: |-
+                    =With(
+                        {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4))},
+                        RoundUp(4 / cols, 0) * 108
+                    )
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "Users",
+                            SVG: ""
+                        }
+                    )
+                  IconsSize: =20
+                  IsLoading: =false
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnCardClick: |-
+                    =Switch(
+                        varClickScreen,
+                        "scrAllEmployees",
+                        Navigate(scrAllEmployees, ScreenTransition.Cover),
+                        "scrLeaveManagement",
+                        Navigate(scrLeaveManagement, ScreenTransition.Cover),
+                        "scrActivities",
+                        Navigate(scrActivities, ScreenTransition.Cover)
+                    )
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+            - conHROverview:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 1100, 400)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - conHRLeave:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 340, Parent.Height)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                      Children:
+                        - conHRLeaveHeader:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - lblHRLeaveTitle:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =32
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =If(gblLanguage = "Arabic", "نظرة عامة على الإجازات", "Leave Overview")
+                                    Width: =Parent.Width - 148
+                              - ddHRLeavePeriod:
+                                  Control: ModernDropdown@1.0.3
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "فترة الإجازات", "Leave period")
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Default: =LookUp(colLeavePeriods, PeriodKey = Coalesce(varLeavePeriod, "Month"))
+                                    Height: =36
+                                    ItemDisplayText: =ThisItem.PeriodLabel
+                                    Items: =colLeavePeriods
+                                    OnChange: |-
+                                      =Set(varLeavePeriod, Self.Selected.PeriodKey);
+                                      Set(
+                                          varLeaveStart,
+                                          Switch(
+                                              varLeavePeriod,
+                                              "Week",
+                                              DateAdd(Today(), 1 - Weekday(Today(), StartOfWeek.Monday), TimeUnit.Days),
+                                              "Year",
+                                              Date(Year(Today()), 1, 1),
+                                              Date(Year(Today()), Month(Today()), 1)
+                                          )
+                                      );
+                                      Set(
+                                          varLeaveEnd,
+                                          Switch(
+                                              varLeavePeriod,
+                                              "Week",
+                                              DateAdd(varLeaveStart, 7, TimeUnit.Days),
+                                              "Year",
+                                              DateAdd(varLeaveStart, 1, TimeUnit.Years),
+                                              DateAdd(varLeaveStart, 1, TimeUnit.Months)
+                                          )
+                                      );
+                                      ClearCollect(
+                                          colLeaveOverview,
+                                          Filter(
+                                              colLeaveRequests,
+                                              And(
+                                                  Status.Value = "Approved",
+                                                  StartDate < varLeaveEnd,
+                                                  EndDate >= varLeaveStart
+                                              )
+                                          )
+                                      );
+                                      ClearCollect(
+                                          colLeaveChart,
+                                          {LeaveType: "Annual Leave", Total: CountIf(colLeaveOverview, LeaveType.Value = "Annual")},
+                                          {LeaveType: "Sick Leave", Total: CountIf(colLeaveOverview, LeaveType.Value = "Sick")},
+                                          {LeaveType: "Emergency", Total: CountIf(colLeaveOverview, LeaveType.Value = "Emergency")},
+                                          {LeaveType: "Other Leave", Total: CountIf(colLeaveOverview, Or(LeaveType.Value = "Other Leave", LeaveType.Value = "Other"))}
+                                      )
+                                    Width: =140
+                        - cmpHRLeaveChart:
+                            Control: CanvasComponent
+                            ComponentName: cmpPieChart
+                            Properties:
+                              ChartData: |-
+                                =Table(
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "إجازة سنوية", "Annual Leave"),
+                                        Value: CountIf(colLeaveOverview, LeaveType.Value = "Annual")
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "إجازة مرضية", "Sick Leave"),
+                                        Value: CountIf(colLeaveOverview, LeaveType.Value = "Sick")
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "إجازة طارئة", "Emergency"),
+                                        Value: CountIf(colLeaveOverview, LeaveType.Value = "Emergency")
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "إجازات أخرى", "Other Leave"),
+                                        Value: CountIf(colLeaveOverview, Or(LeaveType.Value = "Other Leave", LeaveType.Value = "Other"))
+                                    }
+                                )
+                              ChartTitle: =If(gblLanguage = "Arabic", "نظرة عامة على الإجازات", "Leave Overview")
+                              DonutMode: =true
+                              DonutThickness: =0.4
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 260, Parent.Height - 56)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowLegend: =true
+                              ShowPercentages: =true
+                              ShowTitle: =false
+                              ShowValues: =false
+                              Theme: =gblTheme.Mode
+                              Width: =Parent.Width
+                  - cmpHRActivities:
+                      Control: CanvasComponent
+                      ComponentName: cmpRecentActivities
+                      Properties:
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 360, Parent.Height)
+                        Items: =colHRActivities
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        MaxItems: =20
+                        OnViewAll: =Navigate(scrActivities, ScreenTransition.Cover)
+                        Refresh: =Select(btnHRRefreshActivities)
+                        ShowSummary: =true
+                        ShowViewAll: =true
+                        Title: =If(gblLanguage = "Arabic", "آخر الأنشطة", "Recent Activities")
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                  - cmpHREvents:
+                      Control: CanvasComponent
+                      ComponentName: cmpUpcomingEvents
+                      Properties:
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 360, Parent.Height)
+                        Items: =colHRUpcoming
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        MaxItems: =10
+                        ShowOverdue: =true
+                        ShowSummary: =true
+                        ShowViewAll: =true
+                        SoonDays: =7
+                        Title: =If(gblLanguage = "Arabic", "الأحداث القادمة", "Upcoming Events")
+                        UrgentDays: =3
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+            - lblHRSections:
+                Control: ModernText@1.0.0
+                Properties:
+                  Color: =fxThemeColor("TextPrimary")
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  FontWeight: =gblTheme.FontWeights.Medium
+                  Height: =28
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =gblTheme.Typography.Body
+                  Text: =If(gblLanguage = "Arabic", "إدارات الموارد البشرية", "HR SECTIONS")
+                  Width: =Parent.Width
+            - cmpHRModules:
+                Control: CanvasComponent
+                ComponentName: cmpModuleNav
+                Properties:
+                  AlignInContainer: =AlignInContainer.Stretch
+                  AnimationEffect: ="None"
+                  CardClick: |-
+                    =Switch(
+                        varSelectedScreen,
+                        "Employees",
+                        Navigate(scrAllEmployees, ScreenTransition.Cover),
+                        "scrLeaveManagement",
+                        Navigate(scrLeaveManagement, ScreenTransition.Cover),
+                        "scrAttendance",
+                        Navigate(scrAttendance, ScreenTransition.Cover),
+                        Notify(
+                            If(gblLanguage = "Arabic", "لا توجد صفحة مرتبطة", "No screen configured"),
+                            NotificationType.Information
+                        )
+                    )
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 4,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "Users",
+                            Tab: "Employees",
+                            Label: If(gblLanguage = "Arabic", "الموظفون", "Employees"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة معلومات الموظفين", "Manage employee information"),
+                            Screen: "Employees",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "Calendar",
+                            Tab: "Leaves",
+                            Label: If(gblLanguage = "Arabic", "إدارة الإجازات", "Leave Management"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة طلبات الإجازات", "Manage leave requests"),
+                            Screen: "scrLeaveManagement",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Clock",
+                            Tab: "Attendance",
+                            Label: If(gblLanguage = "Arabic", "الحضور", "Attendance"),
+                            Descripation: If(gblLanguage = "Arabic", "تتبع الحضور والانصراف", "Track attendance"),
+                            Screen: "scrAttendance",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Dollar",
+                            Tab: "Payroll",
+                            Label: If(gblLanguage = "Arabic", "الرواتب", "Payroll"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة الرواتب والمستحقات", "Manage payroll and payments"),
+                            Screen: "scrPayroll",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 5,
+                            Icon: "Target",
+                            Tab: "Performance",
+                            Label: If(gblLanguage = "Arabic", "الأداء", "Performance"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة تقييمات الأداء", "Manage performance reviews"),
+                            Screen: "scrPerformance",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 6,
+                            Icon: "Users",
+                            Tab: "Recruitment",
+                            Label: If(gblLanguage = "Arabic", "التوظيف", "Recruitment"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة عمليات التوظيف", "Manage recruitment process"),
+                            Screen: "scrRecruitment",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: !And(
+                                Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanEdit, false),
+                                Or(varHRScope = "Project", varHRScope = "All")
+                            )
+                        },
+                        {
+                            ID: 7,
+                            Icon: "Star",
+                            Tab: "Training",
+                            Label: If(gblLanguage = "Arabic", "التدريب", "Training"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة برامج التدريب والتطوير", "Manage training and development"),
+                            Screen: "scrTraining",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 8,
+                            Icon: "FileText",
+                            Tab: "Documents",
+                            Label: If(gblLanguage = "Arabic", "مستندات الموارد البشرية", "HR Documents"),
+                            Descripation: If(gblLanguage = "Arabic", "إدارة وحفظ المستندات", "Manage HR documents"),
+                            Screen: "scrHRDocuments",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: !Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanViewAll, false)
+                        }
+                    )
+                  FillPortions: =0
+                  Height: |-
+                    =With(
+                        {
+                            cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4)),
+                            cards: 6 + If(
+                                And(
+                                    Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanEdit, false),
+                                    Or(varHRScope = "Project", varHRScope = "All")
+                                ),
+                                1,
+                                0
+                            ) + If(
+                                Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanViewAll, false),
+                                1,
+                                0
+                            )
+                        },
+                        RoundUp(Max(cards, 1) / cols, 0) * 88
+                    )
+                  Icons: |-
+                    =Table(
+                        {
+                            Name: "Users",
+                            SVG: ""
+                        }
+                    )
+                  IsLoading: =false
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - btnHRRefreshActivities:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث الأنشطة", "Refresh activities")
+            OnSelect: |-
+              =IfError(
+                  With(
+                      {
+                          since: DateAdd(Today(), -30, TimeUnit.Days),
+                          ar: gblLanguage = "Arabic",
+                          all: Coalesce(
+                              LookUp(
+                                  colUserPermissions,
+                                  Module.Value = "HR",
+                                  And(CanViewAll, Scope.Value = "All")
+                              ),
+                              false
+                          ),
+                          me: gblCurrentEmployee.ID
+                      },
+                      If(
+                          all,
+                          ClearCollect(
+                              colActEmployees,
+                              ForAll(
+                                  FirstN(
+                                      Sort(
+                                          Filter(Employees, Created >= since),
+                                          Created,
+                                          SortOrder.Descending
+                                      ),
+                                      10
+                                  ) As e,
+                                  {
+                                      ID: e.ID,
+                                      Module: "HR",
+                                      ActivityType: "Employee",
+                                      Action: "Created",
+                                      Title: Coalesce(e.FullName, e.DisplayName, e.Title, "") & " - " & If(ar, "تمت إضافة موظف جديد", "was added to system"),
+                                      Description: "",
+                                      ActorName: Coalesce(e.'Created By'.DisplayName, ""),
+                                      ActivityDate: e.Created,
+                                      RecordType: "Employee",
+                                      RecordID: e.ID,
+                                      Status: "Success",
+                                      Icon: "People"
+                                  }
+                              )
+                          ),
+                          Clear(colActEmployees)
+                      );
+                      ClearCollect(
+                          colActLeave,
+                          ForAll(
+                              FirstN(
+                                  Sort(
+                                      If(
+                                          all,
+                                          Filter(LeaveRequests, Created >= since),
+                                          Filter(LeaveRequests, Created >= since, EmployeeID = me)
+                                      ),
+                                      Created,
+                                      SortOrder.Descending
+                                  ),
+                                  10
+                              ) As l,
+                              {
+                                  ID: l.ID + 1000000,
+                                  Module: "HR",
+                                  ActivityType: "Leave",
+                                  Action: "Submitted",
+                                  Title: With(
+                                      {
+                                          nm: Coalesce(l.Employee.Value, ""),
+                                          tp: Coalesce(l.LeaveType.Value, ""),
+                                          d: l.Duration
+                                      },
+                                      If(
+                                          ar,
+                                          nm & " قدّم طلب إجازة " & tp & " جديد" & If(
+                                              IsBlank(d),
+                                              "",
+                                              " لمدة " & If(d = 1, "يوم", d = 2, "يومين", d <= 10, d & " أيام", d & " يومًا")
+                                          ),
+                                          nm & " submitted a new " & If(
+                                              IsBlank(tp),
+                                              "Leave",
+                                              If(EndsWith(Lower(tp), "leave"), tp, tp & " Leave")
+                                          ) & " request" & If(IsBlank(d), "", " for " & d & If(d = 1, " day", " days"))
+                                      )
+                                  ),
+                                  Description: "",
+                                  ActorName: Coalesce(l.Employee.Value, ""),
+                                  ActivityDate: l.Created,
+                                  RecordType: "LeaveRequest",
+                                  RecordID: l.ID,
+                                  Status: "Approval",
+                                  Icon: "Calendar"
+                              }
+                          )
+                      );
+                      If(
+                          all,
+                          ClearCollect(
+                              colActApprovalSource,
+                              Filter(ApprovalHistory, Modified >= since)
+                          ),
+                          ClearCollect(
+                              colActApprovalSource,
+                              Filter(ApprovalHistory, ApproverID = me)
+                          );
+                          Collect(
+                              colActApprovalSource,
+                              Filter(ApprovalHistory, RequesterID = me, ApproverID <> me)
+                          )
+                      );
+                      ClearCollect(
+                          colActApprovals,
+                          ForAll(
+                              FirstN(
+                                  Sort(
+                                      Filter(
+                                          colActApprovalSource,
+                                          Module.Value = "HR",
+                                          Modified >= since
+                                      ),
+                                      Modified,
+                                      SortOrder.Descending
+                                  ),
+                                  15
+                              ) As a,
+                              {
+                                  ID: a.ID + 2000000,
+                                  Module: "HR",
+                                  ActivityType: Coalesce(a.RequestType.Value, "Approval"),
+                                  Action: Coalesce(a.Action.Value, a.Decision.Value, ""),
+                                  Title: Switch(
+                                      a.Decision.Value,
+                                      "Approved",
+                                      If(ar, "تمت الموافقة على طلب " & Coalesce(a.Requester.Value, ""), Coalesce(a.Requester.Value, "") & "'s request was approved"),
+                                      "Rejected",
+                                      If(ar, "تم رفض طلب " & Coalesce(a.Requester.Value, ""), Coalesce(a.Requester.Value, "") & "'s request was rejected"),
+                                      If(ar, "طلب بانتظار الموافقة", "Approval requested")
+                                  ),
+                                  Description: "",
+                                  ActorName: Coalesce(a.Approver.Value, ""),
+                                  ActivityDate: Coalesce(a.DecisionDate, a.ActionDate, a.Modified),
+                                  RecordType: Switch(
+                                      a.RequestType.Value,
+                                      "Leave",
+                                      "LeaveRequest",
+                                      "Leave Request",
+                                      "LeaveRequest",
+                                      "Employee",
+                                      "Employee",
+                                      Coalesce(a.RequestType.Value, "")
+                                  ),
+                                  RecordID: IfError(Value(a.RequestItemID), 0),
+                                  Status: Switch(a.Decision.Value, "Approved", "Success", "Rejected", "Error", "Approval"),
+                                  Icon: Switch(a.Decision.Value, "Approved", "Check", "Rejected", "Warning", "Clock")
+                              }
+                          )
+                      );
+                      ClearCollect(colHRActivities, colActEmployees, colActLeave, colActApprovals);
+                      Clear(colActEmployees);
+                      Clear(colActLeave);
+                      Clear(colActApprovals);
+                      Clear(colActApprovalSource)
+                  ),
+                  Notify(
+                      If(gblLanguage = "Arabic", "تعذر تحميل الأنشطة الحديثة", "Could not load recent activities"),
+                      NotificationType.Warning
+                  )
+              )
+            Text: =""
+            Visible: =false
+            X: =0
+            Y: =0
+      - btnHRRefreshEvents:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث الأحداث", "Refresh events")
+            OnSelect: |-
+              =IfError(
+                  With(
+                      {
+                          d0: Today(),
+                          until: DateAdd(Today(), 90, TimeUnit.Days),
+                          ar: gblLanguage = "Arabic",
+                          all: Coalesce(
+                              LookUp(
+                                  colUserPermissions,
+                                  Module.Value = "HR",
+                                  And(CanViewAll, Scope.Value = "All")
+                              ),
+                              false
+                          ),
+                          me: gblCurrentEmployee.ID
+                      },
+                      ClearCollect(
+                          colHRUpcoming,
+                          ForAll(
+                              FirstN(
+                                  Sort(
+                                      Filter(
+                                          colEmployees,
+                                          !IsBlank(EndDate),
+                                          EndDate >= d0,
+                                          EndDate <= until,
+                                          Or(all, ID = me)
+                                      ),
+                                      EndDate,
+                                      SortOrder.Ascending
+                                  ),
+                                  10
+                              ) As e,
+                              {
+                                  ID: e.ID,
+                                  Module: "HR",
+                                  EventType: "Contract",
+                                  Title: If(
+                                      ar,
+                                      "ينتهي عقد " & Coalesce(e.FullName, e.DisplayName, e.Title, ""),
+                                      Coalesce(e.FullName, e.DisplayName, e.Title, "") & "'s contract ends"
+                                  ),
+                                  Description: If(ar, "انتهاء عقد الموظف", "Contract end"),
+                                  OwnerName: Coalesce(e.FullName, e.DisplayName, e.Title, ""),
+                                  EventDate: e.EndDate,
+                                  DaysRemaining: DateDiff(d0, e.EndDate, TimeUnit.Days),
+                                  RecordType: "Employee",
+                                  RecordID: e.ID,
+                                  Icon: "Calendar"
+                              }
+                          )
+                      )
+                  ),
+                  Notify(
+                      If(gblLanguage = "Arabic", "تعذر تحميل الأحداث القادمة", "Could not load upcoming events"),
+                      NotificationType.Warning
+                  )
+              )
+            Text: =""
+            Visible: =false
+            X: =0
+            Y: =0

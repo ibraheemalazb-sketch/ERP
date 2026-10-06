@@ -1,0 +1,1662 @@
+# scrFinBudgetDetail - full screen source (pa.yaml v3). Reference/Git copy: a whole screen cannot be pasted in Studio.
+# To build: create a blank screen named scrFinBudgetDetail, set its properties from 03-screens-batch-a.md,
+# then paste screens/paste/scrFinBudgetDetail.controls.pa.yaml onto it.
+Screens:
+  scrFinBudgetDetail:
+    Properties:
+      Fill: =FinTheme.Background
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Finance");
+        Set(varNavSelectedID, 55);
+        If(
+            !hasFinanceAccess,
+            Navigate(scrFinNoAccess, ScreenTransition.None),
+            UpdateContext({locTab: Coalesce(locTab, "po"), locMoreOpen: false, locNotifOpen: false});
+            fnRefreshHeaderData();
+            Select(btnBudDReload)
+        )
+      LoadingSpinner: =LoadingSpinner.None
+    Children:
+      - cmpNav_BudD:
+          Control: CanvasComponent
+          ComponentName: cmpNavigationModern
+          Properties:
+            AppLogo: =hdp
+            Expanded: =gblMenuExpanded
+            Height: =Parent.Height
+            Icons: |-
+              =Table({Name: "Home", SVG: ""})
+            OnToggle: |-
+              =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+              If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+            Theme: =gblTheme.Mode
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+      - cmpTop_BudD:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: =Coalesce(unreadCount, 0)
+            HasNotifications: =Coalesce(unreadCount, 0) > 0
+            Height: =56
+            ModuleIcon: ="Money"
+            ModuleName: =If(gblLanguage = "Arabic", "المالية", "Finance")
+            OnSelect: |-
+              =UpdateContext({locNotifOpen: true})
+            OnSelectTitle: =fnNavigate("budgets")
+            ScreenTitle: =If(IsBlank(locLine), fnT("budd.title", "Budget line"), locLine.BudgetLineCode)
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpPhone_BudD:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conBudDRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutJustifyContent: =LayoutJustifyContent.Start
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutGap: =0
+            LayoutWrap: =false
+            PaddingTop: =56
+            PaddingRight: =0
+            PaddingBottom: =If(App.Width < 700, 52, 0)
+            PaddingLeft: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            DropShadow: =DropShadow.None
+            BorderThickness: =0
+            Fill: =FinTheme.Background
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+          Children:
+            - conBudDMain:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutGap: =0
+                  LayoutWrap: =false
+                  PaddingTop: =0
+                  PaddingRight: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  DropShadow: =DropShadow.None
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  LayoutMinWidth: =0
+                  LayoutMinHeight: =0
+                  FillPortions: =1
+                  AlignInContainer: =AlignInContainer.Stretch
+                Children:
+                  - conBudDBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutGap: =sp2
+                        LayoutWrap: =false
+                        PaddingTop: =If(isMobile, sp2, sp3)
+                        PaddingRight: =If(isMobile, sp2, sp3)
+                        PaddingBottom: =If(isMobile, sp2 + 72, sp3)
+                        PaddingLeft: =If(isMobile, sp2, sp3)
+                        DropShadow: =DropShadow.None
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        FillPortions: =1
+                        AlignInContainer: =AlignInContainer.Stretch
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                      Children:
+                        - cmpSkel_BudD:
+                            Control: CanvasComponent
+                            ComponentName: cmpSkeleton
+                            Properties:
+                              Visible: =locLoading
+                              Variant: ="cards"
+                              Height: =260
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                        - cmpEmpty_BudDNoAccess:
+                            Control: CanvasComponent
+                            ComponentName: cmpEmptyState
+                            Properties:
+                              Visible: =!locLoading && !locError && locNoAccess
+                              Variant: ="noaccess"
+                              Message: =fnT("budd.noAccess", "This budget line does not exist or belongs to a project you cannot access.")
+                              ActionText: =fnT("nav.budgets", "Budgets")
+                              OnAction: =fnNavigate("budgets")
+                              Height: =240
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                        - cmpEmpty_BudDErr:
+                            Control: CanvasComponent
+                            ComponentName: cmpEmptyState
+                            Properties:
+                              Visible: =locError
+                              Variant: ="error"
+                              ActionText: =fnT("common.retry", "Retry")
+                              Height: =240
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              OnAction: =Select(btnBudDReload)
+                        - conBudDSummary:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutGap: =sp1
+                              LayoutWrap: =false
+                              PaddingTop: =sp2
+                              PaddingRight: =sp2
+                              PaddingBottom: =sp2
+                              PaddingLeft: =sp2
+                              DropShadow: =DropShadow.None
+                              BorderThickness: =borderWidth
+                              Fill: =FinTheme.Surface
+                              RadiusTopLeft: =radiusCard
+                              RadiusTopRight: =radiusCard
+                              RadiusBottomLeft: =radiusCard
+                              RadiusBottomRight: =radiusCard
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              BorderColor: =FinTheme.Border
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Visible: =!locLoading && !locError && !locNoAccess
+                              Height: =28 + 20 + 64 + If(isMobile, 3 * 46 + 2 * sp1, 2 * 46 + sp1) + 46 + 4 * sp1 + 2 * sp2
+                            Children:
+                              - conBudDTitleRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutGap: =sp1
+                                    LayoutWrap: =false
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =28
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                  Children:
+                                    - lblBudDTitle:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =locLine.BudgetLineCode & "  |  " & Coalesce(locLine.Description, locLine.Title)
+                                          Font: =fontBase
+                                          Size: =fsSection
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =28
+                                          FontWeight: =FontWeight.Semibold
+                                          Role: =TextRole.Heading2
+                                          FillPortions: =1
+                                          AlignInContainer: =AlignInContainer.Stretch
+                                          Tooltip: =Self.Text
+                                    - cmpBadge_BudDUtil:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpStatusBadge
+                                        Properties:
+                                          Domain: ="Utilization"
+                                          UtilizationValue: =locLine.Util
+                                          Status: =""
+                                          Width: =cmpBadge_BudDUtil.DesiredWidth
+                                          FillPortions: =0
+                                          AlignInContainer: =AlignInContainer.Center
+                              - lblBudDProj:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Text: |-
+                                      =locProj.ProjectCode & " - " & locProj.Title & "  |  " & fnT("bud.currency", "Currency") & ": " & locLine.Currency
+                                    Font: =fontBase
+                                    Size: =fsCaption
+                                    Color: =FinTheme.TextSecondary
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    BorderThickness: =0
+                                    Wrap: =true
+                                    Align: =alignStart
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =20
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                              - cmpUtil_BudD:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpUtilizationBar
+                                  Properties:
+                                    Budgeted: =locLine.TotalAmount
+                                    Committed: =locLine.CommittedAmount
+                                    Spent: =locLine.SpentAmount
+                                    Currency: =locLine.Currency
+                                    ShowLabel: =true
+                                    ShowLegend: =true
+                                    BarHeight: =12
+                                    Height: =64
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                              - conBudDFacts:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutGap: =sp2
+                                    LayoutWrap: =true
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Height: =If(isMobile, 3 * 46 + 2 * sp1, 2 * 46 + sp1)
+                                  Children:
+                                    - conBudDFBudget:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFBudgetL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.budgeted", "Budgeted")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFBudgetV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(locLine.TotalAmount, locLine.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFRemaining:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFRemainingL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("kpi.remaining", "Remaining")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFRemainingV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(locLine.RemainingBalance, locLine.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFPayroll:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFPayrollL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("bud.payroll", "Payroll cost")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFPayrollV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =If(canViewPayrollTotals, fnMoney(locLine.PayrollAmount, locLine.Currency), "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFProc:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFProcL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("bud.procurement", "Procurement")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFProcV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(locLine.ProcurementAmount, locLine.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFCat:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFCatL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("bud.category", "Category")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFCatV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locLine.Category, "-") & If(IsBlank(locLine.SubCategory), "", " / " & locLine.SubCategory)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFCost:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFCostL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("bud.costGroup", "Cost group")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFCostV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locLine.CostGroup, "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFHolder:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, (Parent.Width - sp2) / 2, 200)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFHolderL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("bud.holder", "Budget line holder")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFHolderV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locLine.Holder, "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conBudDFSplit:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, Parent.Width, 320)
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblBudDFSplitL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.funding", "Funding split")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblBudDFSplitV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("bud.partner", "Partner") & " " & fnMoney(locLine.PartnerShare, locLine.Currency) & " | HSA " & fnMoney(locLine.HSAShare, locLine.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                              - conBudDActions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =If(isRTL, LayoutJustifyContent.Start, LayoutJustifyContent.End)
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutGap: =sp1
+                                    LayoutWrap: =false
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =touchMin
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                  Children:
+                                    - btnBudDEdit:
+                                        Control: Classic/Button@2.2.0
+                                        Properties:
+                                          Text: =fnT("bud.editLine", "Edit budget line")
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =touchMin
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          RadiusTopLeft: =6
+                                          RadiusTopRight: =6
+                                          RadiusBottomLeft: =6
+                                          RadiusBottomRight: =6
+                                          PaddingLeft: =12
+                                          PaddingRight: =12
+                                          PaddingTop: =0
+                                          PaddingBottom: =0
+                                          TabIndex: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          DisabledFill: =FinTheme.Border
+                                          DisabledColor: =FinTheme.TextSecondary
+                                          DisabledBorderColor: =FinTheme.Border
+                                          Fill: =FinTheme.Surface
+                                          Color: =FinTheme.Text
+                                          BorderColor: =FinTheme.Border
+                                          HoverFill: =FinTheme.RowHover
+                                          HoverColor: =FinTheme.Text
+                                          HoverBorderColor: =FinTheme.Primary
+                                          PressedFill: =FinTheme.RowSelected
+                                          PressedColor: =FinTheme.Text
+                                          PressedBorderColor: =FinTheme.Primary
+                                          Visible: =canEditBudgets
+                                          Width: =180
+                                          FillPortions: =0
+                                          Tooltip: =fnT("bud.editLine", "Edit budget line") & " " & locLine.BudgetLineCode
+                                          OnSelect: =Set(varBudgetEditID, locLine.ID); Navigate(scrFinBudgets, ScreenTransition.None)
+                                    - btnBudDProject:
+                                        Control: Classic/Button@2.2.0
+                                        Properties:
+                                          Text: =fnT("bud.openProject", "Project overview")
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =touchMin
+                                          BorderThickness: =0
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          RadiusTopLeft: =6
+                                          RadiusTopRight: =6
+                                          RadiusBottomLeft: =6
+                                          RadiusBottomRight: =6
+                                          PaddingLeft: =12
+                                          PaddingRight: =12
+                                          PaddingTop: =0
+                                          PaddingBottom: =0
+                                          TabIndex: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          DisabledFill: =RGBA(0, 0, 0, 0)
+                                          DisabledColor: =FinTheme.TextSecondary
+                                          DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          Color: =FinTheme.Primary
+                                          BorderColor: =RGBA(0, 0, 0, 0)
+                                          HoverFill: =FinTheme.RowHover
+                                          HoverColor: =FinTheme.Primary
+                                          HoverBorderColor: =RGBA(0, 0, 0, 0)
+                                          PressedFill: =FinTheme.RowSelected
+                                          PressedColor: =FinTheme.Primary
+                                          PressedBorderColor: =RGBA(0, 0, 0, 0)
+                                          Width: =180
+                                          FillPortions: =0
+                                          OnSelect: =Set(varProjectID, locLine.ProjectID); fnNavigate("projects")
+                        - conBudDTabsCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutGap: =sp1
+                              LayoutWrap: =false
+                              PaddingTop: =sp2
+                              PaddingRight: =sp2
+                              PaddingBottom: =sp2
+                              PaddingLeft: =sp2
+                              DropShadow: =DropShadow.None
+                              BorderThickness: =borderWidth
+                              Fill: =FinTheme.Surface
+                              RadiusTopLeft: =radiusCard
+                              RadiusTopRight: =radiusCard
+                              RadiusBottomLeft: =radiusCard
+                              RadiusBottomRight: =radiusCard
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              BorderColor: =FinTheme.Border
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Visible: =!locLoading && !locError && !locNoAccess
+                              Height: =touchMin + 4 + sp1 + Switch(locTab, "po", If(isMobile, Max(1, Min(CountRows(colBudDPO), 6)) * 104 + 60, 40 + Max(1, Min(CountRows(colBudDPO), 10)) * 52 + 60), "pay", If(isMobile, Max(1, Min(CountRows(colBudDPay), 6)) * 104 + 60, 40 + Max(1, Min(CountRows(colBudDPay), 10)) * 52 + 60), "txn", conBudDTxn.Height, 480) + sp2 * 2
+                            Children:
+                              - galBudDTabs:
+                                  Control: Gallery@2.15.0
+                                  Variant: Horizontal
+                                  Properties:
+                                    TemplatePadding: =0
+                                    ShowScrollbar: =false
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    TemplateFill: =RGBA(0, 0, 0, 0)
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    DelayItemLoading: =false
+                                    LoadingSpinner: =LoadingSpinner.None
+                                    Items: |-
+                                      =If(isRTL, Sort(Table({Order: 1, Key: "po", Label: fnT("tab.po", "Commitments (POs)")}, {Order: 2, Key: "pay", Label: fnT("tab.pay", "Payments")}, {Order: 3, Key: "txn", Label: fnT("tab.txn", "Transactions")}, {Order: 4, Key: "history", Label: fnT("tab.history", "History")}), Order, SortOrder.Descending), Sort(Table({Order: 1, Key: "po", Label: fnT("tab.po", "Commitments (POs)")}, {Order: 2, Key: "pay", Label: fnT("tab.pay", "Payments")}, {Order: 3, Key: "txn", Label: fnT("tab.txn", "Transactions")}, {Order: 4, Key: "history", Label: fnT("tab.history", "History")}), Order, SortOrder.Ascending))
+                                    TemplateSize: =If(isMobile, 128, 150)
+                                    Height: =touchMin + 4
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Selectable: =true
+                                    AccessibleLabel: =fnT("common.tabs", "Sections")
+                                    ItemAccessibleLabel: =ThisItem.Label & If(ThisItem.Key = locTab, ", " & fnT("common.selected", "selected"), "")
+                                    OnSelect: |-
+                                      =UpdateContext({locTab: ThisItem.Key});
+                                      If(!(("|" & ThisItem.Key & "|") in locLoadedTabs), Select(btnBudDLoadTab))
+                                  Children:
+                                    - lblBudDTab:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =ThisItem.Label
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =If(ThisItem.Key = locTab, FinTheme.Primary, FinTheme.TextSecondary)
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =Align.Center
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =Parent.TemplateHeight - 4
+                                          X: =0
+                                          Y: =0
+                                          Width: =Parent.TemplateWidth
+                                          FontWeight: =If(ThisItem.Key = locTab, FontWeight.Semibold, FontWeight.Normal)
+                                    - rectBudDTabActive:
+                                        Control: Rectangle@2.3.0
+                                        Properties:
+                                          Fill: =FinTheme.Primary
+                                          BorderThickness: =0
+                                          TabIndex: =-1
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Visible: =ThisItem.Key = locTab
+                                          X: =8
+                                          Y: =Parent.TemplateHeight - 4
+                                          Width: =Parent.TemplateWidth - 16
+                                          Height: =3
+                                    - btnBudDTabHit:
+                                        Control: Classic/Button@2.2.0
+                                        Properties:
+                                          Text: =""
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =Parent.TemplateHeight
+                                          BorderThickness: =0
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          PaddingLeft: =12
+                                          PaddingRight: =12
+                                          PaddingTop: =0
+                                          PaddingBottom: =0
+                                          TabIndex: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          DisabledFill: =RGBA(0, 0, 0, 0)
+                                          DisabledColor: =FinTheme.TextSecondary
+                                          DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          Color: =RGBA(0, 0, 0, 0)
+                                          BorderColor: =RGBA(0, 0, 0, 0)
+                                          HoverFill: =FinTheme.RowHover
+                                          HoverColor: =RGBA(0, 0, 0, 0)
+                                          HoverBorderColor: =RGBA(0, 0, 0, 0)
+                                          PressedFill: =FinTheme.RowSelected
+                                          PressedColor: =RGBA(0, 0, 0, 0)
+                                          PressedBorderColor: =RGBA(0, 0, 0, 0)
+                                          X: =0
+                                          Y: =0
+                                          Width: =Parent.TemplateWidth
+                                          Tooltip: =ThisItem.Label
+                                          OnSelect: =Select(Parent)
+                              - cmpDataTable_BudDPO:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpDataTable
+                                  Properties:
+                                    Visible: =locTab = "po"
+                                    RowItems: |-
+                                      =ForAll(colBudDPO As l, {RowID: l.ID, Primary: Coalesce(l.PONo, "PO " & l.POID) & " / " & l.LineNumber, Secondary: l.Title, C1: Text(l.Quantity) & " x " & Text(l.UnitPrice, "#,##0.00", appLocale), C2: Text(l.ReceivedQuantity) & " / " & Text(l.Quantity), C3: "", C4: "", Util: Blank(), Amount: l.Total, Currency: "", AmountUSD: Blank(), Status: l.LineStatus, StatusDomain: "PurchaseOrder"})
+                                    ColumnConfig: |-
+                                      =Table(
+                                          {Key: "Primary", Header: fnT("col.poLine", "PO line"), Portion: 1.6, ShowOnTablet: true, Sortable: false},
+                                          {Key: "C1", Header: fnT("col.qtyPrice", "Qty x price"), Portion: 1.4, ShowOnTablet: false, Sortable: false},
+                                          {Key: "C2", Header: fnT("col.received", "Received"), Portion: 1.1, ShowOnTablet: true, Sortable: false},
+                                          {Key: "Amount", Header: fnT("col.total", "Total"), Portion: 1.4, ShowOnTablet: true, Sortable: false},
+                                          {Key: "Status", Header: fnT("col.status", "Status"), Portion: 1.3, ShowOnTablet: true, Sortable: false}
+                                      )
+                                    PageNumber: =1
+                                    HasMore: =false
+                                    Loading: =!("|po|" in locLoadedTabs)
+                                    EmptyText: =fnT("budd.noPO", "No purchase order lines are linked to this budget line.")
+                                    Height: =If(isMobile, Max(1, Min(CountRows(colBudDPO), 6)) * 104 + 60, 40 + Max(1, Min(CountRows(colBudDPO), 10)) * 52 + 60)
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    OnRowSelect: =Set(varComPOID, LookUp(colBudDPO, ID = cmpDataTable_BudDPO.SelectedRow.RowID).POID); fnNavigate("commitments")
+                              - cmpDataTable_BudDPay:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpDataTable
+                                  Properties:
+                                    Visible: =locTab = "pay"
+                                    RowItems: |-
+                                      =ForAll(colBudDPay As l, {RowID: l.PRID, Primary: Coalesce(l.RequestNumber, fnT("pr.numberPending", "(number pending)")) & " / " & l.LineNumber, Secondary: l.RequestDescription, C1: "", C2: "", C3: "", C4: "", Util: Blank(), Amount: l.Amount, Currency: l.Currency, AmountUSD: l.AmountUSD, Status: "", StatusDomain: ""})
+                                    ColumnConfig: |-
+                                      =Table(
+                                          {Key: "Primary", Header: fnT("col.requestLine", "Request line"), Portion: 1.8, ShowOnTablet: true, Sortable: false},
+                                          {Key: "Secondary", Header: fnT("col.description", "Description"), Portion: 2.4, ShowOnTablet: false, Sortable: false},
+                                          {Key: "Amount", Header: fnT("col.amount", "Amount"), Portion: 1.5, ShowOnTablet: true, Sortable: false}
+                                      )
+                                    PageNumber: =1
+                                    HasMore: =false
+                                    Loading: =!("|pay|" in locLoadedTabs)
+                                    EmptyText: =fnT("budd.noPay", "No payment request lines are charged to this budget line.")
+                                    Height: =If(isMobile, Max(1, Min(CountRows(colBudDPay), 6)) * 104 + 60, 40 + Max(1, Min(CountRows(colBudDPay), 10)) * 52 + 60)
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    OnRowSelect: =Set(varPRID, cmpDataTable_BudDPay.SelectedRow.RowID); Navigate(scrFinPaymentDetail, ScreenTransition.None)
+                              - conBudDTxn:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutGap: =sp1
+                                    LayoutWrap: =false
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Visible: =locTab = "txn"
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Height: =If(isMobile, 4 * touchMin + 3 * sp1, touchMin) + sp1 + 20 + sp1 + If(isMobile, Max(1, Min(CountRows(colBudDTxn), 6)) * 104 + 60, 40 + Max(1, Min(CountRows(colBudDTxn), 10)) * 52 + 60)
+                                  Children:
+                                    - conBudDTxnFilters:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =sp1
+                                          LayoutWrap: =true
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          FillPortions: =0
+                                          AlignInContainer: =AlignInContainer.Stretch
+                                          Height: =If(isMobile, 4 * touchMin + 3 * sp1, touchMin)
+                                        Children:
+                                          - drpBudDTxnTo:
+                                              Control: Classic/DropDown@2.3.1
+                                              Properties:
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =FinTheme.Surface
+                                                BorderColor: =FinTheme.Border
+                                                BorderThickness: =1
+                                                FocusedBorderThickness: =2
+                                                FocusedBorderColor: =FinTheme.Focus
+                                                HoverFill: =FinTheme.RowHover
+                                                HoverBorderColor: =FinTheme.Primary
+                                                HoverColor: =FinTheme.Text
+                                                PressedFill: =FinTheme.RowSelected
+                                                PressedColor: =FinTheme.Text
+                                                SelectionFill: =FinTheme.Primary
+                                                SelectionColor: =FinTheme.OnPrimary
+                                                ChevronBackground: =FinTheme.Surface
+                                                ChevronFill: =FinTheme.TextSecondary
+                                                PaddingLeft: =8
+                                                Height: =touchMin
+                                                TabIndex: =0
+                                                AllowEmptySelection: =false
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Width: =If(isMobile, Parent.Width, 170)
+                                                FillPortions: =0
+                                                OnChange: |-
+                                                  =UpdateContext({locTxnCursor: 0, locTxnPage: 1}); Clear(colBudDTxnStack); Select(btnBudDTxnQuery)
+                                                Items: =tblPeriods
+                                                Default: =fnPeriodLabel(Coalesce(varPeriodKey, currentPeriodKey))
+                                                AccessibleLabel: =fnT("txn.toPeriod", "To period")
+                                          - drpBudDTxnFrom:
+                                              Control: Classic/DropDown@2.3.1
+                                              Properties:
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =FinTheme.Surface
+                                                BorderColor: =FinTheme.Border
+                                                BorderThickness: =1
+                                                FocusedBorderThickness: =2
+                                                FocusedBorderColor: =FinTheme.Focus
+                                                HoverFill: =FinTheme.RowHover
+                                                HoverBorderColor: =FinTheme.Primary
+                                                HoverColor: =FinTheme.Text
+                                                PressedFill: =FinTheme.RowSelected
+                                                PressedColor: =FinTheme.Text
+                                                SelectionFill: =FinTheme.Primary
+                                                SelectionColor: =FinTheme.OnPrimary
+                                                ChevronBackground: =FinTheme.Surface
+                                                ChevronFill: =FinTheme.TextSecondary
+                                                PaddingLeft: =8
+                                                Height: =touchMin
+                                                TabIndex: =0
+                                                AllowEmptySelection: =false
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Width: =If(isMobile, Parent.Width, 170)
+                                                FillPortions: =0
+                                                OnChange: |-
+                                                  =UpdateContext({locTxnCursor: 0, locTxnPage: 1}); Clear(colBudDTxnStack); Select(btnBudDTxnQuery)
+                                                Items: =Filter(tblPeriods, Key <= drpBudDTxnTo.Selected.Key && Key >= fnPeriodKey(EDate(fnPeriodDate(drpBudDTxnTo.Selected.Key), -(cfgLedgerMaxMonths - 1))))
+                                                Default: =fnPeriodLabel(fnPeriodKey(EDate(fnPeriodDate(drpBudDTxnTo.Selected.Key), -2)))
+                                                AccessibleLabel: =fnT("txn.fromPeriod", "From period")
+                                          - drpBudDTxnType:
+                                              Control: Classic/DropDown@2.3.1
+                                              Properties:
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =FinTheme.Surface
+                                                BorderColor: =FinTheme.Border
+                                                BorderThickness: =1
+                                                FocusedBorderThickness: =2
+                                                FocusedBorderColor: =FinTheme.Focus
+                                                HoverFill: =FinTheme.RowHover
+                                                HoverBorderColor: =FinTheme.Primary
+                                                HoverColor: =FinTheme.Text
+                                                PressedFill: =FinTheme.RowSelected
+                                                PressedColor: =FinTheme.Text
+                                                SelectionFill: =FinTheme.Primary
+                                                SelectionColor: =FinTheme.OnPrimary
+                                                ChevronBackground: =FinTheme.Surface
+                                                ChevronFill: =FinTheme.TextSecondary
+                                                PaddingLeft: =8
+                                                Height: =touchMin
+                                                TabIndex: =0
+                                                AllowEmptySelection: =false
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Width: =If(isMobile, Parent.Width, 170)
+                                                FillPortions: =0
+                                                OnChange: |-
+                                                  =UpdateContext({locTxnCursor: 0, locTxnPage: 1}); Clear(colBudDTxnStack); Select(btnBudDTxnQuery)
+                                                Items: |-
+                                                  =Table({Key: "", Value: fnT("flt.allTypes", "All types")}, {Key: "Commitment", Value: fnT("txn.Commitment", "Commitment")}, {Key: "Expenditure", Value: fnT("txn.Expenditure", "Expenditure")}, {Key: "Funding Received", Value: fnT("txn.Funding Received", "Funding Received")}, {Key: "Adjustment", Value: fnT("txn.Adjustment", "Adjustment")}, {Key: "Reversal", Value: fnT("txn.Reversal", "Reversal")})
+                                                AccessibleLabel: =fnT("txn.type", "Transaction type")
+                                          - drpBudDTxnSource:
+                                              Control: Classic/DropDown@2.3.1
+                                              Properties:
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =FinTheme.Surface
+                                                BorderColor: =FinTheme.Border
+                                                BorderThickness: =1
+                                                FocusedBorderThickness: =2
+                                                FocusedBorderColor: =FinTheme.Focus
+                                                HoverFill: =FinTheme.RowHover
+                                                HoverBorderColor: =FinTheme.Primary
+                                                HoverColor: =FinTheme.Text
+                                                PressedFill: =FinTheme.RowSelected
+                                                PressedColor: =FinTheme.Text
+                                                SelectionFill: =FinTheme.Primary
+                                                SelectionColor: =FinTheme.OnPrimary
+                                                ChevronBackground: =FinTheme.Surface
+                                                ChevronFill: =FinTheme.TextSecondary
+                                                PaddingLeft: =8
+                                                Height: =touchMin
+                                                TabIndex: =0
+                                                AllowEmptySelection: =false
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Width: =If(isMobile, Parent.Width, 170)
+                                                FillPortions: =0
+                                                OnChange: |-
+                                                  =UpdateContext({locTxnCursor: 0, locTxnPage: 1}); Clear(colBudDTxnStack); Select(btnBudDTxnQuery)
+                                                Items: |-
+                                                  =Filter(Table({Key: "", Value: fnT("flt.allSources", "All sources")}, {Key: "Payroll", Value: fnT("src.Payroll", "Payroll")}, {Key: "Payment Request", Value: fnT("src.Payment Request", "Payment Request")}, {Key: "Purchase Order", Value: fnT("src.Purchase Order", "Purchase Order")}, {Key: "Manual", Value: fnT("src.Manual", "Manual")}, {Key: "Donor Funding", Value: fnT("src.Donor Funding", "Donor Funding")}), Key <> cfgSourceModule.Payroll || canSeePayrollLedger)
+                                                AccessibleLabel: =fnT("txn.source", "Source module")
+                                    - lblBudDTxnNote:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnT("txn.readOnly", "Read-only ledger. Newest first, 100 per page, max 12 months per query.")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.TextSecondary
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =true
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =20
+                                          FillPortions: =0
+                                          AlignInContainer: =AlignInContainer.Stretch
+                                    - cmpDataTable_BudDTxn:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpDataTable
+                                        Properties:
+                                          RowItems: |-
+                                            =ForAll(colBudDTxn As t, {RowID: t.ID, Primary: t.TransactionNumber, Secondary: t.Description, C1: fnPeriodLabel(t.PeriodKey), C2: fnT("txn." & t.Type, t.Type), C3: t.Source & If(IsBlank(t.SourceNumber), "", " " & t.SourceNumber), C4: Text(t.TransactionDate, "dd mmm yyyy", appLocale), Util: Blank(), Amount: t.Amount, Currency: t.Currency, AmountUSD: t.AmountUSD, Status: t.Status, StatusDomain: "Ledger"})
+                                          ColumnConfig: |-
+                                            =Table(
+                                                {Key: "Primary", Header: fnT("col.txn", "Transaction"), Portion: 1.8, ShowOnTablet: true, Sortable: false},
+                                                {Key: "C1", Header: fnT("col.period", "Period"), Portion: 1, ShowOnTablet: true, Sortable: false},
+                                                {Key: "C2", Header: fnT("col.type", "Type"), Portion: 1.2, ShowOnTablet: false, Sortable: false},
+                                                {Key: "C3", Header: fnT("col.source", "Source"), Portion: 1.6, ShowOnTablet: false, Sortable: false},
+                                                {Key: "Amount", Header: fnT("col.amount", "Amount"), Portion: 1.5, ShowOnTablet: true, Sortable: false},
+                                                {Key: "Status", Header: fnT("col.status", "Status"), Portion: 1.1, ShowOnTablet: true, Sortable: false}
+                                            )
+                                          PageNumber: =Coalesce(locTxnPage, 1)
+                                          HasMore: =CountRows(colBudDTxn) = cfgPageSize
+                                          Loading: =locTxnLoading
+                                          EmptyText: =fnT("txn.empty", "No ledger transactions for these filters.")
+                                          Height: =If(isMobile, Max(1, Min(CountRows(colBudDTxn), 6)) * 104 + 60, 40 + Max(1, Min(CountRows(colBudDTxn), 10)) * 52 + 60)
+                                          FillPortions: =0
+                                          AlignInContainer: =AlignInContainer.Stretch
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          OnNextPage: |-
+                                            =Collect(colBudDTxnStack, {Cursor: locTxnCursor});
+                                            UpdateContext({locTxnCursor: Min(colBudDTxn, ID), locTxnPage: locTxnPage + 1});
+                                            Select(btnBudDTxnQuery)
+                                          OnPrevPage: |-
+                                            =UpdateContext({locTxnCursor: Last(colBudDTxnStack).Cursor, locTxnPage: Max(1, locTxnPage - 1)});
+                                            Remove(colBudDTxnStack, Last(colBudDTxnStack));
+                                            Select(btnBudDTxnQuery)
+                                          OnRowSelect: |-
+                                            =With(
+                                                {_t: LookUp(colBudDTxn, ID = cmpDataTable_BudDTxn.SelectedRow.RowID)},
+                                                If(
+                                                    _t.Source = "Payment Request" && Coalesce(_t.SourceID, 0) > 0,
+                                                    Set(varPRID, _t.SourceID); Navigate(scrFinPaymentDetail, ScreenTransition.None),
+                                                    Set(varLedTxnID, _t.ID); fnNavigate("ledger")
+                                                )
+                                            )
+                              - cmpHistory_BudD:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpHistoryTimeline
+                                  Properties:
+                                    Visible: =locTab = "history"
+                                    FilterMode: ="entity"
+                                    EntityType: ="Budget Line"
+                                    EntityID: =locLine.ID
+                                    TopN: =Coalesce(locHistTop, 50)
+                                    ShowSensitive: =canViewPayroll
+                                    Height: =480
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    OnLoadMore: |-
+                                      =UpdateContext({locHistTop: locHistTop + 50})
+      - cmpNotif_BudD:
+          Control: CanvasComponent
+          ComponentName: cmpNotificationsPanel
+          Properties:
+            Visible: =locNotifOpen
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+            Items: |-
+              =ForAll(colFinNotif As n, {ID: n.ID, Title: n.Title, Message: n.Message, Created: n.Created, Link: n.Link, RelatedEntity: n.RelatedEntity.Value, RelatedItemID: n.RelatedItemID})
+            OnClose: |-
+              =UpdateContext({locNotifOpen: false})
+            OnMarkAllRead: =fnMarkAllNotificationsRead()
+            OnOpenItem: |-
+              =UpdateContext({locNotifOpen: false});
+              fnOpenNotification(cmpNotif_BudD.SelectedItem.ID, cmpNotif_BudD.SelectedItem.RelatedEntity, cmpNotif_BudD.SelectedItem.RelatedItemID, cmpNotif_BudD.SelectedItem.Link)
+      - btnBudDReload:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =UpdateContext({locLoading: true, locError: false, locLoadedTabs: "|history|", locHistTop: 50});
+              IfError(
+                  // The line normally comes from colBudgetLines (loaded by the Budgets / Project screens).
+                  // Deep link (notification) to a line of another project: read its ProjectID once, then load that project's lines.
+                  If(
+                      IsBlank(LookUp(colBudgetLines, ID = varBudgetLineID)),
+                      With(
+                          {_pid: LookUp(Budgets, ID = varBudgetLineID).ProjectID},
+                          If(!IsBlank(_pid) && !IsBlank(LookUp(colMyProjects, ID = _pid)), fnLoadBudgetLines(_pid); Set(varProjectID, _pid))
+                      )
+                  );
+                  UpdateContext({locLine: LookUp(colBudgetLines, ID = varBudgetLineID)});
+                  UpdateContext({
+                      locNoAccess: IsBlank(locLine) || IsBlank(LookUp(colMyProjects, ID = locLine.ProjectID)),
+                      locProj: LookUp(colMyProjects, ID = locLine.ProjectID)
+                  }),
+                  UpdateContext({locError: true});
+                  Trace("Budget line load failed: " & FirstError.Message, TraceSeverity.Error)
+              );
+              UpdateContext({locLoading: false});
+              If(!locNoAccess && !(("|" & locTab & "|") in locLoadedTabs), Select(btnBudDLoadTab))
+      - btnBudDLoadTab:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =IfError(
+                  Switch(
+                      locTab,
+                      // PO lines of this budget line. PurchaseOrderLines.BudgetLineID is a Number column (delegable) but NOT indexed:
+                      // index it before the list passes 5,000 rows (N14).
+                      "po", ClearCollect(colBudDPO, ForAll(FirstN(Sort(Filter(PurchaseOrderLines, BudgetLineID = locLine.ID), ID, SortOrder.Descending), cfgPageSize) As l,
+                              {ID: l.ID, POID: l.POID, PONo: l.PONo, LineNumber: l.LineNumber, Title: l.Title, Quantity: l.Quantity, UnitPrice: l.UnitPrice,
+                                Total: l.Total, ReceivedQuantity: l.ReceivedQuantity, RemainingQuantity: l.RemainingQuantity, LineStatus: l.LineStatus.Value})),
+                      // Payment request lines (BudgetLineID is Indexed). Request number flattened once here (lookup .Value outside the gallery).
+                      "pay", ClearCollect(colBudDPay, ForAll(FirstN(Sort(Filter(PaymentRequesttLines, BudgetLineID = locLine.ID), ID, SortOrder.Descending), cfgPageSize) As l,
+                              {ID: l.ID, PRID: l.PaymentRequestID, RequestNumber: l.PaymenetRequest.Value, LineNumber: l.LineNumber,
+                                RequestDescription: l.RequestDescription, Currency: l.Currency.Value, Amount: l.Amount, AmountUSD: l.AmountUSD})),
+                      "txn", UpdateContext({locTxnCursor: 0, locTxnPage: 1}); Clear(colBudDTxnStack); Select(btnBudDTxnQuery)
+                  ),
+                  Notify(fnT("common.loadError", "This section could not be loaded. Please retry."), NotificationType.Error);
+                  Trace("Budget line tab load failed (" & locTab & "): " & FirstError.Message, TraceSeverity.Error)
+              );
+              UpdateContext({locLoadedTabs: locLoadedTabs & "|" & locTab & "|"})
+      - btnBudDTxnQuery:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =UpdateContext({locTxnLoading: true, locTxnError: false});
+              IfError(
+                  ClearCollect(
+                      colBudDTxn,
+                      ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      FinancialTransactions,
+                                      BudgetLineID = locLine.ID,
+                                      PeriodKey >= drpBudDTxnFrom.Selected.Key,
+                                      PeriodKey <= drpBudDTxnTo.Selected.Key,
+                                      drpBudDTxnType.Selected.Key = "" || TransactionType.Value = drpBudDTxnType.Selected.Key,
+                                      drpBudDTxnSource.Selected.Key = "" || SourceModule.Value = drpBudDTxnSource.Selected.Key,
+                                      canSeePayrollLedger || SourceModule.Value = cfgSourceModule.PaymentRequest || SourceModule.Value = cfgSourceModule.PurchaseOrder || SourceModule.Value = cfgSourceModule.Manual || SourceModule.Value = cfgSourceModule.DonorFunding,
+                                      locTxnCursor = 0 || ID < locTxnCursor
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As t,
+                          {
+                              ID: t.ID, TransactionNumber: t.TransactionNumber, TransactionDate: t.TransactionDate, PeriodKey: t.PeriodKey,
+                              Type: t.TransactionType.Value, Source: t.SourceModule.Value, SourceID: t.SourceID, SourceNumber: t.SourceNumber,
+                              Description: t.Description, Currency: t.Currency.Value, Amount: t.Amount, AmountUSD: t.AmountUSD,
+                              Status: t.Status.Value, BudgetLineID: t.BudgetLineID
+                          }
+                      )
+                  ),
+                  UpdateContext({locTxnError: true});
+                  Notify(fnT("txn.loadError", "The transactions could not be loaded. Try a shorter period or retry."), NotificationType.Error);
+                  Trace("Ledger query failed: " & FirstError.Message, TraceSeverity.Error)
+              );
+              UpdateContext({locTxnLoading: false})

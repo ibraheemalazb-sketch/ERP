@@ -1,0 +1,2408 @@
+# scrFinCommitments - full screen source (pa.yaml v3). Reference/Git copy: a whole screen cannot be pasted in Studio.
+# To build: create a blank screen named scrFinCommitments, set its properties from 04-screens-batch-b.md,
+# then paste screens/paste/scrFinCommitments.controls.pa.yaml onto it.
+Screens:
+  scrFinCommitments:
+    Properties:
+      Fill: =FinTheme.Background
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Finance");
+        Set(varNavSelectedID, 52);
+        If(
+            !hasFinanceAccess,
+            Navigate(scrFinNoAccess, ScreenTransition.None),
+            UpdateContext({locMoreOpen: false, locNotifOpen: false, locFilterSheet: false, locDrawer: false});
+            fnRefreshHeaderData();
+            Select(btnComLite);
+            If(varFinReady, UpdateContext({locBooted: true}); UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery);
+        Select(btnComTotals);
+        If(Coalesce(varComPOID, 0) > 0, UpdateContext({locPOID: varComPOID}); Set(varComPOID, 0); Select(btnComOpen)))
+        )
+      LoadingSpinner: =LoadingSpinner.None
+    Children:
+      - cmpNav_Com:
+          Control: CanvasComponent
+          ComponentName: cmpNavigationModern
+          Properties:
+            AppLogo: =hdp
+            Expanded: =gblMenuExpanded
+            Height: =Parent.Height
+            Icons: |-
+              =Table({Name: "Home", SVG: ""})
+            OnToggle: |-
+              =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+              If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+            Theme: =gblTheme.Mode
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+      - cmpTop_Com:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: =Coalesce(unreadCount, 0)
+            HasNotifications: =Coalesce(unreadCount, 0) > 0
+            Height: =56
+            ModuleIcon: ="Money"
+            ModuleName: =If(gblLanguage = "Arabic", "المالية", "Finance")
+            OnSelect: |-
+              =UpdateContext({locNotifOpen: true})
+            OnSelectTitle: =Navigate(scrFinance, ScreenTransition.None)
+            ScreenTitle: =fnT("nav.commitments", "Procurement commitments")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpPhone_Com:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conComRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutJustifyContent: =LayoutJustifyContent.Start
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutGap: =0
+            LayoutWrap: =false
+            PaddingTop: =56
+            PaddingRight: =0
+            PaddingBottom: =If(App.Width < 700, 52, 0)
+            PaddingLeft: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            DropShadow: =DropShadow.None
+            BorderThickness: =0
+            Fill: =FinTheme.Background
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+          Children:
+            - conComMain:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutGap: =0
+                  LayoutWrap: =false
+                  PaddingTop: =0
+                  PaddingRight: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  DropShadow: =DropShadow.None
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  LayoutMinWidth: =0
+                  LayoutMinHeight: =0
+                  FillPortions: =1
+                  AlignInContainer: =AlignInContainer.Stretch
+                Children:
+                  - cmpCtx_Com:
+                    Control: CanvasComponent
+                    ComponentName: cmpFinContext
+                    Properties:
+                      ProjectOptions: |-
+                        =Table({Key: 0, Value: fnT("hdr.allProjects", "All my projects")}, colProjectOptions)
+                      PeriodOptions: =tblPeriods
+                      DefaultProjectKey: =Coalesce(varProjectID, 0)
+                      DefaultPeriodKey: =Coalesce(varPeriodKey, currentPeriodKey)
+                      Height: =48
+                      FillPortions: =0
+                      AlignInContainer: =AlignInContainer.Stretch
+                      LayoutMinWidth: =0
+                      LayoutMinHeight: =0
+                      OnProjectChange: |-
+                        =Set(varProjectID, cmpCtx_Com.SelectedProjectKey);
+                        UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery);
+                        Select(btnComTotals)
+                      OnPeriodChange: =Set(varPeriodKey, cmpCtx_Com.SelectedPeriodKey)
+                  - conComBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutGap: =sp2
+                        LayoutWrap: =false
+                        PaddingTop: =If(isMobile, sp2, sp3)
+                        PaddingRight: =If(isMobile, sp2, sp3)
+                        PaddingBottom: =If(isMobile, sp2 + 72, sp3)
+                        PaddingLeft: =If(isMobile, sp2, sp3)
+                        DropShadow: =DropShadow.None
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        FillPortions: =1
+                        AlignInContainer: =AlignInContainer.Stretch
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                      Children:
+                        - conComKPI:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutGap: =sp2
+                              LayoutWrap: =true
+                              PaddingTop: =0
+                              PaddingRight: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              DropShadow: =DropShadow.None
+                              BorderThickness: =0
+                              Fill: =RGBA(0, 0, 0, 0)
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              Visible: =true
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Height: =RoundUp(4 / kpiColumns, 0) * 128 + (RoundUp(4 / kpiColumns, 0) - 1) * sp2
+                            Children:
+                              - cmpKPI_ComCommitted:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpKPICard
+                                  Properties:
+                                    Label: =fnT("com.kpiCommitted", "Open commitments")
+                                    KPIValue: =locTot.Committed
+                                    ValueFormat: ="money"
+                                    Currency: ="USD"
+                                    Tone: =""
+                                    Subtext: =If(Coalesce(varProjectID, 0) = 0, fnT("com.pickProject", "Select a project"), fnT("com.stored", "Budgets, stored by flow (USD est.)"))
+                                    Loading: =locLoading || !varFinReady
+                                    Selectable: =false
+                                    Width: =(Parent.Width - (kpiColumns - 1) * sp2) / kpiColumns - 1
+                                    Height: =128
+                                    FillPortions: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                              - cmpKPI_ComProc:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpKPICard
+                                  Properties:
+                                    Label: =fnT("com.kpiProc", "Procurement spent")
+                                    KPIValue: =locTot.Procurement
+                                    ValueFormat: ="money"
+                                    Currency: ="USD"
+                                    Tone: =""
+                                    Subtext: =If(Coalesce(varProjectID, 0) = 0, fnT("com.pickProject", "Select a project"), fnT("com.stored", "Budgets, stored by flow (USD est.)"))
+                                    Loading: =locLoading || !varFinReady
+                                    Selectable: =false
+                                    Width: =(Parent.Width - (kpiColumns - 1) * sp2) / kpiColumns - 1
+                                    Height: =128
+                                    FillPortions: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                              - cmpKPI_ComOverdue:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpKPICard
+                                  Properties:
+                                    Label: =fnT("com.kpiOverdue", "Overdue deliveries")
+                                    KPIValue: =CountRows(Filter(colComPage, Overdue))
+                                    ValueFormat: ="count"
+                                    Currency: ="USD"
+                                    Tone: =If(CountRows(Filter(colComPage, Overdue)) > 0, "danger", "")
+                                    Subtext: =fnT("com.thisPage", "on this page")
+                                    Loading: =locLoading || !varFinReady
+                                    Selectable: =false
+                                    Width: =(Parent.Width - (kpiColumns - 1) * sp2) / kpiColumns - 1
+                                    Height: =128
+                                    FillPortions: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                              - cmpKPI_ComRecvUnpaid:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpKPICard
+                                  Properties:
+                                    Label: =fnT("com.kpiRecvUnpaid", "Received, not fully paid")
+                                    KPIValue: =CountRows(Filter(colComPage, RecvUnpaid))
+                                    ValueFormat: ="count"
+                                    Currency: ="USD"
+                                    Tone: =If(CountRows(Filter(colComPage, RecvUnpaid)) > 0, "warning", "")
+                                    Subtext: =fnT("com.thisPage", "on this page")
+                                    Loading: =locLoading || !varFinReady
+                                    Selectable: =false
+                                    Width: =(Parent.Width - (kpiColumns - 1) * sp2) / kpiColumns - 1
+                                    Height: =128
+                                    FillPortions: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                        - conComListCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutGap: =sp1
+                              LayoutWrap: =false
+                              PaddingTop: =sp2
+                              PaddingRight: =sp2
+                              PaddingBottom: =sp2
+                              PaddingLeft: =sp2
+                              DropShadow: =DropShadow.None
+                              BorderThickness: =borderWidth
+                              Fill: =FinTheme.Surface
+                              RadiusTopLeft: =radiusCard
+                              RadiusTopRight: =radiusCard
+                              RadiusBottomLeft: =radiusCard
+                              RadiusBottomRight: =radiusCard
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              BorderColor: =FinTheme.Border
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Height: =cmpFilterBar_Com.DesiredHeight + sp1 + If(conComExtra.Visible, conComExtra.Height + sp1, 0) + If(locError, 240, If(isMobile, Max(1, Min(CountRows(colComPage), 8)) * 104 + 60, 40 + Max(1, Min(CountRows(colComPage), 12)) * 52 + 60)) + sp1 + 36 + 2 * sp2
+                            Children:
+                              - cmpFilterBar_Com:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpFilterBar
+                                  Properties:
+                                    ShowSearch: =true
+                                    SearchHint: =fnT("com.searchHint", "PO number starts with...")
+                                    ShowStatus: =true
+                                    StatusOptions: =Choices([@PurchaseOrders].PaymentStatus)
+                                    ShowPeriod: =false
+                                    ShowProject: =false
+                                    SheetOpen: =locFilterSheet
+                                    Height: =cmpFilterBar_Com.DesiredHeight
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    OnChange: |-
+                                      =UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery)
+                                    OnClear: |-
+                                      =Reset(drpComVendor); Reset(txtComVendorSearch); Reset(drpComDelivery); UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery)
+                                    OnToggleSheet: |-
+                                      =UpdateContext({locFilterSheet: !locFilterSheet})
+                              - conComExtra:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutGap: =sp1
+                                    LayoutWrap: =true
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Visible: =!isMobile || locFilterSheet
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Height: =If(isMobile, 3 * touchMin + 2 * sp1, touchMin)
+                                  Children:
+                                    - txtComVendorSearch:
+                                        Control: Classic/TextInput@2.3.2
+                                        Properties:
+                                          Default: =""
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          HoverFill: =FinTheme.Surface
+                                          HoverBorderColor: =FinTheme.Primary
+                                          HintText: =fnT("com.vendorSearch", "Find vendor")
+                                          Height: =touchMin
+                                          PaddingLeft: =8
+                                          PaddingRight: =8
+                                          RadiusTopLeft: =6
+                                          RadiusTopRight: =6
+                                          RadiusBottomLeft: =6
+                                          RadiusBottomRight: =6
+                                          Align: =alignStart
+                                          TabIndex: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, Parent.Width, 200)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("com.vendorSearch", "Find vendor")
+                                          DelayOutput: =true
+                                    - drpComVendor:
+                                        Control: Classic/DropDown@2.3.1
+                                        Properties:
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          HoverFill: =FinTheme.RowHover
+                                          HoverBorderColor: =FinTheme.Primary
+                                          HoverColor: =FinTheme.Text
+                                          PressedFill: =FinTheme.RowSelected
+                                          PressedColor: =FinTheme.Text
+                                          SelectionFill: =FinTheme.Primary
+                                          SelectionColor: =FinTheme.OnPrimary
+                                          ChevronBackground: =FinTheme.Surface
+                                          ChevronFill: =FinTheme.TextSecondary
+                                          PaddingLeft: =8
+                                          Height: =touchMin
+                                          TabIndex: =0
+                                          AllowEmptySelection: =false
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Items: |-
+                                            =Table({Key: 0, Value: fnT("com.allVendors", "All vendors")}, Sort(Filter(colVendorsLite, !IsBlank(txtComVendorSearch.Text) && StartsWith(Value, txtComVendorSearch.Text)), Value, SortOrder.Ascending))
+                                          Width: =If(isMobile, Parent.Width, 240)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("com.vendor", "Vendor")
+                                          OnChange: |-
+                                            =UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery)
+                                    - drpComDelivery:
+                                        Control: Classic/DropDown@2.3.1
+                                        Properties:
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          HoverFill: =FinTheme.RowHover
+                                          HoverBorderColor: =FinTheme.Primary
+                                          HoverColor: =FinTheme.Text
+                                          PressedFill: =FinTheme.RowSelected
+                                          PressedColor: =FinTheme.Text
+                                          SelectionFill: =FinTheme.Primary
+                                          SelectionColor: =FinTheme.OnPrimary
+                                          ChevronBackground: =FinTheme.Surface
+                                          ChevronFill: =FinTheme.TextSecondary
+                                          PaddingLeft: =8
+                                          Height: =touchMin
+                                          TabIndex: =0
+                                          AllowEmptySelection: =false
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Items: |-
+                                            =Table({Key: "", Value: fnT("com.allDeliveries", "All deliveries")}, {Key: "overdue", Value: fnT("com.overdueOnly", "Overdue delivery")})
+                                          Width: =If(isMobile, Parent.Width, 200)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("com.delivery", "Delivery")
+                                          OnChange: |-
+                                            =UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery)
+                              - cmpEmpty_ComErr:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpEmptyState
+                                  Properties:
+                                    Visible: =locError
+                                    Variant: ="error"
+                                    Message: =fnT("common.loadError", "The data could not be loaded.")
+                                    Height: =240
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    ActionText: =fnT("common.retry", "Retry")
+                                    OnAction: =Select(btnComQuery)
+                              - cmpDataTable_Com:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpDataTable
+                                  Properties:
+                                    Visible: =!locError
+                                    RowItems: |-
+                                      =ForAll(colComPage As r, {RowID: r.ID, Primary: Coalesce(r.PONumber, r.Title), Secondary: Coalesce(r.Supplier, "-") & If(r.Overdue, " | ⚠ " & fnT("com.overdue", "Delivery overdue") & " " & DateDiff(r.ExpectedDeliveryDate, Today(), TimeUnit.Days) & " " & fnT("common.days", "days"), "") & If(r.RecvUnpaid, " | ⚑ " & fnT("com.recvUnpaid", "Received, not fully paid"), ""), C1: r.ProjectCode, C2: If(IsBlank(r.ReceivedValue), "-", "≈ " & fnMoney(r.ReceivedValue, r.Currency)), C3: fnMoney(r.PaidAmount, r.Currency), C4: fnMoney(r.Outstanding, r.Currency), Util: Blank(), Amount: r.Total, Currency: r.Currency, AmountUSD: Blank(), Status: Coalesce(r.PaymentStatus, "-"), StatusDomain: "POPaymentStatus"})
+                                    ColumnConfig: |-
+                                      =Table(
+                                          {Key: "Primary", Header: fnT("col.po", "PO / vendor"), Portion: 2.2, ShowOnTablet: true, Sortable: false},
+                                          {Key: "C1", Header: fnT("col.project", "Project"), Portion: 1, ShowOnTablet: false, Sortable: false},
+                                          {Key: "Amount", Header: fnT("col.ordered", "Ordered"), Portion: 1.4, ShowOnTablet: true, Sortable: false},
+                                          {Key: "C2", Header: fnT("col.receivedValue", "Received (est.)"), Portion: 1.4, ShowOnTablet: false, Sortable: false},
+                                          {Key: "C3", Header: fnT("col.paid", "Paid"), Portion: 1.3, ShowOnTablet: false, Sortable: false},
+                                          {Key: "C4", Header: fnT("col.outstanding", "Outstanding"), Portion: 1.4, ShowOnTablet: true, Sortable: false},
+                                          {Key: "Status", Header: fnT("col.payStatus", "Payment"), Portion: 1.2, ShowOnTablet: true, Sortable: false}
+                                      )
+                                    PageNumber: =Coalesce(locPage, 1)
+                                    HasMore: =!locPerProject && CountRows(colComRaw) = cfgPageSize
+                                    Loading: =locLoading || !varFinReady
+                                    EmptyText: =If(cmpFilterBar_Com.ActiveCount > 0 || Coalesce(drpComVendor.Selected.Key, 0) > 0 || drpComDelivery.Selected.Key <> "", fnT("com.emptyFilter", "No purchase orders match the filters."), fnT("com.empty", "No purchase orders for your projects yet."))
+                                    Height: =If(isMobile, Max(1, Min(CountRows(colComPage), 8)) * 104 + 60, 40 + Max(1, Min(CountRows(colComPage), 12)) * 52 + 60)
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    OnNextPage: |-
+                                      =Collect(colComStack, {Cursor: locCursor});
+                                      UpdateContext({locCursor: Min(colComRaw, ID), locPage: locPage + 1});
+                                      Select(btnComQuery)
+                                    OnPrevPage: |-
+                                      =UpdateContext({locCursor: Last(colComStack).Cursor, locPage: Max(1, locPage - 1)});
+                                      Remove(colComStack, Last(colComStack));
+                                      Select(btnComQuery)
+                                    OnRowSelect: |-
+                                      =UpdateContext({locPOID: cmpDataTable_Com.SelectedRow.RowID}); Select(btnComOpen)
+                              - lblComNote:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Text: =If(locPerProject, fnT("com.perProjectNote", "Latest purchase orders of each of your projects. Select a project in the header to page through older ones."), fnT("com.listNote", "Read-only. Received value is estimated from the PO quantities (exact per line in the detail). Outstanding = ordered - paid.")) & If(cfgComInvoiceFlags, "", " " & fnT("com.invoiceNote", "Invoice-based flags need invoice data (not in the data model yet)."))
+                                    Font: =fontBase
+                                    Size: =fsCaption
+                                    Color: =FinTheme.TextSecondary
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    BorderThickness: =0
+                                    Wrap: =true
+                                    Align: =alignStart
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =36
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+      - conComPanelOverlay:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            BorderThickness: =0
+            Fill: =RGBA(0, 0, 0, 0)
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            Visible: =locDrawer
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+          Children:
+            - rectComScrim:
+                Control: Rectangle@2.3.0
+                Properties:
+                  Fill: =RGBA(0, 0, 0, 0.45)
+                  BorderThickness: =0
+                  TabIndex: =-1
+                  LayoutMinWidth: =0
+                  LayoutMinHeight: =0
+                  X: =0
+                  Y: =0
+                  Width: =Parent.Width
+                  Height: =Parent.Height
+                  OnSelect: |-
+                    =UpdateContext({locDrawer: false})
+            - conComPanel:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutGap: =0
+                  LayoutWrap: =false
+                  PaddingTop: =0
+                  PaddingRight: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  DropShadow: =DropShadow.ExtraBold
+                  BorderThickness: =0
+                  Fill: =FinTheme.Surface
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  LayoutMinWidth: =0
+                  LayoutMinHeight: =0
+                  X: =If(isMobile || isRTL, 0, Parent.Width - Self.Width)
+                  Y: =0
+                  Width: =If(isMobile, Parent.Width, Min(600, Parent.Width))
+                  Height: =Parent.Height
+                Children:
+                  - conComPanelHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutGap: =sp1
+                        LayoutWrap: =false
+                        PaddingTop: =0
+                        PaddingRight: =sp1
+                        PaddingBottom: =0
+                        PaddingLeft: =sp2
+                        DropShadow: =DropShadow.None
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        Height: =56
+                        FillPortions: =0
+                        AlignInContainer: =AlignInContainer.Stretch
+                        BorderColor: =FinTheme.Border
+                      Children:
+                        - lblComPanelTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Text: =Coalesce(locPO.PONumber, fnT("com.po", "Purchase order"))
+                              Font: =fontBase
+                              Size: =fsSection
+                              Color: =FinTheme.Text
+                              Fill: =RGBA(0, 0, 0, 0)
+                              BorderThickness: =0
+                              Wrap: =false
+                              Align: =alignStart
+                              VerticalAlign: =VerticalAlign.Middle
+                              PaddingTop: =0
+                              PaddingRight: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              Height: =28
+                              FontWeight: =FontWeight.Semibold
+                              Role: =TextRole.Heading2
+                              FillPortions: =1
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Live: =Live.Polite
+                        - icoComPanelClose:
+                            Control: Classic/Icon@2.5.0
+                            Properties:
+                              Icon: =Icon.Cancel
+                              Color: =FinTheme.Text
+                              Fill: =RGBA(0, 0, 0, 0)
+                              Width: =touchMin
+                              Height: =touchMin
+                              PaddingTop: =12
+                              PaddingRight: =12
+                              PaddingBottom: =12
+                              PaddingLeft: =12
+                              TabIndex: =0
+                              AccessibleLabel: =fnT("common.close", "Close")
+                              FocusedBorderThickness: =2
+                              FocusedBorderColor: =FinTheme.Focus
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              OnSelect: |-
+                                =UpdateContext({locDrawer: false})
+                              FillPortions: =0
+                  - rectComPanelDiv:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =FinTheme.Border
+                        BorderThickness: =0
+                        TabIndex: =-1
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        Height: =1
+                        FillPortions: =0
+                        AlignInContainer: =AlignInContainer.Stretch
+                  - conComPanelBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutGap: =sp2
+                        LayoutWrap: =false
+                        PaddingTop: =sp2
+                        PaddingRight: =sp2
+                        PaddingBottom: =sp2
+                        PaddingLeft: =sp2
+                        DropShadow: =DropShadow.None
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        FillPortions: =1
+                        AlignInContainer: =AlignInContainer.Stretch
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                      Children:
+                        - cmpSkel_ComDrawer:
+                            Control: CanvasComponent
+                            ComponentName: cmpSkeleton
+                            Properties:
+                              Visible: =locDrawerLoading
+                              Variant: ="list"
+                              Rows: =5
+                              Height: =240
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                        - cmpEmpty_ComDrawerErr:
+                            Control: CanvasComponent
+                            ComponentName: cmpEmptyState
+                            Properties:
+                              Visible: =locDrawerErr
+                              Variant: ="error"
+                              Message: =fnT("common.loadError", "The data could not be loaded.")
+                              Height: =240
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              ActionText: =fnT("common.retry", "Retry")
+                              OnAction: =Select(btnComOpen)
+                        - conComDrawerOK:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutGap: =sp2
+                              LayoutWrap: =false
+                              PaddingTop: =0
+                              PaddingRight: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              DropShadow: =DropShadow.None
+                              BorderThickness: =0
+                              Fill: =RGBA(0, 0, 0, 0)
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              Visible: =!locDrawerLoading && !locDrawerErr
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Height: =6 * 46 + 5 * sp2 + sp2 + 28 + sp1 + 32 + Max(1, Min(CountRows(colComLines), 8)) * 48 + sp2 + 28 + sp1 + Max(1, Min(CountRows(colComTxn), 5)) * 44 + sp2 + 40
+                            Children:
+                              - conComFacts:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutGap: =sp2
+                                    LayoutWrap: =true
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Height: =6 * 46 + 5 * sp2
+                                  Children:
+                                    - conComFVendor:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFVendorL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.vendor", "Vendor")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFVendorV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locPO.Supplier, "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFProject:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFProjectL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.project", "Project")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFProjectV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locPO.ProjectCode, "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFIssue:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFIssueL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("com.issueDate", "Issue date")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFIssueV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =If(IsBlank(locPO.IssueDate), "-", Text(locPO.IssueDate, "dd mmm yyyy", appLocale))
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFDelivery:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFDeliveryL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("com.expectedDelivery", "Expected delivery")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFDeliveryV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =If(IsBlank(locPO.ExpectedDeliveryDate), "-", Text(locPO.ExpectedDeliveryDate, "dd mmm yyyy", appLocale)) & If(locPO.Overdue, " ⚠ " & fnT("com.overdue", "Delivery overdue"), "")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFOrdered:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFOrderedL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.ordered", "Ordered")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFOrderedV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(locPO.Total, locPO.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFReceived:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFReceivedL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("com.receivedExact", "Received (from lines)")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFReceivedV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(Sum(colComLines, ReceivedValue), locPO.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFPaid:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFPaidL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.paid", "Paid")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFPaidV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(locPO.PaidAmount, locPO.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFOut:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFOutL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("col.outstanding", "Outstanding commitment")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFOutV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnMoney(locPO.Outstanding, locPO.Currency)
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFAppr:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFApprL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("com.approval", "Approval status")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFApprV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locPO.ApprovalStatus, "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFPOStatus:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =(Parent.Width - sp2) / 2
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFPOStatusL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("com.poStatus", "PO status") & " / " & fnT("col.payStatus", "Payment")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFPOStatusV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =Coalesce(locPO.POStatus, "-") & " / " & Coalesce(locPO.PaymentStatus, "-")
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                    - conComFFlag:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =2
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =Parent.Width
+                                          Height: =46
+                                          FillPortions: =0
+                                        Children:
+                                          - lblComFFlagL:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =fnT("com.flags", "Flags")
+                                                Font: =fontBase
+                                                Size: =fsCaption
+                                                Color: =FinTheme.TextSecondary
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =18
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                          - lblComFFlagV:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Text: =If(Sum(colComLines, ReceivedValue) - Coalesce(locPO.PaidAmount, 0) > cfgComTolerance, "⚑ " & fnT("com.recvUnpaid", "Received, not fully paid"), fnT("com.noFlags", "None"))
+                                                Font: =fontBase
+                                                Size: =fsBody
+                                                Color: =FinTheme.Text
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                BorderThickness: =0
+                                                Wrap: =false
+                                                Align: =alignStart
+                                                VerticalAlign: =VerticalAlign.Middle
+                                                PaddingTop: =0
+                                                PaddingRight: =0
+                                                PaddingBottom: =0
+                                                PaddingLeft: =0
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                Height: =24
+                                                FontWeight: =FontWeight.Semibold
+                                                Tooltip: =Self.Text
+                                                FillPortions: =0
+                                                AlignInContainer: =AlignInContainer.Stretch
+                              - lblComLinesT:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Text: =fnT("com.lines", "PO lines") & " (" & CountRows(colComLines) & ")"
+                                    Font: =fontBase
+                                    Size: =fsSection
+                                    Color: =FinTheme.Text
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    BorderThickness: =0
+                                    Wrap: =false
+                                    Align: =alignStart
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =28
+                                    FontWeight: =FontWeight.Semibold
+                                    Role: =TextRole.Heading3
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                              - conComLinesHead:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =32
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                  Children:
+                                    - lblComLHLine:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnT("col.line", "Line")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.TextSecondary
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =32
+                                          X: =If(isRTL, Parent.Width - (8 + (Parent.Width - 16 - 0) * (0) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.Width - 16 - 0) * 2.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.Width - 16 - 0) * (0) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.Width - 16 - 0) * 2.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          FontWeight: =FontWeight.Semibold
+                                    - lblComLHBL:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnT("col.budgetLine", "Budget line")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.TextSecondary
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =32
+                                          X: =If(isRTL, Parent.Width - (8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.Width - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.Width - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          FontWeight: =FontWeight.Semibold
+                                    - lblComLHQty:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnT("col.recvQty", "Received / qty")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.TextSecondary
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =32
+                                          X: =If(isRTL, Parent.Width - (8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.Width - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.Width - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          FontWeight: =FontWeight.Semibold
+                                    - lblComLHTotal:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnT("col.total", "Total")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.TextSecondary
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =32
+                                          X: =If(isRTL, Parent.Width - (8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.Width - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.Width - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          FontWeight: =FontWeight.Semibold
+                                    - lblComLHRecv:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnT("col.receivedValue", "Received value")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.TextSecondary
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =32
+                                          X: =If(isRTL, Parent.Width - (8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.Width - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.Width - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.Width - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          FontWeight: =FontWeight.Semibold
+                              - galComLines:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    TemplatePadding: =0
+                                    ShowScrollbar: =true
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    TemplateFill: =RGBA(0, 0, 0, 0)
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    DelayItemLoading: =true
+                                    LoadingSpinner: =LoadingSpinner.None
+                                    Items: =colComLines
+                                    TemplateSize: =48
+                                    Height: =Max(1, Min(CountRows(colComLines), 8)) * 48
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Selectable: =false
+                                    AccessibleLabel: =fnT("com.lines", "PO lines")
+                                  Children:
+                                    - lblComLLine:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =ThisItem.LineNumber & ". " & Coalesce(ThisItem.Title, "")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, Parent.TemplateWidth - (8 + (Parent.TemplateWidth - 16 - 0) * (0) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.TemplateWidth - 16 - 0) * 2.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.TemplateWidth - 16 - 0) * (0) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.TemplateWidth - 16 - 0) * 2.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          Tooltip: =Self.Text
+                                    - lblComLBL:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =Coalesce(ThisItem.BudgetLineCode, "-")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, Parent.TemplateWidth - (8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.TemplateWidth - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.TemplateWidth - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          Tooltip: =Self.Text
+                                    - lblComLQty:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =Text(Coalesce(ThisItem.ReceivedQuantity, 0)) & " / " & Text(Coalesce(ThisItem.Quantity, 0))
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, Parent.TemplateWidth - (8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.TemplateWidth - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.TemplateWidth - 16 - 0) * 1.2 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          Tooltip: =Self.Text
+                                    - lblComLTotal:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnMoney(ThisItem.Total, locPO.Currency)
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, Parent.TemplateWidth - (8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.TemplateWidth - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.TemplateWidth - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          Tooltip: =Self.Text
+                                    - lblComLRecv:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnMoney(ThisItem.ReceivedValue, locPO.Currency)
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =4
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, Parent.TemplateWidth - (8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0))) - (If(true, (Parent.TemplateWidth - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)), 8 + (Parent.TemplateWidth - 16 - 0) * (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0)) / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)))
+                                          Y: =0
+                                          Width: =If(true, (Parent.TemplateWidth - 16 - 0) * 1.3 / (If(true, 2.2, 0) + If(true, 1.2, 0) + If(true, 1.2, 0) + If(true, 1.3, 0) + If(true, 1.3, 0)), 0)
+                                          Tooltip: =Self.Text
+                                    - rectComLDiv:
+                                        Control: Rectangle@2.3.0
+                                        Properties:
+                                          Fill: =FinTheme.Border
+                                          BorderThickness: =0
+                                          TabIndex: =-1
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          X: =0
+                                          Y: =47
+                                          Width: =Parent.TemplateWidth
+                                          Height: =1
+                              - lblComTxnT:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Text: =fnT("com.ledger", "Ledger entries")
+                                    Font: =fontBase
+                                    Size: =fsSection
+                                    Color: =FinTheme.Text
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    BorderThickness: =0
+                                    Wrap: =false
+                                    Align: =alignStart
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =28
+                                    FontWeight: =FontWeight.Semibold
+                                    Role: =TextRole.Heading3
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                              - galComTxn:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    TemplatePadding: =0
+                                    ShowScrollbar: =false
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    TemplateFill: =RGBA(0, 0, 0, 0)
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    DelayItemLoading: =true
+                                    LoadingSpinner: =LoadingSpinner.None
+                                    Items: =colComTxn
+                                    TemplateSize: =44
+                                    Height: =Max(1, Min(CountRows(colComTxn), 5)) * 44
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Selectable: =true
+                                    AccessibleLabel: =fnT("com.ledger", "Ledger entries")
+                                    ItemAccessibleLabel: =ThisItem.TransactionNumber
+                                    OnSelect: =Set(varLedTxnID, ThisItem.ID); fnNavigate("ledger")
+                                  Children:
+                                    - lblComTxnL:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =ThisItem.TransactionNumber & " | " & fnT("txn." & ThisItem.Type, ThisItem.Type) & " | " & fnPeriodLabel(ThisItem.PeriodKey) & If(ThisItem.Status = cfgTxnStatus.Reversed, " | " & fnT("txn.reversed", "Reversed"), "")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =FinTheme.Text
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignStart
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, Parent.TemplateWidth / 2, 0)
+                                          Y: =0
+                                          Width: =Parent.TemplateWidth / 2
+                                          Tooltip: =Self.Text
+                                    - lblComTxnA:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Text: =fnMoney(ThisItem.Amount, ThisItem.Currency) & If(ThisItem.Currency <> "USD", " (" & fnMoney(ThisItem.AmountUSD, "USD") & ")", "")
+                                          Font: =fontBase
+                                          Size: =fsCaption
+                                          Color: =fnAmountColor(ThisItem.Amount)
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          BorderThickness: =0
+                                          Wrap: =false
+                                          Align: =alignEnd
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Height: =44
+                                          X: =If(isRTL, 0, Parent.TemplateWidth / 2)
+                                          Y: =0
+                                          Width: =Parent.TemplateWidth / 2
+                              - lblComTxnNote:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Text: =If(IsEmpty(colComTxn), fnT("com.noTxn", "No ledger entry yet (flow 1 posts the commitment when the PO is approved)."), fnT("com.txnNote", "Commitment rows posted by flow 1. Payments appear under Payment Request."))
+                                    Font: =fontBase
+                                    Size: =fsCaption
+                                    Color: =FinTheme.TextSecondary
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    BorderThickness: =0
+                                    Wrap: =true
+                                    Align: =alignStart
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =40
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                  - rectComPanelDiv2:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =FinTheme.Border
+                        BorderThickness: =0
+                        TabIndex: =-1
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        Height: =1
+                        FillPortions: =0
+                        AlignInContainer: =AlignInContainer.Stretch
+                  - conComPanelFoot:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutGap: =sp1
+                        LayoutWrap: =false
+                        PaddingTop: =0
+                        PaddingRight: =sp2
+                        PaddingBottom: =0
+                        PaddingLeft: =sp2
+                        DropShadow: =DropShadow.None
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        Height: =touchMin + 2 * sp2
+                        FillPortions: =0
+                        AlignInContainer: =AlignInContainer.Stretch
+                      Children:
+                        - btnComOpenProc:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              Text: =fnT("com.openProc", "Open in Procurement")
+                              Font: =fontBase
+                              Size: =fsBody
+                              FontWeight: =FontWeight.Semibold
+                              Height: =touchMin
+                              BorderThickness: =1
+                              FocusedBorderThickness: =2
+                              FocusedBorderColor: =FinTheme.Focus
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =0
+                              PaddingBottom: =0
+                              TabIndex: =0
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              DisabledFill: =FinTheme.Border
+                              DisabledColor: =FinTheme.TextSecondary
+                              DisabledBorderColor: =FinTheme.Border
+                              Fill: =FinTheme.Primary
+                              Color: =FinTheme.OnPrimary
+                              BorderColor: =FinTheme.Primary
+                              HoverFill: =ColorFade(FinTheme.Primary, -0.12)
+                              HoverColor: =FinTheme.OnPrimary
+                              HoverBorderColor: =FinTheme.Primary
+                              PressedFill: =ColorFade(FinTheme.Primary, -0.24)
+                              PressedColor: =FinTheme.OnPrimary
+                              PressedBorderColor: =FinTheme.Primary
+                              Visible: =cfgProcurementPOLink <> ""
+                              Width: =200
+                              FillPortions: =0
+                              OnSelect: =Launch(cfgProcurementPOLink & locPO.ID)
+                        - btnComClose:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              Text: =fnT("common.close", "Close")
+                              Font: =fontBase
+                              Size: =fsBody
+                              FontWeight: =FontWeight.Semibold
+                              Height: =touchMin
+                              BorderThickness: =1
+                              FocusedBorderThickness: =2
+                              FocusedBorderColor: =FinTheme.Focus
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =0
+                              PaddingBottom: =0
+                              TabIndex: =0
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              DisabledFill: =FinTheme.Border
+                              DisabledColor: =FinTheme.TextSecondary
+                              DisabledBorderColor: =FinTheme.Border
+                              Fill: =FinTheme.Surface
+                              Color: =FinTheme.Text
+                              BorderColor: =FinTheme.Border
+                              HoverFill: =FinTheme.RowHover
+                              HoverColor: =FinTheme.Text
+                              HoverBorderColor: =FinTheme.Primary
+                              PressedFill: =FinTheme.RowSelected
+                              PressedColor: =FinTheme.Text
+                              PressedBorderColor: =FinTheme.Primary
+                              Width: =110
+                              FillPortions: =0
+                              OnSelect: |-
+                                =UpdateContext({locDrawer: false})
+      - cmpNotif_Com:
+          Control: CanvasComponent
+          ComponentName: cmpNotificationsPanel
+          Properties:
+            Visible: =locNotifOpen
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+            Items: |-
+              =ForAll(colFinNotif As n, {ID: n.ID, Title: n.Title, Message: n.Message, Created: n.Created, Link: n.Link, RelatedEntity: n.RelatedEntity.Value, RelatedItemID: n.RelatedItemID})
+            OnClose: |-
+              =UpdateContext({locNotifOpen: false})
+            OnMarkAllRead: =fnMarkAllNotificationsRead()
+            OnOpenItem: |-
+              =UpdateContext({locNotifOpen: false});
+              fnOpenNotification(cmpNotif_Com.SelectedItem.ID, cmpNotif_Com.SelectedItem.RelatedEntity, cmpNotif_Com.SelectedItem.RelatedItemID, cmpNotif_Com.SelectedItem.Link)
+      - btnComQuery:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =UpdateContext({
+                  locLoading: true, locError: false,
+                  locQ: {
+                      Project: Coalesce(varProjectID, 0),
+                      Search: cmpFilterBar_Com.SearchText,
+                      PayStatus: cmpFilterBar_Com.SelectedStatus,
+                      Vendor: Coalesce(drpComVendor.Selected.Key, 0),
+                      Overdue: drpComDelivery.Selected.Key = "overdue",
+                      Today: Today()
+                  }
+              });
+              // scoped user + "All my projects": latest page of each project (no paging); otherwise one delegable query
+              UpdateContext({locPerProject: !canViewAllProjects && locQ.Project = 0});
+              IfError(
+                  If(
+                      locPerProject,
+                      Clear(colComRaw);
+                      ForAll(colMyProjects As p, Collect(colComRaw, ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PurchaseOrders,
+                                      ProjectID = p.ID,
+                                      IsBlank(locQ.Search) || StartsWith(PONumber, locQ.Search),
+                                      IsBlank(locQ.PayStatus) || PaymentStatus.Value = locQ.PayStatus,
+                                      locQ.Vendor = 0 || VendorID = locQ.Vendor,
+                                      !locQ.Overdue || ExpectedDeliveryDate < locQ.Today
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As o,
+                          With(
+                              {_rv: If(Coalesce(o.OrderdQty, 0) > 0, o.Total * Min(1, Coalesce(o.ReceivedQty, 0) / o.OrderdQty), Blank())},
+                              {
+                                  ID: o.ID, PONumber: o.PONumber, Title: o.Title, ProjectID: o.ProjectID, ProjectCode: o.Project.Value,
+                                  Supplier: o.Supplier.Value, VendorID: o.VendorID, PRID: o.PRID, Currency: o.Currency.Value,
+                                  Total: o.Total, PaidAmount: o.PaidAmount, ApprovalStatus: o.Status.Value, POStatus: o.POStatus.Value,
+                                  PaymentStatus: o.PaymentStatus.Value, IssueDate: o.IssueDate, ExpectedDeliveryDate: o.ExpectedDeliveryDate,
+                                  OrderdQty: o.OrderdQty, ReceivedQty: o.ReceivedQty,
+                                  ReceivedValue: _rv,
+                                  Outstanding: Coalesce(o.Total, 0) - Coalesce(o.PaidAmount, 0),
+                                  Overdue: !IsBlank(o.ExpectedDeliveryDate) && o.ExpectedDeliveryDate < Today() &&
+                                      Coalesce(o.ReceivedQty, 0) < Coalesce(o.OrderdQty, 0) && !(o.POStatus.Value in cfgPOClosedStatus),
+                                  RecvUnpaid: Coalesce(_rv, 0) - Coalesce(o.PaidAmount, 0) > cfgComTolerance
+                              }
+                          )
+                      ))),
+                      ClearCollect(
+                          colComRaw,
+                      ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PurchaseOrders,
+                                      locQ.Project = 0 || ProjectID = locQ.Project,
+                                      IsBlank(locQ.Search) || StartsWith(PONumber, locQ.Search),
+                                      IsBlank(locQ.PayStatus) || PaymentStatus.Value = locQ.PayStatus,
+                                      locQ.Vendor = 0 || VendorID = locQ.Vendor,
+                                      !locQ.Overdue || ExpectedDeliveryDate < locQ.Today,
+                                      locCursor = 0 || ID < locCursor
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As o,
+                          With(
+                              {_rv: If(Coalesce(o.OrderdQty, 0) > 0, o.Total * Min(1, Coalesce(o.ReceivedQty, 0) / o.OrderdQty), Blank())},
+                              {
+                                  ID: o.ID, PONumber: o.PONumber, Title: o.Title, ProjectID: o.ProjectID, ProjectCode: o.Project.Value,
+                                  Supplier: o.Supplier.Value, VendorID: o.VendorID, PRID: o.PRID, Currency: o.Currency.Value,
+                                  Total: o.Total, PaidAmount: o.PaidAmount, ApprovalStatus: o.Status.Value, POStatus: o.POStatus.Value,
+                                  PaymentStatus: o.PaymentStatus.Value, IssueDate: o.IssueDate, ExpectedDeliveryDate: o.ExpectedDeliveryDate,
+                                  OrderdQty: o.OrderdQty, ReceivedQty: o.ReceivedQty,
+                                  ReceivedValue: _rv,
+                                  Outstanding: Coalesce(o.Total, 0) - Coalesce(o.PaidAmount, 0),
+                                  Overdue: !IsBlank(o.ExpectedDeliveryDate) && o.ExpectedDeliveryDate < Today() &&
+                                      Coalesce(o.ReceivedQty, 0) < Coalesce(o.OrderdQty, 0) && !(o.POStatus.Value in cfgPOClosedStatus),
+                                  RecvUnpaid: Coalesce(_rv, 0) - Coalesce(o.PaidAmount, 0) > cfgComTolerance
+                              }
+                          )
+                      )
+                      )
+                  );
+                  // overdue = expected date passed (server side) AND not fully received AND not closed (client side, this page only)
+                  ClearCollect(colComPage, Sort(Filter(colComRaw, !locQ.Overdue || Overdue), ID, SortOrder.Descending)),
+                  UpdateContext({locError: true});
+                  Trace("PO query failed: " & FirstError.Message, TraceSeverity.Error)
+              );
+              UpdateContext({locLoading: false})
+      - btnComTotals:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =If(
+                  Coalesce(varProjectID, 0) > 0,
+                  IfError(
+                      If(varBudgetLinesProjectID <> varProjectID, fnLoadBudgetLines(varProjectID));
+                      UpdateContext({locTot: {
+                          Committed: Sum(colBudgetLines, CommittedUSD),
+                          Procurement: Sum(colBudgetLines, fnToUSD(ProcurementAmount, Currency)),
+                          Budget: Sum(colBudgetLines, TotalUSD)
+                      }}),
+                      UpdateContext({locTot: Blank()});
+                      Trace("Budget totals failed: " & FirstError.Message, TraceSeverity.Warning)
+                  ),
+                  UpdateContext({locTot: Blank()})
+              )
+      - btnComOpen:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =UpdateContext({locDrawer: true, locDrawerLoading: true, locDrawerErr: false});
+              IfError(
+                  UpdateContext({locPORec: LookUp(PurchaseOrders, ID = locPOID)});
+                  // scope check: the PO's project must be one of mine unless I see all projects
+                  If(
+                      IsBlank(locPORec) || (!canViewAllProjects && IsBlank(LookUp(colMyProjects, ID = locPORec.ProjectID))),
+                      UpdateContext({locDrawer: false});
+                      Notify(fnT("com.noAccess", "This purchase order does not exist or belongs to a project you cannot access."), NotificationType.Warning),
+                      With(
+                          {o: locPORec},
+                          UpdateContext({locPO: With(
+                                  {_rv: If(Coalesce(o.OrderdQty, 0) > 0, o.Total * Min(1, Coalesce(o.ReceivedQty, 0) / o.OrderdQty), Blank())},
+                                  {
+                                      ID: o.ID, PONumber: o.PONumber, Title: o.Title, ProjectID: o.ProjectID, ProjectCode: o.Project.Value,
+                                      Supplier: o.Supplier.Value, VendorID: o.VendorID, PRID: o.PRID, Currency: o.Currency.Value,
+                                      Total: o.Total, PaidAmount: o.PaidAmount, ApprovalStatus: o.Status.Value, POStatus: o.POStatus.Value,
+                                      PaymentStatus: o.PaymentStatus.Value, IssueDate: o.IssueDate, ExpectedDeliveryDate: o.ExpectedDeliveryDate,
+                                      OrderdQty: o.OrderdQty, ReceivedQty: o.ReceivedQty,
+                                      ReceivedValue: _rv,
+                                      Outstanding: Coalesce(o.Total, 0) - Coalesce(o.PaidAmount, 0),
+                                      Overdue: !IsBlank(o.ExpectedDeliveryDate) && o.ExpectedDeliveryDate < Today() &&
+                                          Coalesce(o.ReceivedQty, 0) < Coalesce(o.OrderdQty, 0) && !(o.POStatus.Value in cfgPOClosedStatus),
+                                      RecvUnpaid: Coalesce(_rv, 0) - Coalesce(o.PaidAmount, 0) > cfgComTolerance
+                                  }
+                              )})
+                      );
+                      Concurrent(
+                          // POID is the documented filter column of PurchaseOrderLines
+                          ClearCollect(colComLines, ForAll(FirstN(Sort(Filter(PurchaseOrderLines, POID = locPOID), LineNumber, SortOrder.Ascending), 200) As l,
+                              {ID: l.ID, LineNumber: l.LineNumber, BudgetLineID: l.BudgetLineID, BudgetLineCode: l.BudgetLine.Value, Title: l.Title,
+                               Quantity: l.Quantity, UnitPrice: l.UnitPrice, Total: l.Total, ReceivedQuantity: l.ReceivedQuantity,
+                               RemainingQuantity: l.RemainingQuantity, LineStatus: l.LineStatus.Value,
+                               ReceivedValue: Coalesce(l.ReceivedQuantity, 0) * Coalesce(l.UnitPrice, 0)})),
+                          // ledger rows posted by flow 1 for this PO (SourceModule is Indexed; SourceID index requested, question H7)
+                          ClearCollect(colComTxn, ForAll(FirstN(Sort(Filter(FinancialTransactions, SourceModule.Value = cfgSourceModule.PurchaseOrder,
+                              SourceID = locPOID), ID, SortOrder.Descending), 20) As t,
+                              {ID: t.ID, TransactionNumber: t.TransactionNumber, PeriodKey: t.PeriodKey, Type: t.TransactionType.Value,
+                               Amount: t.Amount, Currency: t.Currency.Value, AmountUSD: t.AmountUSD, Status: t.Status.Value}))
+                      )
+                  ),
+                  UpdateContext({locDrawerErr: true});
+                  Trace("PO detail failed: " & FirstError.Message, TraceSeverity.Error)
+              );
+              UpdateContext({locDrawerLoading: false})
+      - btnComLite:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =If(IsEmpty(colVendorsLite), IfError(ClearCollect(colVendorsLite, ForAll(FirstN(Sort(Vendors, ID, SortOrder.Ascending), 2000) As v, {Key: v.ID, Value: v.Title})), Trace("Vendors load failed: " & FirstError.Message, TraceSeverity.Warning)))
+      - tmrComBoot:
+          Control: Timer@2.1.0
+          Properties:
+            Visible: =false
+            Duration: =300
+            Start: =varFinReady && !locBooted
+            AutoStart: =false
+            Repeat: =false
+            OnTimerEnd: |-
+              =UpdateContext({locBooted: true});
+              UpdateContext({locCursor: 0, locPage: 1}); Clear(colComStack); Select(btnComQuery);
+              Select(btnComTotals);
+              If(Coalesce(varComPOID, 0) > 0, UpdateContext({locPOID: varComPOID}); Set(varComPOID, 0); Select(btnComOpen))
