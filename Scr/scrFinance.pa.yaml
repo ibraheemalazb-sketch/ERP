@@ -1,0 +1,534 @@
+Screens:
+  scrFinance:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Finance");
+        Set(varCurrentScreen, "Finance");
+        Set(VarFinTab, Coalesce(VarFinTab, "Main"));
+        Set(
+            varNavSelectedID,
+            Switch(
+                VarFinTab,
+                "Transactions", 52,
+                "Budgets", 53,
+                "BudgetLines", 55,
+                "ProjectFinance", 56,
+                51
+            )
+        )
+    Children:
+      - conFinNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpFinNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpFinTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: =Coalesce(unreadCount, 0)
+            HasNotifications: =Coalesce(unreadCount, 0) > 0
+            Height: =56
+            ModuleIcon: ="Money"
+            ModuleName: =If(gblLanguage = "Arabic", "المالية", "Finance")
+            OnSelect: |-
+              =UpdateContext({locNotifOpen: true})
+            OnSelectTitle: =Set(VarFinTab, "Main")
+            ScreenTitle: |-
+              =Switch(
+                  VarFinTab,
+                  "Transactions", If(gblLanguage = "Arabic", "العمليات", "Transactions"),
+                  "Budgets", If(gblLanguage = "Arabic", "الميزانيات", "Budgets"),
+                  "BudgetLines", If(gblLanguage = "Arabic", "بنود الميزانية", "Budget lines"),
+                  "ProjectFinance", If(gblLanguage = "Arabic", "مالية المشاريع", "Project finance"),
+                  If(gblLanguage = "Arabic", "الرئيسية", "Main")
+              )
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpFinPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conFinPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =If(App.Width < 700, cmpFinPhone.Height + 12, 16)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 16)
+            PaddingRight: =16
+            PaddingTop: =cmpFinTop.Height + 12
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - galFinTabs:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "أقسام المالية", "Finance sections")
+                  BorderThickness: =0
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  Items: |-
+                    =Table(
+                        {Key: "Main", NavID: 51, Label: If(gblLanguage = "Arabic", "الرئيسية", "Main")},
+                        {Key: "Transactions", NavID: 52, Label: If(gblLanguage = "Arabic", "العمليات", "Transactions")},
+                        {Key: "Budgets", NavID: 53, Label: If(gblLanguage = "Arabic", "الميزانيات", "Budgets")},
+                        {Key: "BudgetLines", NavID: 55, Label: If(gblLanguage = "Arabic", "البنود", "Budget lines")},
+                        {Key: "ProjectFinance", NavID: 56, Label: If(gblLanguage = "Arabic", "المشاريع", "Project finance")}
+                    )
+                  LoadingSpinner: =LoadingSpinner.None
+                  OnSelect: |-
+                    =Set(VarFinTab, ThisItem.Key);
+                    Set(varNavSelectedID, ThisItem.NavID)
+                  ShowScrollbar: =false
+                  TemplatePadding: =4
+                  TemplateSize: =If(Self.Width < 640, 140, Self.Width / 5)
+                  Width: =Parent.Width
+                Children:
+                  - btnFinTab:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =ThisItem.Label
+                        Appearance: =If(VarFinTab = ThisItem.Key, ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                        Height: =40
+                        OnSelect: =Select(Parent)
+                        Text: =ThisItem.Label
+                        Width: =Parent.TemplateWidth - 8
+                        X: =0
+                        Y: =2
+            - conFinDenied:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =160
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =24
+                  PaddingLeft: =24
+                  PaddingRight: =24
+                  PaddingTop: =24
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Visible: =!hasFinanceAccess
+                  Width: =Parent.Width
+                Children:
+                  - lblFinDeniedTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =28
+                        Size: =gblTheme.Typography.SectionTitle
+                        Text: =If(gblLanguage = "Arabic", "لا توجد صلاحية للمالية", "No finance access")
+                        Width: =Parent.Width
+                  - lblFinDeniedBody:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextSecondary")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =48
+                        Size: =gblTheme.Typography.Body
+                        Text: =If(gblLanguage = "Arabic", "اطلب من مسؤول المالية فتح هذه الوحدة لحسابك.", "Ask a finance manager if you need this module.")
+                        Width: =Parent.Width
+                        Wrap: =true
+            - cmpFinKpi:
+                Control: CanvasComponent
+                ComponentName: cmpKPIwNav
+                Properties:
+                  AnimationEffect: ="None"
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 4,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "Check",
+                            Value: Coalesce(pendingApprovalCount, 0),
+                            Label: If(gblLanguage = "Arabic", "موافقات بانتظارك", "Pending approvals"),
+                            Subtitle: If(gblLanguage = "Arabic", "مركز الموافقات", "Approval center"),
+                            Screen: "Approvals",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "Money",
+                            Value: Coalesce(unreadCount, 0),
+                            Label: If(gblLanguage = "Arabic", "إشعارات غير مقروءة", "Unread"),
+                            Subtitle: If(gblLanguage = "Arabic", "المالية", "Finance"),
+                            Screen: "Notifications",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Wallet",
+                            Value: "",
+                            Label: If(gblLanguage = "Arabic", "طلبات الدفع", "Payment requests"),
+                            Subtitle: If(gblLanguage = "Arabic", "فتح القائمة", "Open the list"),
+                            Screen: "Payments",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Calculator",
+                            Value: "",
+                            Label: If(gblLanguage = "Arabic", "الميزانيات", "Budgets"),
+                            Subtitle: If(gblLanguage = "Arabic", "فتح القائمة", "Open the list"),
+                            Screen: "Budgets",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  Height: =150
+                  KPINav: |-
+                    =Switch(
+                        varClickScreen,
+                        "Approvals", Navigate(ScrApprovalCenter, ScreenTransition.None),
+                        "Notifications", UpdateContext({locNotifOpen: true}),
+                        "Payments", Navigate(scrFinPayments, ScreenTransition.None),
+                        "Budgets", Set(VarFinTab, "Budgets"); Set(varNavSelectedID, 53)
+                    )
+                  Visible: =hasFinanceAccess && VarFinTab = "Main"
+                  Width: =Parent.Width
+            - conFinWork:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(VarFinTab = "Main", 460, 280)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(And(VarFinTab = "Main", App.Width >= 1000), LayoutDirection.Horizontal, LayoutDirection.Vertical)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =hasFinanceAccess
+                  Width: =Parent.Width
+                Children:
+                  - cmpFinActivity:
+                      Control: CanvasComponent
+                      ComponentName: cmpRecentActivities
+                      Properties:
+                        FillPortions: =1
+                        Height: =420
+                        Items: |-
+                          =ForAll(
+                              FirstN(
+                                  SortByColumns(FinanceActivityLog, "ActionDate", SortOrder.Descending),
+                                  20
+                              ) As log,
+                              {
+                                  ID: log.ID,
+                                  Module: "Finance",
+                                  ActivityType: Coalesce(log.EntityType.Value, "Finance"),
+                                  Action: Coalesce(log.ActionType.Value, ""),
+                                  Title: Coalesce(log.ActionType.Value, "") & " · " & Coalesce(log.EntityType.Value, ""),
+                                  Description: If(
+                                      log.IsSensitive && !canViewPayroll,
+                                      If(gblLanguage = "Arabic", "التفاصيل مخفية", "Details hidden (sensitive)"),
+                                      Coalesce(log.Details, "")
+                                  ),
+                                  ActorName: Coalesce(log.PerformedByName, ""),
+                                  ActivityDate: log.ActionDate,
+                                  RecordType: Coalesce(log.EntityType.Value, ""),
+                                  RecordID: Coalesce(log.EntityID, 0),
+                                  Status: Switch(
+                                      Coalesce(log.Severity.Value, "Info"),
+                                      "Critical", "Critical",
+                                      "Important", "Important",
+                                      "Info"
+                                  ),
+                                  Icon: Coalesce(log.ActionType.Value, "Finance")
+                              }
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        MaxItems: =12
+                        OnSelect: |-
+                          =Switch(
+                              cmpFinActivity.SelectedActivity.RecordType,
+                              "Payment Request",
+                                  Set(varPRID, cmpFinActivity.SelectedActivity.RecordID);
+                                  Navigate(scrFinPaymentDetail, ScreenTransition.None),
+                              "Payroll Run",
+                                  Set(varRunID, cmpFinActivity.SelectedActivity.RecordID);
+                                  Navigate(scrFinPayrollRun, ScreenTransition.None),
+                              "Budget",
+                                  Set(varBudgetLineID, cmpFinActivity.SelectedActivity.RecordID);
+                                  Navigate(scrFinBudgetDetail, ScreenTransition.None)
+                          )
+                        Title: =If(gblLanguage = "Arabic", "آخر الحركات المالية", "Recent finance activity")
+                        Visible: =VarFinTab = "Main"
+                        Width: =If(App.Width >= 1000, Parent.Width * 0.58, Parent.Width)
+                  - conFinLinks:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Height: =If(VarFinTab = "Main", 420, 260)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =16
+                        PaddingLeft: =16
+                        PaddingRight: =16
+                        PaddingTop: =16
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(And(VarFinTab = "Main", App.Width >= 1000), Parent.Width * 0.4, Parent.Width)
+                      Children:
+                        - lblFinLinks:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =28
+                              Size: =gblTheme.Typography.SectionTitle
+                              Text: |-
+                                =Switch(
+                                    VarFinTab,
+                                    "Transactions", If(gblLanguage = "Arabic", "العمليات المالية", "Transactions"),
+                                    "Budgets", If(gblLanguage = "Arabic", "الميزانيات", "Budgets"),
+                                    "BudgetLines", If(gblLanguage = "Arabic", "بنود الميزانية", "Budget lines"),
+                                    "ProjectFinance", If(gblLanguage = "Arabic", "مالية المشروع", "Project finance"),
+                                    If(gblLanguage = "Arabic", "فتح سجل", "Open a register")
+                                )
+                              Width: =Parent.Width
+                        - lblFinLinksHint:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =40
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: |-
+                                =Switch(
+                                    VarFinTab,
+                                    "Transactions", If(gblLanguage = "Arabic", "الدفع والدفتر والالتزامات وصندوق الموافقات.", "Payments, the ledger, commitments, and the finance inbox."),
+                                    "Budgets", If(gblLanguage = "Arabic", "خطوط الميزانية تُفتح من القائمة.", "Budget lines open from the budget list."),
+                                    "BudgetLines", If(gblLanguage = "Arabic", "نفس قائمة الميزانية. اختر بنداً لفتحه.", "Same budget list. Open a line from a row."),
+                                    "ProjectFinance", If(gblLanguage = "Arabic", "نظرة المشروع والتمويل.", "Project overview and donor funding."),
+                                    If(gblLanguage = "Arabic", "القائمة اليسرى هي قائمة التطبيق، وليست قائمة مالية ثانية.", "The left menu is the app menu, not a second finance menu.")
+                                )
+                              Width: =Parent.Width
+                              Wrap: =true
+                        - btnFinPay:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinPayments, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "طلبات الدفع", "Payment requests")
+                              Visible: =Or(VarFinTab = "Main", VarFinTab = "Transactions")
+                              Width: =Parent.Width
+                        - btnFinLedger:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinLedger, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "دفتر الأستاذ", "Ledger")
+                              Visible: =Or(VarFinTab = "Main", VarFinTab = "Transactions")
+                              Width: =Parent.Width
+                        - btnFinCommit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinCommitments, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "الالتزامات", "Commitments")
+                              Visible: =Or(VarFinTab = "Main", VarFinTab = "Transactions")
+                              Width: =Parent.Width
+                        - btnFinInbox:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =40
+                              OnSelect: =Navigate(scrApprovalsInbox, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "صندوق الموافقات المالية", "Finance approvals inbox")
+                              Visible: =Or(VarFinTab = "Main", VarFinTab = "Transactions")
+                              Width: =Parent.Width
+                        - btnFinBudgets:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinBudgets, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "قائمة الميزانية", "Budget list")
+                              Visible: =Or(VarFinTab = "Budgets", VarFinTab = "BudgetLines")
+                              Width: =Parent.Width
+                        - btnFinProject:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinProjectOverview, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "نظرة المشروع", "Project overview")
+                              Visible: =VarFinTab = "ProjectFinance"
+                              Width: =Parent.Width
+                        - btnFinFunding:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinDonorFunding, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "تمويل المانحين", "Donor funding")
+                              Visible: =VarFinTab = "ProjectFinance"
+                              Width: =Parent.Width
+                        - btnFinPayroll:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =40
+                              OnSelect: =Navigate(scrFinPayroll, ScreenTransition.None)
+                              Text: =If(gblLanguage = "Arabic", "مسيرات الرواتب", "Payroll runs")
+                              Visible: =VarFinTab = "Main"
+                              Width: =Parent.Width
+      - cmpFinNotif:
+          Control: CanvasComponent
+          ComponentName: cmpNotificationsPanel
+          Properties:
+            Height: =Parent.Height
+            Items: |-
+              =ForAll(
+                  colFinNotif As n,
+                  {
+                      ID: n.ID,
+                      Title: n.Title,
+                      Message: n.Message,
+                      Created: n.Created,
+                      Link: n.Link,
+                      RelatedEntity: n.RelatedEntity.Value,
+                      RelatedItemID: n.RelatedItemID
+                  }
+              )
+            OnClose: |-
+              =UpdateContext({locNotifOpen: false})
+            OnMarkAllRead: =fnMarkAllNotificationsRead()
+            OnOpenItem: |-
+              =UpdateContext({locNotifOpen: false});
+              fnOpenNotification(
+                  cmpFinNotif.SelectedItem.ID,
+                  cmpFinNotif.SelectedItem.RelatedEntity,
+                  cmpFinNotif.SelectedItem.RelatedItemID,
+                  cmpFinNotif.SelectedItem.Link
+              )
+            Visible: =locNotifOpen
+            Width: =Parent.Width
+            X: =0
+            Y: =0

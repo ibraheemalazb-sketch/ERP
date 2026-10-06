@@ -1,0 +1,990 @@
+# scrFinPayments - full screen source (pa.yaml v3). Reference/Git copy: a whole screen cannot be pasted in Studio.
+# To build: create a blank screen named scrFinPayments, set its properties from 03-screens-batch-a.md,
+# then paste screens/paste/scrFinPayments.controls.pa.yaml onto it.
+Screens:
+  scrFinPayments:
+    Properties:
+      Fill: =FinTheme.Background
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Finance");
+        Set(varNavSelectedID, 52);
+        If(
+            !hasFinanceAccess,
+            Navigate(scrFinNoAccess, ScreenTransition.None),
+            UpdateContext({locTab: Coalesce(locTab, "all"), locMoreOpen: false, locNotifOpen: false, locFilterSheet: false});
+            fnRefreshHeaderData();
+            Select(btnPRLoadEmp);
+            If(varFinReady, UpdateContext({locBooted: true}); UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery))
+        )
+      LoadingSpinner: =LoadingSpinner.None
+    Children:
+      - cmpNav_PR:
+          Control: CanvasComponent
+          ComponentName: cmpNavigationModern
+          Properties:
+            AppLogo: =hdp
+            Expanded: =gblMenuExpanded
+            Height: =Parent.Height
+            Icons: |-
+              =Table({Name: "Home", SVG: ""})
+            OnToggle: |-
+              =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+              If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+            Theme: =gblTheme.Mode
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+      - cmpTop_PR:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: =Coalesce(unreadCount, 0)
+            HasNotifications: =Coalesce(unreadCount, 0) > 0
+            Height: =56
+            ModuleIcon: ="Money"
+            ModuleName: =If(gblLanguage = "Arabic", "المالية", "Finance")
+            OnSelect: |-
+              =UpdateContext({locNotifOpen: true})
+            OnSelectTitle: =Navigate(scrFinance, ScreenTransition.None)
+            ScreenTitle: =fnT("nav.payments", "Payment requests")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpPhone_PR:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conPRRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutJustifyContent: =LayoutJustifyContent.Start
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutGap: =0
+            LayoutWrap: =false
+            PaddingTop: =56
+            PaddingRight: =0
+            PaddingBottom: =If(App.Width < 700, 52, 0)
+            PaddingLeft: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            DropShadow: =DropShadow.None
+            BorderThickness: =0
+            Fill: =FinTheme.Background
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+          Children:
+            - conPRMain:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutJustifyContent: =LayoutJustifyContent.Start
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutGap: =0
+                  LayoutWrap: =false
+                  PaddingTop: =0
+                  PaddingRight: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  DropShadow: =DropShadow.None
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  LayoutMinWidth: =0
+                  LayoutMinHeight: =0
+                  FillPortions: =1
+                  AlignInContainer: =AlignInContainer.Stretch
+                Children:
+                  - cmpCtx_PR:
+                    Control: CanvasComponent
+                    ComponentName: cmpFinContext
+                    Properties:
+                      ProjectOptions: |-
+                        =Table({Key: 0, Value: fnT("hdr.allProjects", "All my projects")}, colProjectOptions)
+                      PeriodOptions: =tblPeriods
+                      DefaultProjectKey: =Coalesce(varProjectID, 0)
+                      DefaultPeriodKey: =Coalesce(varPeriodKey, currentPeriodKey)
+                      Height: =48
+                      FillPortions: =0
+                      AlignInContainer: =AlignInContainer.Stretch
+                      LayoutMinWidth: =0
+                      LayoutMinHeight: =0
+                      OnProjectChange: |-
+                        =Set(varProjectID, cmpCtx_PR.SelectedProjectKey);
+                        UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                      OnPeriodChange: =Set(varPeriodKey, cmpCtx_PR.SelectedPeriodKey)
+                  - conPRBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutJustifyContent: =LayoutJustifyContent.Start
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutGap: =sp2
+                        LayoutWrap: =false
+                        PaddingTop: =If(isMobile, sp2, sp3)
+                        PaddingRight: =If(isMobile, sp2, sp3)
+                        PaddingBottom: =If(isMobile, sp2 + 72, sp3)
+                        PaddingLeft: =If(isMobile, sp2, sp3)
+                        DropShadow: =DropShadow.None
+                        BorderThickness: =0
+                        Fill: =RGBA(0, 0, 0, 0)
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        LayoutMinWidth: =0
+                        LayoutMinHeight: =0
+                        FillPortions: =1
+                        AlignInContainer: =AlignInContainer.Stretch
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                      Children:
+                        - conPRListCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Start
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutGap: =sp1
+                              LayoutWrap: =false
+                              PaddingTop: =sp2
+                              PaddingRight: =sp2
+                              PaddingBottom: =sp2
+                              PaddingLeft: =sp2
+                              DropShadow: =DropShadow.None
+                              BorderThickness: =borderWidth
+                              Fill: =FinTheme.Surface
+                              RadiusTopLeft: =radiusCard
+                              RadiusTopRight: =radiusCard
+                              RadiusBottomLeft: =radiusCard
+                              RadiusBottomRight: =radiusCard
+                              LayoutMinWidth: =0
+                              LayoutMinHeight: =0
+                              BorderColor: =FinTheme.Border
+                              FillPortions: =0
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Height: =touchMin + 4 + sp1 + cmpFilterBar_PR.DesiredHeight + sp1 + If(conPRExtraFilters.Visible, conPRExtraFilters.Height + sp1, 0) + If(locError, 240, If(isMobile, Max(1, Min(CountRows(colPRPage), 8)) * 104 + 60, 40 + Max(1, Min(CountRows(colPRPage), 12)) * 52 + 60)) + sp1 + 36 + 2 * sp2
+                            Children:
+                              - conPRToolbar:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.End
+                                    LayoutGap: =sp1
+                                    LayoutWrap: =false
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =touchMin + 4
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                  Children:
+                                    - conPRTabsWrap:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutJustifyContent: =LayoutJustifyContent.Start
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutGap: =0
+                                          LayoutWrap: =false
+                                          PaddingTop: =0
+                                          PaddingRight: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          DropShadow: =DropShadow.None
+                                          BorderThickness: =0
+                                          Fill: =RGBA(0, 0, 0, 0)
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          FillPortions: =1
+                                          Height: =touchMin + 4
+                                        Children:
+                                          - galPRTabs:
+                                              Control: Gallery@2.15.0
+                                              Variant: Horizontal
+                                              Properties:
+                                                TemplatePadding: =0
+                                                ShowScrollbar: =false
+                                                BorderThickness: =0
+                                                Fill: =RGBA(0, 0, 0, 0)
+                                                TemplateFill: =RGBA(0, 0, 0, 0)
+                                                LayoutMinWidth: =0
+                                                LayoutMinHeight: =0
+                                                DelayItemLoading: =false
+                                                LoadingSpinner: =LoadingSpinner.None
+                                                Items: |-
+                                                  =If(isRTL, Sort(Filter(Table({Order: 1, Key: "all", Label: fnT("pr.tabAll", "All requests")}, {Order: 2, Key: "mine", Label: fnT("pr.tabMine", "Prepared by me")}, {Order: 3, Key: "pending", Label: fnT("pr.tabPending", "Pending for me")}), Key <> "pending" || canApprove || isFinanceOfficer || isFinanceManager), Order, SortOrder.Descending), Sort(Filter(Table({Order: 1, Key: "all", Label: fnT("pr.tabAll", "All requests")}, {Order: 2, Key: "mine", Label: fnT("pr.tabMine", "Prepared by me")}, {Order: 3, Key: "pending", Label: fnT("pr.tabPending", "Pending for me")}), Key <> "pending" || canApprove || isFinanceOfficer || isFinanceManager), Order, SortOrder.Ascending))
+                                                TemplateSize: =If(isMobile, 128, 150)
+                                                Height: =touchMin + 4
+                                                FillPortions: =1
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                Selectable: =true
+                                                AccessibleLabel: =fnT("common.tabs", "Sections")
+                                                ItemAccessibleLabel: =ThisItem.Label & If(ThisItem.Key = locTab, ", " & fnT("common.selected", "selected"), "")
+                                                OnSelect: |-
+                                                  =UpdateContext({locTab: ThisItem.Key});
+                                                  UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                                              Children:
+                                                - lblPRTab:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Text: =ThisItem.Label
+                                                      Font: =fontBase
+                                                      Size: =fsBody
+                                                      Color: =If(ThisItem.Key = locTab, FinTheme.Primary, FinTheme.TextSecondary)
+                                                      Fill: =RGBA(0, 0, 0, 0)
+                                                      BorderThickness: =0
+                                                      Wrap: =false
+                                                      Align: =Align.Center
+                                                      VerticalAlign: =VerticalAlign.Middle
+                                                      PaddingTop: =0
+                                                      PaddingRight: =0
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =0
+                                                      LayoutMinWidth: =0
+                                                      LayoutMinHeight: =0
+                                                      Height: =Parent.TemplateHeight - 4
+                                                      X: =0
+                                                      Y: =0
+                                                      Width: =Parent.TemplateWidth
+                                                      FontWeight: =If(ThisItem.Key = locTab, FontWeight.Semibold, FontWeight.Normal)
+                                                - rectPRTabActive:
+                                                    Control: Rectangle@2.3.0
+                                                    Properties:
+                                                      Fill: =FinTheme.Primary
+                                                      BorderThickness: =0
+                                                      TabIndex: =-1
+                                                      LayoutMinWidth: =0
+                                                      LayoutMinHeight: =0
+                                                      Visible: =ThisItem.Key = locTab
+                                                      X: =8
+                                                      Y: =Parent.TemplateHeight - 4
+                                                      Width: =Parent.TemplateWidth - 16
+                                                      Height: =3
+                                                - btnPRTabHit:
+                                                    Control: Classic/Button@2.2.0
+                                                    Properties:
+                                                      Text: =""
+                                                      Font: =fontBase
+                                                      Size: =fsBody
+                                                      FontWeight: =FontWeight.Semibold
+                                                      Height: =Parent.TemplateHeight
+                                                      BorderThickness: =0
+                                                      FocusedBorderThickness: =2
+                                                      FocusedBorderColor: =FinTheme.Focus
+                                                      RadiusTopLeft: =0
+                                                      RadiusTopRight: =0
+                                                      RadiusBottomLeft: =0
+                                                      RadiusBottomRight: =0
+                                                      PaddingLeft: =12
+                                                      PaddingRight: =12
+                                                      PaddingTop: =0
+                                                      PaddingBottom: =0
+                                                      TabIndex: =0
+                                                      LayoutMinWidth: =0
+                                                      LayoutMinHeight: =0
+                                                      DisabledFill: =RGBA(0, 0, 0, 0)
+                                                      DisabledColor: =FinTheme.TextSecondary
+                                                      DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                                                      Fill: =RGBA(0, 0, 0, 0)
+                                                      Color: =RGBA(0, 0, 0, 0)
+                                                      BorderColor: =RGBA(0, 0, 0, 0)
+                                                      HoverFill: =FinTheme.RowHover
+                                                      HoverColor: =RGBA(0, 0, 0, 0)
+                                                      HoverBorderColor: =RGBA(0, 0, 0, 0)
+                                                      PressedFill: =FinTheme.RowSelected
+                                                      PressedColor: =RGBA(0, 0, 0, 0)
+                                                      PressedBorderColor: =RGBA(0, 0, 0, 0)
+                                                      X: =0
+                                                      Y: =0
+                                                      Width: =Parent.TemplateWidth
+                                                      Tooltip: =ThisItem.Label
+                                                      OnSelect: =Select(Parent)
+                                    - btnPRNew:
+                                        Control: Classic/Button@2.2.0
+                                        Properties:
+                                          Text: =fnT("pr.new", "New payment request")
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =touchMin
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          RadiusTopLeft: =6
+                                          RadiusTopRight: =6
+                                          RadiusBottomLeft: =6
+                                          RadiusBottomRight: =6
+                                          PaddingLeft: =12
+                                          PaddingRight: =12
+                                          PaddingTop: =0
+                                          PaddingBottom: =0
+                                          TabIndex: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          DisabledFill: =FinTheme.Border
+                                          DisabledColor: =FinTheme.TextSecondary
+                                          DisabledBorderColor: =FinTheme.Border
+                                          Fill: =FinTheme.Primary
+                                          Color: =FinTheme.OnPrimary
+                                          BorderColor: =FinTheme.Primary
+                                          HoverFill: =ColorFade(FinTheme.Primary, -0.12)
+                                          HoverColor: =FinTheme.OnPrimary
+                                          HoverBorderColor: =FinTheme.Primary
+                                          PressedFill: =ColorFade(FinTheme.Primary, -0.24)
+                                          PressedColor: =FinTheme.OnPrimary
+                                          PressedBorderColor: =FinTheme.Primary
+                                          Visible: =canCreate && !isMobile
+                                          Width: =210
+                                          FillPortions: =0
+                                          OnSelect: =Set(varPRFormID, 0); Navigate(scrFinPaymentForm, ScreenTransition.None)
+                              - cmpFilterBar_PR:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpFilterBar
+                                  Properties:
+                                    ShowSearch: =true
+                                    SearchHint: =fnT("pr.searchHint", "Request number starts with...")
+                                    ShowStatus: =true
+                                    StatusOptions: =Choices([@PaymentRequests].RequestStatus)
+                                    ShowPeriod: =false
+                                    ShowProject: =false
+                                    SheetOpen: =locFilterSheet
+                                    Height: =cmpFilterBar_PR.DesiredHeight
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    OnChange: |-
+                                      =UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                                    OnClear: |-
+                                      =Reset(dtePRFrom); Reset(dtePRTo); Reset(drpPRReq); Reset(txtPRReqSearch); UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                                    OnToggleSheet: |-
+                                      =UpdateContext({locFilterSheet: !locFilterSheet})
+                              - conPRExtraFilters:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutJustifyContent: =LayoutJustifyContent.Start
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutGap: =sp1
+                                    LayoutWrap: =true
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    DropShadow: =DropShadow.None
+                                    BorderThickness: =0
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Visible: =(!isMobile || locFilterSheet) && locTab <> "pending"
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Height: =If(isMobile, 4 * touchMin + 3 * sp1, touchMin)
+                                  Children:
+                                    - dtePRFrom:
+                                        Control: Classic/DatePicker@2.6.0
+                                        Properties:
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          IconFill: =FinTheme.OnPrimary
+                                          IconBackground: =FinTheme.Primary
+                                          Height: =touchMin
+                                          TabIndex: =0
+                                          StartYear: =2015
+                                          EndYear: =Year(Today()) + 2
+                                          IsEditable: =false
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          DefaultDate: =Blank()
+                                          Width: =If(isMobile, Parent.Width, 170)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("pr.fromDate", "Request date from")
+                                          OnChange: |-
+                                            =UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                                    - dtePRTo:
+                                        Control: Classic/DatePicker@2.6.0
+                                        Properties:
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          IconFill: =FinTheme.OnPrimary
+                                          IconBackground: =FinTheme.Primary
+                                          Height: =touchMin
+                                          TabIndex: =0
+                                          StartYear: =2015
+                                          EndYear: =Year(Today()) + 2
+                                          IsEditable: =false
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          DefaultDate: =Blank()
+                                          Width: =If(isMobile, Parent.Width, 170)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("pr.toDate", "Request date to")
+                                          OnChange: |-
+                                            =UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                                    - txtPRReqSearch:
+                                        Control: Classic/TextInput@2.3.2
+                                        Properties:
+                                          Default: =""
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          HoverFill: =FinTheme.Surface
+                                          HoverBorderColor: =FinTheme.Primary
+                                          HintText: =fnT("pr.requesterSearch", "Find requester")
+                                          Height: =touchMin
+                                          PaddingLeft: =8
+                                          PaddingRight: =8
+                                          RadiusTopLeft: =6
+                                          RadiusTopRight: =6
+                                          RadiusBottomLeft: =6
+                                          RadiusBottomRight: =6
+                                          Align: =alignStart
+                                          TabIndex: =0
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Width: =If(isMobile, Parent.Width, 170)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("pr.requesterSearch", "Find requester")
+                                          DelayOutput: =true
+                                    - drpPRReq:
+                                        Control: Classic/DropDown@2.3.1
+                                        Properties:
+                                          Font: =fontBase
+                                          Size: =fsBody
+                                          Color: =FinTheme.Text
+                                          Fill: =FinTheme.Surface
+                                          BorderColor: =FinTheme.Border
+                                          BorderThickness: =1
+                                          FocusedBorderThickness: =2
+                                          FocusedBorderColor: =FinTheme.Focus
+                                          HoverFill: =FinTheme.RowHover
+                                          HoverBorderColor: =FinTheme.Primary
+                                          HoverColor: =FinTheme.Text
+                                          PressedFill: =FinTheme.RowSelected
+                                          PressedColor: =FinTheme.Text
+                                          SelectionFill: =FinTheme.Primary
+                                          SelectionColor: =FinTheme.OnPrimary
+                                          ChevronBackground: =FinTheme.Surface
+                                          ChevronFill: =FinTheme.TextSecondary
+                                          PaddingLeft: =8
+                                          Height: =touchMin
+                                          TabIndex: =0
+                                          AllowEmptySelection: =false
+                                          LayoutMinWidth: =0
+                                          LayoutMinHeight: =0
+                                          Items: |-
+                                            =Table({Key: 0, Value: fnT("pr.allRequesters", "All requesters")}, Sort(Filter(colEmpLite, !IsBlank(txtPRReqSearch.Text) && StartsWith(Value, txtPRReqSearch.Text)), Value, SortOrder.Ascending))
+                                          Width: =If(isMobile, Parent.Width, 220)
+                                          FillPortions: =0
+                                          AccessibleLabel: =fnT("pr.requester", "Requester")
+                                          OnChange: |-
+                                            =UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)
+                              - cmpEmpty_PRErr:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpEmptyState
+                                  Properties:
+                                    Visible: =locError
+                                    Variant: ="error"
+                                    ActionText: =fnT("common.retry", "Retry")
+                                    Height: =240
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    OnAction: =Select(btnPRQuery)
+                              - cmpDataTable_PR:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpDataTable
+                                  Properties:
+                                    Visible: =!locError
+                                    RowItems: |-
+                                      =ForAll(colPRPage As r, {RowID: r.ID, Primary: Coalesce(r.RequestNumber, fnT("pr.numberPending", "(number pending)")), Secondary: Coalesce(r.PaidTo, r.Title), C1: r.ProjectCode, C2: Text(r.RequestDate, "dd mmm yyyy", appLocale), C3: fnPRStageLabel(r.Stage), C4: r.RequestType, Util: Blank(), Amount: r.RequestedAmount, Currency: r.Currency, AmountUSD: r.TotalAmountUSD, Status: If(r.Stage = "paid", r.PaymentStatus, r.RequestStatus), StatusDomain: If(r.Stage = "paid", "PaymentStatus", "PaymentRequest")})
+                                    ColumnConfig: |-
+                                      =Table(
+                                          {Key: "Primary", Header: fnT("col.request", "Request"), Portion: 1.8, ShowOnTablet: true, Sortable: false},
+                                          {Key: "C1", Header: fnT("col.project", "Project"), Portion: 1.1, ShowOnTablet: true, Sortable: false},
+                                          {Key: "C2", Header: fnT("col.date", "Date"), Portion: 1.1, ShowOnTablet: false, Sortable: false},
+                                          {Key: "C3", Header: fnT("col.stage", "Stage"), Portion: 2, ShowOnTablet: false, Sortable: false},
+                                          {Key: "Amount", Header: fnT("col.amount", "Amount"), Portion: 1.5, ShowOnTablet: true, Sortable: false},
+                                          {Key: "Status", Header: fnT("col.status", "Status"), Portion: 1.2, ShowOnTablet: true, Sortable: false}
+                                      )
+                                    PageNumber: =Coalesce(locPage, 1)
+                                    HasMore: =locTab <> "pending" && !locPerProject && CountRows(colPRPage) = cfgPageSize
+                                    Loading: =locLoading || !varFinReady
+                                    EmptyText: =Switch(locTab, "pending", fnT("pr.emptyPending", "Nothing is waiting for your action."), "mine", fnT("pr.emptyMine", "You have not prepared any payment requests yet."), If(cmpFilterBar_PR.ActiveCount > 0 || !IsBlank(dtePRFrom.SelectedDate) || !IsBlank(dtePRTo.SelectedDate), fnT("pr.emptyFilter", "No payment requests match the filters."), fnT("pr.empty", "No payment requests yet.")))
+                                    Height: =If(isMobile, Max(1, Min(CountRows(colPRPage), 8)) * 104 + 60, 40 + Max(1, Min(CountRows(colPRPage), 12)) * 52 + 60)
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    OnNextPage: |-
+                                      =Collect(colPRStack, {Cursor: locCursor});
+                                      UpdateContext({locCursor: Min(colPRPage, ID), locPage: locPage + 1});
+                                      Select(btnPRQuery)
+                                    OnPrevPage: |-
+                                      =UpdateContext({locCursor: Last(colPRStack).Cursor, locPage: Max(1, locPage - 1)});
+                                      Remove(colPRStack, Last(colPRStack));
+                                      Select(btnPRQuery)
+                                    OnRowSelect: =Set(varPRID, cmpDataTable_PR.SelectedRow.RowID); Navigate(scrFinPaymentDetail, ScreenTransition.None)
+                              - lblPRScopeNote:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Text: =If(locPerProject, fnT("pr.perProjectNote", "Showing the latest requests of each of your projects. Select a project in the header to page through older requests."), locTab = "pending", fnT("pr.pendingNote", "Requests at a stage you can act on (finance check, project manager or finance manager approval, payment)."), fnT("pr.listNote", "Newest first, 100 per page. Search uses the request number."))
+                                    Font: =fontBase
+                                    Size: =fsCaption
+                                    Color: =FinTheme.TextSecondary
+                                    Fill: =RGBA(0, 0, 0, 0)
+                                    BorderThickness: =0
+                                    Wrap: =true
+                                    Align: =alignStart
+                                    VerticalAlign: =VerticalAlign.Middle
+                                    PaddingTop: =0
+                                    PaddingRight: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    LayoutMinWidth: =0
+                                    LayoutMinHeight: =0
+                                    Height: =36
+                                    FillPortions: =0
+                                    AlignInContainer: =AlignInContainer.Stretch
+      - btnPRFab:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: ="+"
+            Font: =fontBase
+            Size: =24
+            FontWeight: =FontWeight.Semibold
+            Height: =56
+            BorderThickness: =1
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =28
+            RadiusTopRight: =28
+            RadiusBottomLeft: =28
+            RadiusBottomRight: =28
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =0
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =FinTheme.Border
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =FinTheme.Border
+            Fill: =FinTheme.Primary
+            Color: =FinTheme.OnPrimary
+            BorderColor: =FinTheme.Primary
+            HoverFill: =ColorFade(FinTheme.Primary, -0.12)
+            HoverColor: =FinTheme.OnPrimary
+            HoverBorderColor: =FinTheme.Primary
+            PressedFill: =ColorFade(FinTheme.Primary, -0.24)
+            PressedColor: =FinTheme.OnPrimary
+            PressedBorderColor: =FinTheme.Primary
+            Visible: =isMobile && canCreate
+            X: =If(isRTL, sp2, Parent.Width - 56 - sp2)
+            Y: =Parent.Height - If(App.Width < 700, 52, 0) - 56 - sp2
+            Width: =56
+            Tooltip: =fnT("pr.new", "New payment request")
+            OnSelect: =Set(varPRFormID, 0); Navigate(scrFinPaymentForm, ScreenTransition.None)
+      - cmpNotif_PR:
+          Control: CanvasComponent
+          ComponentName: cmpNotificationsPanel
+          Properties:
+            Visible: =locNotifOpen
+            X: =0
+            Y: =0
+            Width: =Parent.Width
+            Height: =Parent.Height
+            Items: |-
+              =ForAll(colFinNotif As n, {ID: n.ID, Title: n.Title, Message: n.Message, Created: n.Created, Link: n.Link, RelatedEntity: n.RelatedEntity.Value, RelatedItemID: n.RelatedItemID})
+            OnClose: |-
+              =UpdateContext({locNotifOpen: false})
+            OnMarkAllRead: =fnMarkAllNotificationsRead()
+            OnOpenItem: |-
+              =UpdateContext({locNotifOpen: false});
+              fnOpenNotification(cmpNotif_PR.SelectedItem.ID, cmpNotif_PR.SelectedItem.RelatedEntity, cmpNotif_PR.SelectedItem.RelatedItemID, cmpNotif_PR.SelectedItem.Link)
+      - btnPRQuery:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =UpdateContext({
+                  locLoading: true, locError: false,
+                  locQ: {
+                      Project: Coalesce(varProjectID, 0),
+                      Status: cmpFilterBar_PR.SelectedStatus,
+                      Search: cmpFilterBar_PR.SearchText,
+                      From: dtePRFrom.SelectedDate,
+                      To: If(IsBlank(dtePRTo.SelectedDate), Blank(), DateAdd(dtePRTo.SelectedDate, 1, TimeUnit.Days)),
+                      Requester: Coalesce(drpPRReq.Selected.Key, 0)
+                  }
+              });
+              UpdateContext({locPerProject: locTab = "all" && !canViewAllProjects && locQ.Project = 0});
+              IfError(
+                  Switch(
+                      locTab,
+                      // ---- Prepared by me (any project): one delegable query, keyset paging on ID
+                      "mine",
+                      ClearCollect(
+                          colPRPage,
+                      ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      PreparedByID = varMeID,
+                                      locQ.Project = 0 || ProjectID = locQ.Project,
+                                      IsBlank(locQ.Status) || RequestStatus.Value = locQ.Status,
+                                      IsBlank(locQ.Search) || StartsWith(RequestNumber, locQ.Search),
+                                      IsBlank(locQ.From) || RequestDate >= locQ.From,
+                                      IsBlank(locQ.To) || RequestDate < locQ.To,
+                                      locQ.Requester = 0 || PreparedByID = locQ.Requester,
+                                      locCursor = 0 || ID < locCursor
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      )
+                      ),
+                      // ---- Pending for me: one small query per approval stage I can act on, deduplicated locally
+                      "pending",
+                      Clear(colPRPendA); Clear(colPRPendB); Clear(colPRPendC);
+                      Concurrent(
+                          // finance check: finance manager -> all projects; finance officer -> projects where FinanceID = me
+                          If(
+                              isFinanceManager && canViewAllProjects,
+                              Collect(colPRPendA, ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      FinanceOfficerApproved = false,
+                                      RequestStatus.Value = cfgPRStatus.Pending
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      )),
+                              isFinanceOfficer || isFinanceManager,
+                              ForAll(
+                                  Filter(colMyProjects, FinanceID = varMeID) As p,
+                                  Collect(colPRPendA, ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      ProjectID = p.ID,
+                                      FinanceOfficerApproved = false,
+                                      RequestStatus.Value = cfgPRStatus.Pending
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      ))
+                              )
+                          ),
+                          // project manager approval: projects where ManagerID = me
+                          If(
+                              canApprove,
+                              ForAll(
+                                  Filter(colMyProjects, ManagerID = varMeID) As p,
+                                  Collect(colPRPendB, ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      ProjectID = p.ID,
+                                      FinanceOfficerApproved = true,
+                                      ProjectManagerApproved = false,
+                                      RequestStatus.Value = cfgPRStatus.Pending
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      ))
+                              )
+                          ),
+                          // finance manager approval + approved requests waiting for payment
+                          If(
+                              isFinanceManager && canApprove,
+                              Collect(colPRPendC, ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      FinanceOfficerApproved = true,
+                                      ProjectManagerApproved = true,
+                                      FinanceManagerApproved = false,
+                                      RequestStatus.Value = cfgPRStatus.Pending
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      ));
+                              Collect(colPRPendC, Filter(ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      RequestStatus.Value = cfgPRStatus.Approved
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      ), PaymentStatus <> cfgPRPaymentStatus.Paid))
+                          )
+                      );
+                      ClearCollect(colPRPend, colPRPendA, colPRPendB, colPRPendC);
+                      // dedupe + segregation of duties: my own requests are never "pending for me"
+                      ClearCollect(
+                          colPRPage,
+                          Sort(
+                              ForAll(Distinct(Filter(colPRPend, PreparedByID <> varMeID), ID) As d, LookUp(colPRPend, ID = d.Value)),
+                              ID,
+                              SortOrder.Descending
+                          )
+                      ),
+                      // ---- All (default)
+                      If(
+                          locPerProject,
+                          // scoped user, "All my projects": latest page per project (no paging; pick a project to page further)
+                          Clear(colPRPage);
+                          ForAll(
+                              colMyProjects As p,
+                              Collect(colPRPage, ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      ProjectID = p.ID,
+                                      IsBlank(locQ.Status) || RequestStatus.Value = locQ.Status,
+                                      IsBlank(locQ.Search) || StartsWith(RequestNumber, locQ.Search),
+                                      IsBlank(locQ.From) || RequestDate >= locQ.From,
+                                      IsBlank(locQ.To) || RequestDate < locQ.To,
+                                      locQ.Requester = 0 || PreparedByID = locQ.Requester
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      ))
+                          );
+                          ClearCollect(colPRPage, Sort(colPRPage, ID, SortOrder.Descending)),
+                          ClearCollect(
+                              colPRPage,
+                          ForAll(
+                          FirstN(
+                              Sort(
+                                  Filter(
+                                      PaymentRequests,
+                                      locQ.Project = 0 || ProjectID = locQ.Project,
+                                      IsBlank(locQ.Status) || RequestStatus.Value = locQ.Status,
+                                      IsBlank(locQ.Search) || StartsWith(RequestNumber, locQ.Search),
+                                      IsBlank(locQ.From) || RequestDate >= locQ.From,
+                                      IsBlank(locQ.To) || RequestDate < locQ.To,
+                                      locQ.Requester = 0 || PreparedByID = locQ.Requester,
+                                      locCursor = 0 || ID < locCursor
+                                  ),
+                                  ID,
+                                  SortOrder.Descending
+                              ),
+                              cfgPageSize
+                          ) As r,
+                          {ID: r.ID, RequestNumber: r.RequestNumber, Title: r.Title, ProjectID: r.ProjectID, ProjectCode: r.ProjectCode, RequestDate: r.RequestDate, PaidTo: r.PaidTo, RequestType: r.RequestType.Value, Currency: r.Currency.Value, RequestedAmount: r.RequestedAmount, TotalAmountUSD: r.TotalAmountUSD, RequestStatus: r.RequestStatus.Value, PaymentStatus: r.PaymentStatus.Value, PreparedByID: r.PreparedByID, Checked: r.FinanceOfficerApproved, PMApproved: r.ProjectManagerApproved, FMApproved: r.FinanceManagerApproved, Stage: fnPRStage(r.RequestStatus.Value, r.PaymentStatus.Value, r.FinanceOfficerApproved, r.ProjectManagerApproved, r.FinanceManagerApproved)}
+                      )
+                          )
+                      )
+                  ),
+                  UpdateContext({locError: true});
+                  Trace("Payment request query failed: " & FirstError.Message, TraceSeverity.Error)
+              );
+              UpdateContext({locLoading: false})
+      - btnPRLoadEmp:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Text: =""
+            Font: =fontBase
+            Size: =fsBody
+            FontWeight: =FontWeight.Semibold
+            Height: =1
+            BorderThickness: =0
+            FocusedBorderThickness: =2
+            FocusedBorderColor: =FinTheme.Focus
+            RadiusTopLeft: =6
+            RadiusTopRight: =6
+            RadiusBottomLeft: =6
+            RadiusBottomRight: =6
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =0
+            PaddingBottom: =0
+            TabIndex: =-1
+            LayoutMinWidth: =0
+            LayoutMinHeight: =0
+            DisabledFill: =RGBA(0, 0, 0, 0)
+            DisabledColor: =FinTheme.TextSecondary
+            DisabledBorderColor: =RGBA(0, 0, 0, 0)
+            Fill: =RGBA(0, 0, 0, 0)
+            Color: =FinTheme.Primary
+            BorderColor: =RGBA(0, 0, 0, 0)
+            HoverFill: =FinTheme.RowHover
+            HoverColor: =FinTheme.Primary
+            HoverBorderColor: =RGBA(0, 0, 0, 0)
+            PressedFill: =FinTheme.RowSelected
+            PressedColor: =FinTheme.Primary
+            PressedBorderColor: =RGBA(0, 0, 0, 0)
+            Visible: =false
+            X: =0
+            Y: =0
+            Width: =1
+            OnSelect: |-
+              =If(IsEmpty(colEmpLite), IfError(ClearCollect(colEmpLite, ForAll(FirstN(Sort(Employees, ID, SortOrder.Ascending), 2000) As e, {Key: e.ID, Value: e.FullName})), Trace("Employees load failed: " & FirstError.Message, TraceSeverity.Warning)))
+      - tmrPRBoot:
+          Control: Timer@2.1.0
+          Properties:
+            Visible: =false
+            Duration: =300
+            Start: =varFinReady && !locBooted
+            AutoStart: =false
+            Repeat: =false
+            OnTimerEnd: |-
+              =UpdateContext({locBooted: true}); UpdateContext({locCursor: 0, locPage: 1}); Clear(colPRStack); Select(btnPRQuery)

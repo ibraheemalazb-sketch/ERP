@@ -1,0 +1,2042 @@
+Screens:
+  scrLeaveManagement:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "HR");
+        Set(VarHRmodule, "Leaves");
+        If(IsBlank(VarLeavesTab), Set(VarLeavesTab, "userleaves"));
+        If(IsBlank(varLeaveViewMode), Set(varLeaveViewMode, If(App.Width < 1100, "Card", "Table")));
+        If(IsBlank(ShowLeaveFilter), Set(ShowLeaveFilter, false));
+        Set(gblShowLeaveConfirm, false);
+        Set(varLeavePeriod, "This Month");
+        Set(varLeaveStart, Date(Year(Today()), Month(Today()), 1));
+        Set(varLeaveEnd, DateAdd(Date(Year(Today()), Month(Today()), 1), 1, TimeUnit.Months));
+        Set(varLeavePageNumber, 1);
+        If(
+            VarNewLeave,
+            Set(gblLeaveRequestMode, "New");
+            Set(VarShowLeave, false);
+            Set(gblCanEditLeave, true),
+            Set(VarNewLeave, false);
+            Set(VarShowLeave, false);
+            Set(gblSelectedLeaveRequest, Blank());
+            Set(gblLeaveRequestMode, Blank())
+        );
+        If(
+            !varUserHasAllProjects,
+            Clear(colUserAccessibleProjects);
+            ForAll(
+                Filter(colUserProjectAccess, AllProjects = false) As access,
+                With(
+                    {proj: LookUp(Projects, ID = access.ProjectID)},
+                    If(!IsBlank(proj.ID), Collect(colUserAccessibleProjects, proj))
+                )
+            )
+        );
+        ClearCollect(colLeaveProjects, If(varUserHasAllProjects, Projects, colUserAccessibleProjects));
+        Clear(colLeaveEmployees);
+        If(
+            varHRScope = "Own",
+            Collect(colLeaveEmployees, Filter(Employees, ID = gblUser.ID)),
+            If(
+                Or(varHRScope = "All", varUserHasAllProjects),
+                Collect(colLeaveEmployees, Employees),
+                ForAll(
+                    colUserAccessibleProjects As proj,
+                    Collect(colLeaveEmployees, Filter(Employees, ProjectID = proj.ID))
+                )
+            )
+        );
+        ClearCollect(colUserLeaveRequests, Filter(LeaveRequests, EmployeeID = gblUser.ID));
+        ClearCollect(colLeaveBalances, Filter(LeaveBalances, EmployeeID = gblUser.ID));
+        Clear(colLeaveAll);
+        If(
+            varHRScope = "Own",
+            Collect(colLeaveAll, colUserLeaveRequests),
+            If(
+                Or(varHRScope = "All", varUserHasAllProjects),
+                Collect(colLeaveAll, LeaveRequests),
+                ForAll(
+                    colLeaveEmployees As emp,
+                    Collect(colLeaveAll, Filter(LeaveRequests, EmployeeID = emp.ID))
+                )
+            )
+        )
+    Children:
+      - conLeaveNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpLeaveNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpLeaveTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="Calendar"
+            ModuleName: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            OnSelectTitle: =Navigate(ScrHR, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الإجازات", "Leaves")
+            ScreenTitle: =If(gblLanguage = "Arabic", "قسم الموارد البشرية", "Human Resources")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpLeavePhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conLeavePage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =If(App.Width < 700, cmpLeavePhoneNav.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpLeaveTopBar.Height + 8
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - conLeaveTabs:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =!VarNewLeave
+                  Width: =Parent.Width
+                Children:
+                  - btnLeaveMine:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إجازاتي", "My leaves")
+                        Appearance: =If(VarLeavesTab = "userleaves", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =36
+                        Icon: ="Person"
+                        OnSelect: =Set(VarLeavesTab, "userleaves")
+                        Text: =If(gblLanguage = "Arabic", "إجازاتي", "My Leaves")
+                        Width: =If(App.Width < 700, 120, 150)
+                  - btnLeaveAll:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إجازات الموظفين", "All employee leaves")
+                        Appearance: =If(VarLeavesTab = "AllLeaves", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =36
+                        Icon: ="People"
+                        OnSelect: =Set(VarLeavesTab, "AllLeaves")
+                        Text: =If(App.Width < 700, If(gblLanguage = "Arabic", "الجميع", "All"), If(gblLanguage = "Arabic", "إجازات الموظفين", "All Employees"))
+                        Visible: =Coalesce(LookUp(colUserPermissions, Module.Value = "HR").CanViewAll, false)
+                        Width: =If(App.Width < 700, 110, 170)
+                  - btnLeaveNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "طلب إجازة جديد", "New leave request")
+                        Appearance: =ButtonAppearance.Primary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =36
+                        Icon: ="Add"
+                        OnSelect: |-
+                          =Set(gblSelectedLeaveRequest, Blank());
+                          Set(gblCanEditLeave, true);
+                          Set(gblLeaveRequestMode, "New");
+                          Set(gblLeaveBalance, Blank());
+                          Set(VarShowLeave, false);
+                          Set(VarNewLeave, true)
+                        Text: =If(App.Width < 700, If(gblLanguage = "Arabic", "جديد", "New"), If(gblLanguage = "Arabic", "طلب إجازة جديد", "New Leave Request"))
+                        Width: =If(App.Width < 700, 100, 180)
+            - conLeaveForm:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =1
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Visible: =Or(VarNewLeave, And(VarShowLeave, gblLeaveRequestMode = "Edit"))
+                  Width: =Parent.Width
+                Children:
+                  - conLeaveFormHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("SurfaceHover")
+                        FillPortions: =0
+                        Height: =56
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        Width: =Parent.Width
+                      Children:
+                        - icoLeaveForm:
+                            Control: ModernIcon@1.1.1
+                            Properties:
+                              Height: =28
+                              Icon: ="Calendar"
+                              IconColor: =fxThemeColor("Primary")
+                              Width: =28
+                        - lblLeaveFormTitle:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              Size: =If(App.Width < 700, 14, 16)
+                              Text: |-
+                                =If(
+                                    gblLeaveRequestMode = "New",
+                                    If(gblLanguage = "Arabic", "طلب إجازة جديد", "New Leave Request"),
+                                    If(gblLanguage = "Arabic", "طلب إجازة رقم ", "Leave Request #") & Coalesce(gblSelectedLeaveRequest.ID, "")
+                                )
+                              Width: =Parent.Width - 220
+                        - lblLeaveFormStatus:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxToneInk(If(gblLeaveRequestMode = "New", "", Switch(gblSelectedLeaveRequest.Status.Value, "Approved", "success", "Rejected", "danger", "Pending", "pending", "")))
+                              Fill: =fxToneFill(If(gblLeaveRequestMode = "New", "", Switch(gblSelectedLeaveRequest.Status.Value, "Approved", "success", "Rejected", "danger", "Pending", "pending", "")))
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              RadiusBottomLeft: =gblTheme.Radius.Round
+                              RadiusBottomRight: =gblTheme.Radius.Round
+                              RadiusTopLeft: =gblTheme.Radius.Round
+                              RadiusTopRight: =gblTheme.Radius.Round
+                              Size: =11
+                              Text: |-
+                                =If(
+                                    gblLeaveRequestMode = "New",
+                                    If(gblLanguage = "Arabic", "مسودة", "Draft"),
+                                    Switch(
+                                        gblSelectedLeaveRequest.Status.Value,
+                                        "Pending", If(gblLanguage = "Arabic", "قيد الانتظار", "Pending"),
+                                        "Approved", If(gblLanguage = "Arabic", "معتمد", "Approved"),
+                                        "Rejected", If(gblLanguage = "Arabic", "مرفوض", "Rejected"),
+                                        "Cancelled", If(gblLanguage = "Arabic", "ملغى", "Cancelled"),
+                                        Coalesce(gblSelectedLeaveRequest.Status.Value, "-")
+                                    )
+                                )
+                              Width: =100
+                        - btnLeaveFormBack:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "رجوع", "Back")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="ArrowExit"
+                              OnSelect: |-
+                                =Set(VarNewLeave, false);
+                                Set(VarShowLeave, false);
+                                Set(gblLeaveRequestMode, Blank())
+                              Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "رجوع", "Back"))
+                              Width: =If(App.Width < 700, 44, 90)
+                  - conLeaveFormBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =1
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =12
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        Width: =Parent.Width
+                      Children:
+                        - lblLeaveFormSub:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =20
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: |-
+                                =If(
+                                    gblLeaveRequestMode = "New",
+                                    If(gblLanguage = "Arabic", "قدّم طلب إجازة للحصول على موافقة المدير", "Submit a leave request for manager approval"),
+                                    Coalesce(gblSelectedLeaveRequest.Employee.Value, "")
+                                )
+                              Width: =Parent.Width
+                        - conLeaveFormFields:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 320, 76)
+                              LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - cmbLeaveType:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "نوع الإجازة", "Leave type")
+                                    DefaultSelectedItems: =If(gblLeaveRequestMode = "New", Blank(), gblSelectedLeaveRequest.LeaveType)
+                                    DisplayMode: =If(Or(gblLeaveRequestMode = "New", gblCanEditLeave), DisplayMode.Edit, DisplayMode.View)
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع الإجازة", "Leave type")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(LeaveRequests.LeaveType)
+                                    OnChange: |-
+                                      =Set(
+                                          gblLeaveBalance,
+                                          LookUp(
+                                              colLeaveBalances,
+                                              And(
+                                                  LeaveType.Value = Self.Selected.Value,
+                                                  LeaveYear = Year(Coalesce(dteLeaveStart.SelectedDate, Today()))
+                                              )
+                                          )
+                                      )
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 4)
+                              - cmbLeaveSubstitute:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الموظف البديل", "Substitute")
+                                    DefaultSelectedItems: =If(gblLeaveRequestMode = "New", Blank(), gblSelectedLeaveRequest.Substitute)
+                                    DisplayMode: =If(Or(gblLeaveRequestMode = "New", gblCanEditLeave), DisplayMode.Edit, DisplayMode.View)
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف البديل", "Substitute")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(LeaveRequests.Substitute)
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 4)
+                              - dteLeaveStart:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "تاريخ البداية", "Start date")
+                                    DefaultDate: =If(gblLeaveRequestMode = "New", Blank(), gblSelectedLeaveRequest.StartDate)
+                                    DisplayMode: =If(Or(gblLeaveRequestMode = "New", gblCanEditLeave), DisplayMode.Edit, DisplayMode.View)
+                                    Height: =40
+                                    OnChange: |-
+                                      =Set(
+                                          gblLeaveBalance,
+                                          LookUp(
+                                              colLeaveBalances,
+                                              And(
+                                                  LeaveType.Value = cmbLeaveType.Selected.Value,
+                                                  LeaveYear = Year(Self.SelectedDate)
+                                              )
+                                          )
+                                      )
+                                    Placeholder: =If(gblLanguage = "Arabic", "تاريخ البداية", "Start date")
+                                    Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 4)
+                              - dteLeaveEnd:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "تاريخ النهاية", "End date")
+                                    DefaultDate: =If(gblLeaveRequestMode = "New", Blank(), gblSelectedLeaveRequest.EndDate)
+                                    DisplayMode: =If(Or(gblLeaveRequestMode = "New", gblCanEditLeave), DisplayMode.Edit, DisplayMode.View)
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "تاريخ النهاية", "End date")
+                                    Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 4)
+                        - conLeaveBalance:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 168, 96)
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =8
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Width: =Parent.Width
+                            Children:
+                              - lblLeaveBalanceTitle:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =12
+                                    Text: |-
+                                      =If(gblLanguage = "Arabic", "رصيد الإجازات", "Leave Balance") & " · " &
+                                      Coalesce(cmbLeaveType.Selected.Value, If(gblLanguage = "Arabic", "لم يتم الاختيار", "Not selected"))
+                                    Width: =Parent.Width
+                              - conLeaveBalanceTiles:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =64
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - lblLeaveDays:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxThemeColor("Primary")
+                                          Fill: =fxThemeColor("PrimaryLighter")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =56
+                                          RadiusBottomLeft: =gblTheme.Radius.Medium
+                                          RadiusBottomRight: =gblTheme.Radius.Medium
+                                          RadiusTopLeft: =gblTheme.Radius.Medium
+                                          RadiusTopRight: =gblTheme.Radius.Medium
+                                          Size: =14
+                                          Text: |-
+                                            =If(gblLanguage = "Arabic", "أيام العمل ", "Working days ") &
+                                            If(
+                                                Or(IsBlank(dteLeaveStart.SelectedDate), IsBlank(dteLeaveEnd.SelectedDate), dteLeaveEnd.SelectedDate < dteLeaveStart.SelectedDate),
+                                                "0",
+                                                With(
+                                                    {startDate: dteLeaveStart.SelectedDate, endDate: dteLeaveEnd.SelectedDate},
+                                                    Text(
+                                                        CountIf(
+                                                            ForAll(Sequence(DateDiff(startDate, endDate) + 1), DateAdd(startDate, Value - 1)),
+                                                            And(Weekday(Value, StartOfWeek.Monday) <> 5, Weekday(Value, StartOfWeek.Monday) <> 6)
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                          Width: =(Parent.Width - 24) / 4
+                                    - lblLeaveAvailable:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =If(IsBlank(gblLeaveBalance), fxThemeColor("TextMuted"), If(gblLeaveBalance.Remaining <= 0, fxThemeColor("Danger"), fxThemeColor("Success")))
+                                          Fill: =fxThemeColor("Surface")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =56
+                                          RadiusBottomLeft: =gblTheme.Radius.Medium
+                                          RadiusBottomRight: =gblTheme.Radius.Medium
+                                          RadiusTopLeft: =gblTheme.Radius.Medium
+                                          RadiusTopRight: =gblTheme.Radius.Medium
+                                          Size: =14
+                                          Text: |-
+                                            =If(gblLanguage = "Arabic", "المتاح ", "Available ") &
+                                            If(IsBlank(cmbLeaveType.Selected), "-", If(IsBlank(gblLeaveBalance), "N/A", Text(gblLeaveBalance.Remaining, "##")))
+                                          Width: =(Parent.Width - 24) / 4
+                                    - lblLeaveAllocated:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Fill: =fxThemeColor("Surface")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =56
+                                          RadiusBottomLeft: =gblTheme.Radius.Medium
+                                          RadiusBottomRight: =gblTheme.Radius.Medium
+                                          RadiusTopLeft: =gblTheme.Radius.Medium
+                                          RadiusTopRight: =gblTheme.Radius.Medium
+                                          Size: =14
+                                          Text: =If(gblLanguage = "Arabic", "المخصص ", "Allocated ") & If(IsBlank(gblLeaveBalance), "-", Text(gblLeaveBalance.Allocated, "##"))
+                                          Width: =(Parent.Width - 24) / 4
+                                    - lblLeaveUsed:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Fill: =fxThemeColor("Surface")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =56
+                                          RadiusBottomLeft: =gblTheme.Radius.Medium
+                                          RadiusBottomRight: =gblTheme.Radius.Medium
+                                          RadiusTopLeft: =gblTheme.Radius.Medium
+                                          RadiusTopRight: =gblTheme.Radius.Medium
+                                          Size: =14
+                                          Text: =If(gblLanguage = "Arabic", "المستخدم ", "Used ") & If(IsBlank(gblLeaveBalance), "-", Text(gblLeaveBalance.Used, "##"))
+                                          Width: =(Parent.Width - 24) / 4
+                        - txtLeaveReason:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "السبب", "Reason")
+                              Default: =If(gblLeaveRequestMode = "New", "", gblSelectedLeaveRequest.Reason)
+                              DisplayMode: =If(Or(gblLeaveRequestMode = "New", gblCanEditLeave), DisplayMode.Edit, DisplayMode.View)
+                              FillPortions: =0
+                              Height: =108
+                              Placeholder: =If(gblLanguage = "Arabic", "اشرح سبب طلب الإجازة باختصار...", "Briefly explain the reason for your leave request...")
+                              Required: =true
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - conLeaveFormInfo:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLighter")
+                              FillPortions: =0
+                              Height: =44
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =10
+                              PaddingRight: =10
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Visible: =gblLeaveRequestMode = "New"
+                              Width: =Parent.Width
+                            Children:
+                              - icoLeaveFormInfo:
+                                  Control: ModernIcon@1.1.1
+                                  Properties:
+                                    Height: =20
+                                    Icon: ="Info"
+                                    IconColor: =fxThemeColor("Primary")
+                                    Width: =20
+                              - lblLeaveFormInfo:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("Primary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =32
+                                    Size: =12
+                                    Text: |-
+                                      =If(
+                                          gblLanguage = "Arabic",
+                                          "سيتم إرسال طلبك إلى " & Coalesce(gblCurrentEmployee.Manager.Value, "مديرك") & " للموافقة.",
+                                          "Your request will be submitted to " & Coalesce(gblCurrentEmployee.Manager.Value, "your manager") & " for approval."
+                                      )
+                                    Width: =Parent.Width - 36
+                  - conLeaveFormActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("SurfaceHover")
+                        FillPortions: =0
+                        Height: =56
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        Width: =Parent.Width
+                      Children:
+                        - btnLeaveCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Dismiss"
+                              OnSelect: |-
+                                =Reset(cmbLeaveType);
+                                Reset(dteLeaveStart);
+                                Reset(dteLeaveEnd);
+                                Reset(cmbLeaveSubstitute);
+                                Reset(txtLeaveReason);
+                                Set(gblLeaveBalance, Blank());
+                                Set(gblSelectedLeaveRequest, Blank());
+                                Set(gblCanEditLeave, false);
+                                Set(gblLeaveRequestMode, Blank());
+                                Set(VarNewLeave, false);
+                                Set(VarShowLeave, false)
+                              Text: =If(gblLeaveRequestMode = "New", If(gblLanguage = "Arabic", "إلغاء", "Cancel"), If(gblLanguage = "Arabic", "إغلاق", "Close"))
+                              Width: =110
+                        - btnLeaveDelete:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =36
+                              Icon: ="Delete"
+                              OnSelect: |-
+                                =Set(gblLeaveConfirmAction, "Delete");
+                                Set(gblShowLeaveConfirm, true)
+                              Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                              Visible: =And(gblLeaveRequestMode = "Edit", gblCanEditLeave, gblSelectedLeaveRequest.Status.Value = "Pending")
+                              Width: =110
+                        - btnLeaveSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Save"
+                              OnSelect: |-
+                                =Set(gblLeaveConfirmAction, "Save");
+                                Set(gblShowLeaveConfirm, true)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Visible: =And(gblLeaveRequestMode = "Edit", gblCanEditLeave, gblSelectedLeaveRequest.Status.Value = "Pending")
+                              Width: =120
+                        - btnLeaveSubmit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Send"
+                              OnSelect: |-
+                                =With(
+                                    {arabic: gblLanguage = "Arabic"},
+                                    If(
+                                        IsBlank(gblCurrentEmployee.Manager),
+                                        Notify(If(arabic, "لا يوجد مدير معيّن لك. لا يمكن الإرسال.", "You do not have a manager assigned. Cannot submit."), NotificationType.Error),
+                                        IsBlank(cmbLeaveType.Selected),
+                                        Notify(If(arabic, "الرجاء اختيار نوع الإجازة.", "Please select a leave type."), NotificationType.Error),
+                                        IsBlank(dteLeaveStart.SelectedDate),
+                                        Notify(If(arabic, "الرجاء اختيار تاريخ البداية.", "Please select a start date."), NotificationType.Error),
+                                        IsBlank(dteLeaveEnd.SelectedDate),
+                                        Notify(If(arabic, "الرجاء اختيار تاريخ النهاية.", "Please select an end date."), NotificationType.Error),
+                                        dteLeaveEnd.SelectedDate < dteLeaveStart.SelectedDate,
+                                        Notify(If(arabic, "تاريخ النهاية لا يمكن أن يسبق تاريخ البداية.", "End date cannot be before start date."), NotificationType.Error),
+                                        IsBlank(Trim(txtLeaveReason.Text)),
+                                        Notify(If(arabic, "الرجاء كتابة سبب الإجازة.", "Please provide a reason for your leave request."), NotificationType.Error),
+                                        With(
+                                            {
+                                                workingDays: CountIf(
+                                                    ForAll(Sequence(DateDiff(dteLeaveStart.SelectedDate, dteLeaveEnd.SelectedDate) + 1), DateAdd(dteLeaveStart.SelectedDate, Value - 1)),
+                                                    And(Weekday(Value, StartOfWeek.Monday) <> 5, Weekday(Value, StartOfWeek.Monday) <> 6)
+                                                )
+                                            },
+                                            If(
+                                                workingDays <= 0,
+                                                Notify(If(arabic, "لا توجد أيام عمل في الفترة المحددة.", "No working days in the selected range."), NotificationType.Error),
+                                                IsBlank(gblLeaveBalance),
+                                                Notify(If(arabic, "لا يوجد رصيد لهذا النوع أو السنة.", "No leave balance record found for this leave type and year."), NotificationType.Error),
+                                                workingDays > gblLeaveBalance.Remaining,
+                                                Notify(If(arabic, "الرصيد غير كافٍ.", "Insufficient leave balance."), NotificationType.Error),
+                                                Set(gblLeaveConfirmAction, "Submit");
+                                                Set(gblShowLeaveConfirm, true)
+                                            )
+                                        )
+                                    )
+                                )
+                              Text: =If(gblLanguage = "Arabic", "إرسال", "Submit")
+                              Visible: =gblLeaveRequestMode = "New"
+                              Width: =120
+            - conLeaveMine:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =1
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  Visible: =And(VarLeavesTab = "userleaves", !VarNewLeave, gblLeaveRequestMode <> "Edit")
+                  Width: =Parent.Width
+                Children:
+                  - cmpLeaveKpi:
+                      Control: CanvasComponent
+                      ComponentName: cmpKPIwNav
+                      Properties:
+                        AnimationEffect: ="None"
+                        ColumnsLayout: |-
+                          ={
+                              Mobile: 1,
+                              Tablet: 2,
+                              Desktop: 4,
+                              MobileBreakpoint: 640,
+                              TabletBreakpoint: 1024,
+                              DesktopBreakpoint: 1366
+                          }
+                        Data: |-
+                          =With(
+                              {
+                                  annual: LookUp(colLeaveBalances, And(LeaveYear = Year(Today()), LeaveType.Value = "Annual")),
+                                  sick: LookUp(colLeaveBalances, And(LeaveYear = Year(Today()), LeaveType.Value = "Sick")),
+                                  emergency: LookUp(colLeaveBalances, And(LeaveYear = Year(Today()), LeaveType.Value = "Emergency"))
+                              },
+                              With(
+                                  {
+                                      totalUsed: Coalesce(annual.Used, 0) + Coalesce(sick.Used, 0) + Coalesce(emergency.Used, 0),
+                                      totalRemaining: Coalesce(annual.Remaining, 0) + Coalesce(sick.Remaining, 0) + Coalesce(emergency.Remaining, 0)
+                                  },
+                                  Table(
+                                      {
+                                          ID: 1,
+                                          Icon: "Calendar",
+                                          Value: Coalesce(annual.Used, 0),
+                                          Label: If(gblLanguage = "Arabic", "الإجازة السنوية المستخدمة", "Annual Leave Used"),
+                                          Subtitle: Text(Coalesce(annual.Remaining, 0), "0") & If(gblLanguage = "Arabic", " يوم متبقي", " days remaining"),
+                                          Screen: "",
+                                          IconBg: "",
+                                          IconColor: fxThemeInk("Primary"),
+                                          SparklineData: "",
+                                          isHidden: false
+                                      },
+                                      {
+                                          ID: 2,
+                                          Icon: "Heart",
+                                          Value: Coalesce(sick.Used, 0),
+                                          Label: If(gblLanguage = "Arabic", "الإجازة المرضية المستخدمة", "Sick Leave Used"),
+                                          Subtitle: Text(Coalesce(sick.Remaining, 0), "0") & If(gblLanguage = "Arabic", " يوم متبقي", " days remaining"),
+                                          Screen: "",
+                                          IconBg: "",
+                                          IconColor: fxThemeInk("Primary"),
+                                          SparklineData: "",
+                                          isHidden: false
+                                      },
+                                      {
+                                          ID: 3,
+                                          Icon: "Warning",
+                                          Value: Coalesce(emergency.Used, 0),
+                                          Label: If(gblLanguage = "Arabic", "الإجازة الطارئة المستخدمة", "Emergency Leave Used"),
+                                          Subtitle: Text(Coalesce(emergency.Remaining, 0), "0") & If(gblLanguage = "Arabic", " يوم متبقي", " days remaining"),
+                                          Screen: "",
+                                          IconBg: "",
+                                          IconColor: fxThemeInk("Primary"),
+                                          SparklineData: "",
+                                          isHidden: false
+                                      },
+                                      {
+                                          ID: 4,
+                                          Icon: "BarChart",
+                                          Value: totalUsed,
+                                          Label: If(gblLanguage = "Arabic", "إجمالي الإجازات", "All Leaves"),
+                                          Subtitle: Text(totalUsed, "0") & If(gblLanguage = "Arabic", " مستخدم · ", " used · ") & Text(totalRemaining, "0") & If(gblLanguage = "Arabic", " متبقي", " remaining"),
+                                          Screen: "",
+                                          IconBg: "",
+                                          IconColor: fxThemeInk("Primary"),
+                                          SparklineData: "",
+                                          isHidden: false
+                                      }
+                                  )
+                              )
+                          )
+                        FillPortions: =0
+                        Height: |-
+                          =With(
+                              {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4))},
+                              RoundUp(4 / cols, 0) * 108
+                          )
+                        Icons: |-
+                          =Table({Name: "Calendar", SVG: ""})
+                        IsLoading: =false
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Style: ="Compact"
+                        Theme: =gblTheme.Mode
+                        Width: =Parent.Width
+                  - conLeaveMineHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - lblLeaveMineTitle:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =28
+                              Size: =16
+                              Text: =If(gblLanguage = "Arabic", "طلبات الإجازة الأخيرة", "Recent Leave Requests")
+                              Width: =Parent.Width - 120
+                        - btnLeaveMineRefresh:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="ArrowClockwise"
+                              OnSelect: |-
+                                =Refresh(LeaveRequests);
+                                Refresh(LeaveBalances);
+                                ClearCollect(colUserLeaveRequests, Filter(LeaveRequests, EmployeeID = gblUser.ID));
+                                ClearCollect(colLeaveBalances, Filter(LeaveBalances, EmployeeID = gblUser.ID))
+                              Text: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                              Width: =110
+                  - galLeaveMine:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "طلبات الإجازة", "Leave requests")
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Items: =SortByColumns(colUserLeaveRequests, "Created", SortOrder.Descending)
+                        LayoutMinHeight: =120
+                        ShowScrollbar: =true
+                        TemplatePadding: =0
+                        TemplateSize: =If(App.Width < 1100, 96, 52)
+                        Width: =Parent.Width
+                      Children:
+                        - conLeaveMineRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight - 4
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =If(Parent.TemplateWidth < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblLeaveMineType:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("Primary")
+                                    Fill: =fxThemeColor("PrimaryLighter")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =28
+                                    RadiusBottomLeft: =gblTheme.Radius.Round
+                                    RadiusBottomRight: =gblTheme.Radius.Round
+                                    RadiusTopLeft: =gblTheme.Radius.Round
+                                    RadiusTopRight: =gblTheme.Radius.Round
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.LeaveType.Value, "-")
+                                    Width: =If(Parent.Width < 700, Parent.Width, 140)
+                              - lblLeaveMineReason:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =22
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.Reason, "-")
+                                    Width: =If(Parent.Width < 700, Parent.Width, Parent.Width - 520)
+                              - lblLeaveMinePeriod:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =22
+                                    Size: =11
+                                    Text: =Text(ThisItem.StartDate, "dd mmm yyyy") & " - " & Text(ThisItem.EndDate, "dd mmm yyyy")
+                                    Width: =If(Parent.Width < 700, Parent.Width, 180)
+                              - lblLeaveMineDays:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =22
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.Duration, DateDiff(ThisItem.StartDate, ThisItem.EndDate, TimeUnit.Days) + 1) & If(gblLanguage = "Arabic", " يوم", " days")
+                                    Width: =70
+                              - lblLeaveMineStatus:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxToneInk(Switch(ThisItem.Status.Value, "Approved", "success", "Rejected", "danger", "Cancelled", "danger", "Pending", "pending", "Pending Approval", "pending", ""))
+                                    Fill: =fxToneFill(Switch(ThisItem.Status.Value, "Approved", "success", "Rejected", "danger", "Cancelled", "danger", "Pending", "pending", "Pending Approval", "pending", ""))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =26
+                                    RadiusBottomLeft: =gblTheme.Radius.Round
+                                    RadiusBottomRight: =gblTheme.Radius.Round
+                                    RadiusTopLeft: =gblTheme.Radius.Round
+                                    RadiusTopRight: =gblTheme.Radius.Round
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.Status.Value, "-")
+                                    Width: =100
+                              - conLeaveMineActions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =32
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =4
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =100
+                                  Children:
+                                    - btnLeaveMineView:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "عرض", "View")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =32
+                                          Icon: ="Eye"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, ThisItem);
+                                            Set(gblLeaveRequestMode, "View");
+                                            Set(VarShowLeave, true);
+                                            Set(gblCanEditLeave, false)
+                                          Text: =""
+                                          Width: =32
+                                    - btnLeaveMineEdit:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =32
+                                          Icon: ="Edit"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, ThisItem);
+                                            Set(gblLeaveRequestMode, "Edit");
+                                            Set(VarShowLeave, true);
+                                            Set(gblCanEditLeave, true);
+                                            Set(gblShowLeaveConfirm, false)
+                                          Text: =""
+                                          Visible: =ThisItem.Status.Value = "Pending"
+                                          Width: =32
+                                    - btnLeaveMineDelete:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Danger")
+                                          Height: =32
+                                          Icon: ="Delete"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, ThisItem);
+                                            Set(gblLeaveConfirmAction, "Delete");
+                                            Set(gblShowLeaveConfirm, true)
+                                          Text: =""
+                                          Visible: =ThisItem.Status.Value = "Pending"
+                                          Width: =32
+                  - lblLeaveMineEmpty:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =40
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "لا توجد طلبات إجازة", "No leave requests yet")
+                        Visible: =IsEmpty(colUserLeaveRequests)
+                        Width: =Parent.Width
+            - conLeaveAll:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =1
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =And(VarLeavesTab = "AllLeaves", !VarNewLeave, gblLeaveRequestMode <> "Edit")
+                  Width: =Parent.Width
+                Children:
+                  - conLeaveAllToolbar:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(ShowLeaveFilter, If(App.Width < 700, 220, 100), 52)
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =Parent.Width
+                      Children:
+                        - conLeaveAllToolbarRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - cmbLeaveProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.ProjectCode
+                                    Items: =colLeaveProjects
+                                    OnChange: =Set(varLeavePageNumber, 1)
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width * 0.34, 180)
+                              - cmbLeaveEmployee:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الموظفين", "All employees")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =colLeaveEmployees
+                                    OnChange: =Set(varLeavePageNumber, 1)
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width * 0.34, 200)
+                              - btnLeaveFilterToggle:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "التصفية", "Filters")
+                                    Appearance: =If(ShowLeaveFilter, ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =36
+                                    Icon: ="Filter"
+                                    OnSelect: =Set(ShowLeaveFilter, !ShowLeaveFilter)
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تصفية", "Filters"))
+                                    Width: =If(App.Width < 700, 44, 100)
+                              - btnLeaveTableView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "جدول", "Table")
+                                    Appearance: =If(varLeaveViewMode = "Table", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =36
+                                    Icon: ="Table"
+                                    OnSelect: =Set(varLeaveViewMode, "Table")
+                                    Text: =""
+                                    Visible: =App.Width >= 1100
+                                    Width: =36
+                              - btnLeaveCardView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "بطاقات", "Cards")
+                                    Appearance: =If(Or(varLeaveViewMode = "Card", App.Width < 1100), ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =36
+                                    Icon: ="Grid"
+                                    OnSelect: =Set(varLeaveViewMode, "Card")
+                                    Text: =""
+                                    Width: =36
+                              - btnLeaveAllRefresh:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =36
+                                    Icon: ="ArrowClockwise"
+                                    OnSelect: |-
+                                      =Refresh(LeaveRequests);
+                                      ClearCollect(colUserLeaveRequests, Filter(LeaveRequests, EmployeeID = gblUser.ID));
+                                      Clear(colLeaveAll);
+                                      If(
+                                          varHRScope = "Own",
+                                          Collect(colLeaveAll, colUserLeaveRequests),
+                                          If(
+                                              Or(varHRScope = "All", varUserHasAllProjects),
+                                              Collect(colLeaveAll, LeaveRequests),
+                                              ForAll(
+                                                  colLeaveEmployees As emp,
+                                                  Collect(colLeaveAll, Filter(LeaveRequests, EmployeeID = emp.ID))
+                                              )
+                                          )
+                                      )
+                                    Text: =""
+                                    Width: =36
+                        - conLeaveAllFilters:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 160, 40)
+                              LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =ShowLeaveFilter
+                              Width: =Parent.Width
+                            Children:
+                              - dteLeaveFrom:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "من تاريخ", "From date")
+                                    DefaultDate: =varLeaveFromDate
+                                    Height: =36
+                                    OnChange: |-
+                                      =Set(varLeaveFromDate, Self.SelectedDate);
+                                      Set(varLeavePageNumber, 1)
+                                    Placeholder: =If(gblLanguage = "Arabic", "من تاريخ", "From date")
+                                    Width: =If(App.Width < 700, Parent.Width, 150)
+                              - dteLeaveTo:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إلى تاريخ", "To date")
+                                    DefaultDate: =varLeaveToDate
+                                    Height: =36
+                                    OnChange: |-
+                                      =Set(varLeaveToDate, Self.SelectedDate);
+                                      Set(varLeavePageNumber, 1)
+                                    Placeholder: =If(gblLanguage = "Arabic", "إلى تاريخ", "To date")
+                                    Width: =If(App.Width < 700, Parent.Width, 150)
+                              - cmbLeaveTypeFilter:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "نوع الإجازة", "Leave type")
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأنواع", "All types")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(LeaveRequests.LeaveType)
+                                    OnChange: =Set(varLeavePageNumber, 1)
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 160)
+                              - cmbLeaveStatusFilter:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(LeaveRequests.Status)
+                                    OnChange: =Set(varLeavePageNumber, 1)
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 150)
+                              - btnLeaveClearFilters:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "مسح التصفية", "Clear filters")
+                                    Appearance: =ButtonAppearance.Secondary
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =36
+                                    Icon: ="Dismiss"
+                                    OnSelect: |-
+                                      =Set(varLeaveFromDate, Blank());
+                                      Set(varLeaveToDate, Blank());
+                                      Reset(cmbLeaveProject);
+                                      Reset(cmbLeaveEmployee);
+                                      Reset(dteLeaveFrom);
+                                      Reset(dteLeaveTo);
+                                      Reset(cmbLeaveTypeFilter);
+                                      Reset(cmbLeaveStatusFilter);
+                                      Set(varLeavePageNumber, 1)
+                                    Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                                    Width: =If(App.Width < 700, Parent.Width, 100)
+                  - galLeaveAll:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إجازات الموظفين", "Employee leave")
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Items: |-
+                          =SortByColumns(
+                              Filter(
+                                  colLeaveAll,
+                                  Or(IsBlank(cmbLeaveEmployee.Selected), EmployeeID = cmbLeaveEmployee.Selected.ID),
+                                  Or(
+                                      IsBlank(cmbLeaveProject.Selected),
+                                      LookUp(colLeaveEmployees, ID = EmployeeID).ProjectID = cmbLeaveProject.Selected.ID
+                                  ),
+                                  Or(IsBlank(dteLeaveFrom.SelectedDate), StartDate >= dteLeaveFrom.SelectedDate),
+                                  Or(IsBlank(dteLeaveTo.SelectedDate), StartDate <= dteLeaveTo.SelectedDate),
+                                  Or(IsBlank(cmbLeaveTypeFilter.Selected), LeaveType.Value = cmbLeaveTypeFilter.Selected.Value),
+                                  Or(IsBlank(cmbLeaveStatusFilter.Selected), Status.Value = cmbLeaveStatusFilter.Selected.Value)
+                              ),
+                              "EndDate",
+                              SortOrder.Ascending
+                          )
+                        LayoutMinHeight: =120
+                        ShowScrollbar: =true
+                        TemplatePadding: =4
+                        TemplateSize: =If(Or(varLeaveViewMode = "Card", App.Width < 1100), 120, 52)
+                        Width: =Parent.Width
+                      Children:
+                        - conLeaveAllRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight - 6
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =If(Or(varLeaveViewMode = "Card", Parent.TemplateWidth < 800), LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblLeaveAllEmployee:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =22
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.Employee.Value, "-")
+                                    Width: =If(Parent.Width < 800, Parent.Width, 160)
+                              - lblLeaveAllProject:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =20
+                                    Size: =11
+                                    Text: =Coalesce(LookUp(colLeaveEmployees, ID = ThisItem.EmployeeID).Project.Value, "-")
+                                    Width: =If(Parent.Width < 800, Parent.Width, 100)
+                              - lblLeaveAllDates:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =20
+                                    Size: =11
+                                    Text: =Text(ThisItem.StartDate, "dd mmm yyyy") & " - " & Text(ThisItem.EndDate, "dd mmm yyyy")
+                                    Width: =If(Parent.Width < 800, Parent.Width, 180)
+                              - lblLeaveAllType:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxToneInk(Switch(ThisItem.LeaveType.Value, "Annual", "info", "Sick", "danger", "Emergency", "warning", ""))
+                                    Fill: =fxToneFill(Switch(ThisItem.LeaveType.Value, "Annual", "info", "Sick", "danger", "Emergency", "warning", ""))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =24
+                                    RadiusBottomLeft: =gblTheme.Radius.Round
+                                    RadiusBottomRight: =gblTheme.Radius.Round
+                                    RadiusTopLeft: =gblTheme.Radius.Round
+                                    RadiusTopRight: =gblTheme.Radius.Round
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.LeaveType.Value, "-")
+                                    Width: =90
+                              - lblLeaveAllDuration:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =20
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.Duration, DateDiff(ThisItem.StartDate, ThisItem.EndDate, TimeUnit.Days) + 1) & If(gblLanguage = "Arabic", " يوم", " days")
+                                    Width: =70
+                              - lblLeaveAllStatus:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxToneInk(Switch(ThisItem.Status.Value, "Approved", "success", "Completed", "success", "Rejected", "danger", "Cancelled", "danger", "Pending", "pending", "Pending Approval", "pending", "Submitted", "info", "Issued", "info", ""))
+                                    Fill: =fxToneFill(Switch(ThisItem.Status.Value, "Approved", "success", "Completed", "success", "Rejected", "danger", "Cancelled", "danger", "Pending", "pending", "Pending Approval", "pending", "Submitted", "info", "Issued", "info", ""))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =24
+                                    RadiusBottomLeft: =gblTheme.Radius.Round
+                                    RadiusBottomRight: =gblTheme.Radius.Round
+                                    RadiusTopLeft: =gblTheme.Radius.Round
+                                    RadiusTopRight: =gblTheme.Radius.Round
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.Status.Value, "-")
+                                    Width: =110
+                              - lblLeaveAllApprover:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =20
+                                    Size: =11
+                                    Text: =If(IsBlank(ThisItem.Approver), "-", ThisItem.Approver.Value)
+                                    Visible: =Parent.Width >= 800
+                                    Width: =120
+                              - lblLeaveAllSubstitute:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =20
+                                    Size: =11
+                                    Text: =If(IsBlank(ThisItem.Substitute), "-", ThisItem.Substitute.Value)
+                                    Visible: =Parent.Width >= 800
+                                    Width: =110
+                              - conLeaveAllActions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =32
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =4
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =100
+                                  Children:
+                                    - btnLeaveAllView:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "عرض", "View")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =32
+                                          Icon: ="Eye"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, ThisItem);
+                                            Set(gblLeaveRequestMode, "View");
+                                            Set(VarShowLeave, true);
+                                            Set(gblCanEditLeave, false)
+                                          Text: =""
+                                          Width: =32
+                                    - btnLeaveAllEdit:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =32
+                                          Icon: ="Edit"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, ThisItem);
+                                            Set(gblLeaveRequestMode, "Edit");
+                                            Set(VarShowLeave, true);
+                                            Set(gblCanEditLeave, true);
+                                            Set(gblShowLeaveConfirm, false)
+                                          Text: =""
+                                          Visible: =ThisItem.Status.Value = "Pending"
+                                          Width: =32
+                                    - btnLeaveAllDelete:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                          Appearance: =ButtonAppearance.Subtle
+                                          BasePaletteColor: =fxThemeColor("Danger")
+                                          Height: =32
+                                          Icon: ="Delete"
+                                          OnSelect: |-
+                                            =Set(gblSelectedLeaveRequest, ThisItem);
+                                            Set(gblLeaveConfirmAction, "Delete");
+                                            Set(gblShowLeaveConfirm, true)
+                                          Text: =""
+                                          Visible: =ThisItem.Status.Value = "Pending"
+                                          Width: =32
+                  - lblLeaveAllEmpty:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =36
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "لا توجد طلبات إجازة", "No leave requests yet")
+                        Visible: =CountRows(galLeaveAll.AllItems) = 0
+                        Width: =Parent.Width
+      - conLeaveConfirm:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.45)
+            Height: =Parent.Height
+            Visible: =gblShowLeaveConfirm
+            Width: =Parent.Width
+          Children:
+            - btnLeaveConfirmScrim:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =Parent.Height
+                  OnSelect: =Set(gblShowLeaveConfirm, false)
+                  Text: =""
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+            - conLeaveConfirmCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  Height: =220
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Width: =If(App.Width < 700, Parent.Width - 32, 420)
+                  X: =(Parent.Width - Self.Width) / 2
+                  Y: =(Parent.Height - Self.Height) / 2
+                Children:
+                  - lblLeaveConfirmTitle:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =28
+                        Size: =16
+                        Text: |-
+                          =Switch(
+                              gblLeaveConfirmAction,
+                              "Delete", If(gblLanguage = "Arabic", "حذف طلب الإجازة؟", "Delete leave request?"),
+                              "Save", If(gblLanguage = "Arabic", "حفظ التغييرات؟", "Save changes?"),
+                              If(gblLanguage = "Arabic", "إرسال طلب الإجازة؟", "Submit leave request?")
+                          )
+                        Width: =Parent.Width
+                  - lblLeaveConfirmMessage:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextSecondary")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =72
+                        Size: =13
+                        Text: |-
+                          =Switch(
+                              gblLeaveConfirmAction,
+                              "Delete", If(gblLanguage = "Arabic", "هل تريد حذف طلب الإجازة المعلّق؟", "Delete this pending leave request?"),
+                              "Save", If(gblLanguage = "Arabic", "هل تريد حفظ التغييرات؟", "Save the changes to this leave request?"),
+                              If(
+                                  gblLanguage = "Arabic",
+                                  "سيتم إرسال الطلب إلى " & Coalesce(gblCurrentEmployee.Manager.Value, "مديرك") & " للموافقة.",
+                                  "Your request will be submitted to " & Coalesce(gblCurrentEmployee.Manager.Value, "your manager") & " for approval."
+                              )
+                          )
+                        Width: =Parent.Width
+                  - conLeaveConfirmActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - btnLeaveConfirmCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              OnSelect: =Set(gblShowLeaveConfirm, false)
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =100
+                        - btnLeaveConfirmOk:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =If(gblLeaveConfirmAction = "Delete", fxThemeColor("Danger"), fxThemeColor("Primary"))
+                              Height: =36
+                              Icon: =If(gblLeaveConfirmAction = "Delete", "Delete", "Checkmark")
+                              OnSelect: |-
+                                =If(
+                                    gblLeaveConfirmAction = "Delete",
+                                    If(
+                                        IsBlank(gblSelectedLeaveRequest),
+                                        Notify(If(gblLanguage = "Arabic", "لم يتم اختيار طلب.", "No leave request was selected."), NotificationType.Error),
+                                        IfError(
+                                            Remove(LeaveRequests, gblSelectedLeaveRequest);
+                                            Refresh(LeaveRequests);
+                                            Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                            Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                            Set(gblSelectedLeaveRequest, Blank());
+                                            Set(gblShowLeaveConfirm, false);
+                                            Set(VarNewLeave, false);
+                                            Set(VarShowLeave, false);
+                                            Set(gblLeaveRequestMode, Blank());
+                                            Notify(If(gblLanguage = "Arabic", "تم حذف طلب الإجازة.", "Leave request deleted."), NotificationType.Success),
+                                            Notify(If(gblLanguage = "Arabic", "تعذر الحذف.", "Delete failed."), NotificationType.Error)
+                                        )
+                                    ),
+                                    If(
+                                        gblLeaveConfirmAction = "Save",
+                                        If(
+                                            IsBlank(gblSelectedLeaveRequest),
+                                            Notify(If(gblLanguage = "Arabic", "لم يتم اختيار طلب.", "No leave request was selected."), NotificationType.Error),
+                                            IfError(
+                                                Set(
+                                                    gblSelectedLeaveRequest,
+                                                    Patch(
+                                                        LeaveRequests,
+                                                        LookUp(LeaveRequests, ID = gblSelectedLeaveRequest.ID),
+                                                        {
+                                                            LeaveType: cmbLeaveType.Selected,
+                                                            StartDate: dteLeaveStart.SelectedDate,
+                                                            EndDate: dteLeaveEnd.SelectedDate,
+                                                            Substitute: cmbLeaveSubstitute.Selected,
+                                                            Reason: txtLeaveReason.Text,
+                                                            Duration: CountIf(
+                                                                ForAll(Sequence(DateDiff(dteLeaveStart.SelectedDate, dteLeaveEnd.SelectedDate) + 1), DateAdd(dteLeaveStart.SelectedDate, Value - 1)),
+                                                                And(Weekday(Value, StartOfWeek.Monday) <> 5, Weekday(Value, StartOfWeek.Monday) <> 6)
+                                                            )
+                                                        }
+                                                    )
+                                                );
+                                                Refresh(LeaveRequests);
+                                                Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                                Collect(colUserLeaveRequests, gblSelectedLeaveRequest);
+                                                Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                                Collect(colLeaveAll, gblSelectedLeaveRequest);
+                                                Set(gblShowLeaveConfirm, false);
+                                                Set(VarNewLeave, false);
+                                                Set(VarShowLeave, false);
+                                                Set(gblLeaveRequestMode, "View");
+                                                Notify(If(gblLanguage = "Arabic", "تم حفظ التغييرات.", "Changes saved."), NotificationType.Success),
+                                                Notify(If(gblLanguage = "Arabic", "تعذر الحفظ.", "Save failed."), NotificationType.Error)
+                                            )
+                                        ),
+                                        With(
+                                            {
+                                                startDate: dteLeaveStart.SelectedDate,
+                                                endDate: dteLeaveEnd.SelectedDate,
+                                                workingDays: CountIf(
+                                                    ForAll(Sequence(DateDiff(dteLeaveStart.SelectedDate, dteLeaveEnd.SelectedDate) + 1), DateAdd(dteLeaveStart.SelectedDate, Value - 1)),
+                                                    And(Weekday(Value, StartOfWeek.Monday) <> 5, Weekday(Value, StartOfWeek.Monday) <> 6)
+                                                )
+                                            },
+                                            If(
+                                                Or(IsBlank(cmbLeaveType.Selected), IsBlank(startDate), IsBlank(endDate), IsBlank(Trim(txtLeaveReason.Text)), endDate < startDate, workingDays <= 0, IsBlank(gblLeaveBalance), workingDays > gblLeaveBalance.Remaining),
+                                                Notify(If(gblLanguage = "Arabic", "راجع بيانات الطلب قبل الإرسال.", "Check the request before submitting."), NotificationType.Error),
+                                                IfError(
+                                                    Set(
+                                                        gblSelectedLeaveRequest,
+                                                        Patch(
+                                                            LeaveRequests,
+                                                            Defaults(LeaveRequests),
+                                                            {
+                                                                Title: gblCurrentEmployee.FullName & " - " & cmbLeaveType.Selected.Value & "_" & txtLeaveReason.Text,
+                                                                Employee: {Id: gblCurrentEmployee.ID, Value: gblCurrentEmployee.FullName},
+                                                                EmployeeID: gblUser.ID,
+                                                                LeaveType: cmbLeaveType.Selected,
+                                                                StartDate: startDate,
+                                                                EndDate: endDate,
+                                                                Substitute: cmbLeaveSubstitute.Selected,
+                                                                Duration: workingDays,
+                                                                Reason: txtLeaveReason.Text,
+                                                                Approver: gblCurrentEmployee.Manager,
+                                                                Status: {Value: "Pending"}
+                                                            }
+                                                        )
+                                                    );
+                                                    Refresh(LeaveRequests);
+                                                    Collect(colUserLeaveRequests, gblSelectedLeaveRequest);
+                                                    Collect(colLeaveAll, gblSelectedLeaveRequest);
+                                                    Set(vRequestDuration, workingDays);
+                                                    Set(gblShowLeaveConfirm, false);
+                                                    Set(VarNewLeave, false);
+                                                    Set(VarShowLeave, false);
+                                                    Set(gblLeaveBalance, Blank());
+                                                    Set(gblLeaveRequestMode, Blank());
+                                                    Reset(cmbLeaveType);
+                                                    Reset(dteLeaveStart);
+                                                    Reset(dteLeaveEnd);
+                                                    Reset(cmbLeaveSubstitute);
+                                                    Reset(txtLeaveReason);
+                                                    Notify(If(gblLanguage = "Arabic", "تم إرسال طلب الإجازة.", "Leave request submitted."), NotificationType.Success),
+                                                    Notify(If(gblLanguage = "Arabic", "تعذر الإرسال.", "Submit failed."), NotificationType.Error)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                              Text: |-
+                                =Switch(
+                                    gblLeaveConfirmAction,
+                                    "Delete", If(gblLanguage = "Arabic", "حذف", "Delete"),
+                                    "Save", If(gblLanguage = "Arabic", "حفظ", "Save"),
+                                    If(gblLanguage = "Arabic", "إرسال", "Submit")
+                                )
+                              Width: =120
+      - conLeaveDetails:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.45)
+            Height: =Parent.Height
+            Visible: =And(!IsBlank(gblSelectedLeaveRequest), gblLeaveRequestMode = "View", !gblShowLeaveConfirm)
+            Width: =Parent.Width
+          Children:
+            - btnLeaveDetailsScrim:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =Parent.Height
+                  OnSelect: |-
+                    =Set(gblSelectedLeaveRequest, Blank());
+                    Set(gblLeaveRequestMode, Blank());
+                    Set(VarShowLeave, false)
+                  Text: =""
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+            - conLeaveDetailsCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  Height: =If(App.Width < 700, Parent.Height * 0.9, Parent.Height)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =12
+                  Width: =If(App.Width < 700, Parent.Width, 400)
+                  X: =If(App.Width < 700, 0, Parent.Width - Self.Width)
+                  Y: =If(App.Width < 700, Parent.Height - Self.Height, 0)
+                Children:
+                  - conLeaveDetailsHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - lblLeaveDetailsTitle:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =28
+                              Size: =16
+                              Text: =If(gblLanguage = "Arabic", "تفاصيل الإجازة", "Leave Details")
+                              Width: =Parent.Width - 48
+                        - btnLeaveDetailsClose:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                              Appearance: =ButtonAppearance.Subtle
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =36
+                              Icon: ="Dismiss"
+                              OnSelect: |-
+                                =Set(gblSelectedLeaveRequest, Blank());
+                                Set(gblLeaveRequestMode, Blank());
+                                Set(VarShowLeave, false)
+                              Text: =""
+                              Width: =36
+                  - lblLeaveDetailsEmployee:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =24
+                        Size: =15
+                        Text: =Coalesce(gblSelectedLeaveRequest.Employee.Value, "-")
+                        Width: =Parent.Width
+                  - lblLeaveDetailsRequest:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =20
+                        Size: =12
+                        Text: =Coalesce(gblSelectedLeaveRequest.Title, "-")
+                        Width: =Parent.Width
+                  - lblLeaveDetailsStatus:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxToneInk(Switch(gblSelectedLeaveRequest.Status.Value, "Approved", "success", "Rejected", "danger", "Cancelled", "danger", "Pending", "pending", "Pending Approval", "pending", ""))
+                        Fill: =fxToneFill(Switch(gblSelectedLeaveRequest.Status.Value, "Approved", "success", "Rejected", "danger", "Cancelled", "danger", "Pending", "pending", "Pending Approval", "pending", ""))
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =28
+                        RadiusBottomLeft: =gblTheme.Radius.Round
+                        RadiusBottomRight: =gblTheme.Radius.Round
+                        RadiusTopLeft: =gblTheme.Radius.Round
+                        RadiusTopRight: =gblTheme.Radius.Round
+                        Size: =12
+                        Text: =Coalesce(gblSelectedLeaveRequest.Status.Value, "-")
+                        Width: =140
+                  - lblLeaveDetailsType:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "النوع · ", "Type · ") & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "-")
+                        Width: =Parent.Width
+                  - lblLeaveDetailsDuration:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =13
+                        Text: |-
+                          =Concatenate(
+                              If(gblLanguage = "Arabic", "المدة · ", "Duration · "),
+                              If(IsBlank(gblSelectedLeaveRequest.Duration), "-", Text(gblSelectedLeaveRequest.Duration)),
+                              If(gblLanguage = "Arabic", " يوم", " day(s)")
+                          )
+                        Width: =Parent.Width
+                  - lblLeaveDetailsStart:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "البداية · ", "Start · ") & If(IsBlank(gblSelectedLeaveRequest.StartDate), "-", Text(gblSelectedLeaveRequest.StartDate, "dd mmm yyyy"))
+                        Width: =Parent.Width
+                  - lblLeaveDetailsEnd:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "النهاية · ", "End · ") & If(IsBlank(gblSelectedLeaveRequest.EndDate), "-", Text(gblSelectedLeaveRequest.EndDate, "dd mmm yyyy"))
+                        Width: =Parent.Width
+                  - lblLeaveDetailsReason:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =48
+                        Size: =13
+                        Text: =If(gblLanguage = "Arabic", "السبب · ", "Reason · ") & Coalesce(gblSelectedLeaveRequest.Reason, "-")
+                        Width: =Parent.Width
+                  - lblLeaveDetailsApproval:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextSecondary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "تاريخ الموافقة · ", "Approval date · ") & If(IsBlank(gblSelectedLeaveRequest.ApprovalDate), "-", Text(gblSelectedLeaveRequest.ApprovalDate, "dd mmm yyyy"))
+                        Width: =Parent.Width
+                  - lblLeaveDetailsApprover:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextSecondary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "المعتمد · ", "Approver · ") & Coalesce(gblSelectedLeaveRequest.Approver.Value, "-")
+                        Width: =Parent.Width
+                  - lblLeaveDetailsSubstitute:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextSecondary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =22
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "البديل · ", "Substitute · ") & Coalesce(gblSelectedLeaveRequest.Substitute.Value, "-")
+                        Width: =Parent.Width
+                  - lblLeaveDetailsComments:
+                      Control: ModernText@1.0.0
+                      Properties:
+                        Color: =fxThemeColor("TextSecondary")
+                        FillPortions: =0
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =48
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "ملاحظات المدير · ", "Manager comments · ") & Coalesce(gblSelectedLeaveRequest.ManagerComments, "-")
+                        Width: =Parent.Width
+                  - conLeaveDetailsActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - btnLeaveDetailsEdit:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =36
+                              Icon: ="Edit"
+                              OnSelect: |-
+                                =Set(gblLeaveRequestMode, "Edit");
+                                Set(VarShowLeave, true);
+                                Set(gblCanEditLeave, true);
+                                Set(gblShowLeaveConfirm, false)
+                              Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                              Visible: =gblSelectedLeaveRequest.Status.Value = "Pending"
+                              Width: =100
+                        - btnLeaveDetailsApprove:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Success")
+                              Height: =36
+                              Icon: ="Checkmark"
+                              OnSelect: |-
+                                =IfError(
+                                    Set(
+                                        gblSelectedLeaveRequest,
+                                        Patch(
+                                            LeaveRequests,
+                                            LookUp(LeaveRequests, ID = gblSelectedLeaveRequest.ID),
+                                            {
+                                                Status: {Value: "Approved"},
+                                                ApprovalDate: Now(),
+                                                Approver: {Id: gblCurrentEmployee.ID, Value: gblCurrentEmployee.FullName}
+                                            }
+                                        )
+                                    );
+                                    Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                    Collect(colUserLeaveRequests, gblSelectedLeaveRequest);
+                                    Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                    Collect(colLeaveAll, gblSelectedLeaveRequest);
+                                    Notify(If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة.", "Leave approved."), NotificationType.Success),
+                                    Notify(If(gblLanguage = "Arabic", "تعذرت الموافقة.", "Approve failed."), NotificationType.Error)
+                                )
+                              Text: =If(gblLanguage = "Arabic", "موافقة", "Approve")
+                              Visible: =And(gblSelectedLeaveRequest.Status.Value = "Pending", gblSelectedLeaveRequest.Approver.Id = gblCurrentEmployee.ID)
+                              Width: =110
+                        - btnLeaveDetailsReject:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Primary
+                              BasePaletteColor: =fxThemeColor("Danger")
+                              Height: =36
+                              Icon: ="Dismiss"
+                              OnSelect: |-
+                                =IfError(
+                                    Set(
+                                        gblSelectedLeaveRequest,
+                                        Patch(
+                                            LeaveRequests,
+                                            LookUp(LeaveRequests, ID = gblSelectedLeaveRequest.ID),
+                                            {
+                                                Status: {Value: "Rejected"},
+                                                ApprovalDate: Now(),
+                                                Approver: {Id: gblCurrentEmployee.ID, Value: gblCurrentEmployee.FullName}
+                                            }
+                                        )
+                                    );
+                                    Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                    Collect(colUserLeaveRequests, gblSelectedLeaveRequest);
+                                    Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                    Collect(colLeaveAll, gblSelectedLeaveRequest);
+                                    Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة.", "Leave rejected."), NotificationType.Success),
+                                    Notify(If(gblLanguage = "Arabic", "تعذر الرفض.", "Reject failed."), NotificationType.Error)
+                                )
+                              Text: =If(gblLanguage = "Arabic", "رفض", "Reject")
+                              Visible: =And(gblSelectedLeaveRequest.Status.Value = "Pending", gblSelectedLeaveRequest.Approver.Id = gblCurrentEmployee.ID)
+                              Width: =100

@@ -1,0 +1,1248 @@
+Screens:
+  scrProcurement:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Procurement");
+        Set(varCurrentScreen, "Procurement");
+        Set(VarScreen, "Procurement");
+        Set(varProcurementTab, Coalesce(varProcurementTab, "Main"));
+        Set(
+            varNavSelectedID,
+            Switch(
+                varProcurementTab,
+                "PRs", 32,
+                "POs", 33,
+                "GRNs", 34,
+                "Vendors", 35,
+                "Contracts", 37,
+                "Plans", 39,
+                31
+            )
+        );
+        Set(varSelectedSupplier, "");
+        Set(varSelectedCurrency, "");
+        IfError(
+            If(
+                varProcurementScope = "Own",
+                ClearCollect(
+                    colPurchaseRequests,
+                    FirstN(
+                        SortByColumns(
+                            Filter(PurchaseRequests, 'Created By'.Email = gblUserEmail),
+                            "ID",
+                            SortOrder.Descending
+                        ),
+                        500
+                    )
+                ),
+                If(
+                    varProcurementScope = "Project",
+                    ClearCollect(
+                        colPurchaseRequests,
+                        Filter(
+                            FirstN(SortByColumns(PurchaseRequests, "ID", SortOrder.Descending), 500),
+                            Project.Value in colProjects.ProjectCode
+                        )
+                    ),
+                    ClearCollect(
+                        colPurchaseRequests,
+                        FirstN(SortByColumns(PurchaseRequests, "ID", SortOrder.Descending), 500)
+                    )
+                )
+            ),
+            Notify(
+                If(gblLanguage = "Arabic", "تعذر تحميل طلبات الشراء.", "Purchase requests could not be loaded."),
+                NotificationType.Error
+            )
+        );
+        IfError(
+            If(
+                varProcurementScope = "Own",
+                ClearCollect(
+                    colPurchaseOrders,
+                    FirstN(
+                        SortByColumns(
+                            Filter(PurchaseOrders, 'Created By'.Email = gblUserEmail),
+                            "ID",
+                            SortOrder.Descending
+                        ),
+                        500
+                    )
+                ),
+                If(
+                    varProcurementScope = "Project",
+                    ClearCollect(
+                        colPurchaseOrders,
+                        Filter(
+                            FirstN(SortByColumns(PurchaseOrders, "ID", SortOrder.Descending), 500),
+                            Project.Value in colProjects.ProjectCode
+                        )
+                    ),
+                    ClearCollect(
+                        colPurchaseOrders,
+                        FirstN(SortByColumns(PurchaseOrders, "ID", SortOrder.Descending), 500)
+                    )
+                )
+            ),
+            Notify(
+                If(gblLanguage = "Arabic", "تعذر تحميل أوامر الشراء.", "Purchase orders could not be loaded."),
+                NotificationType.Error
+            )
+        );
+        IfError(
+            If(
+                varProcurementScope = "Own",
+                ClearCollect(
+                    colGoodsReceipts,
+                    FirstN(
+                        SortByColumns(
+                            Filter(GoodsReceivedNotes, 'Created By'.Email = gblUserEmail),
+                            "ID",
+                            SortOrder.Descending
+                        ),
+                        500
+                    )
+                ),
+                If(
+                    varProcurementScope = "Project",
+                    ClearCollect(
+                        colGoodsReceipts,
+                        Filter(
+                            FirstN(SortByColumns(GoodsReceivedNotes, "ID", SortOrder.Descending), 500),
+                            Project.Value in colProjects.ProjectCode
+                        )
+                    ),
+                    ClearCollect(
+                        colGoodsReceipts,
+                        FirstN(SortByColumns(GoodsReceivedNotes, "ID", SortOrder.Descending), 500)
+                    )
+                )
+            ),
+            Notify(
+                If(gblLanguage = "Arabic", "تعذر تحميل الاستلامات.", "Goods receipts could not be loaded."),
+                NotificationType.Error
+            )
+        );
+        IfError(
+            ClearCollect(
+                colPurchaseRequestLines,
+                Filter(
+                    FirstN(SortByColumns(PurchaseRequestLines, "ID", SortOrder.Descending), 500),
+                    PR.Id in colPurchaseRequests.ID
+                )
+            ),
+            Notify(
+                If(gblLanguage = "Arabic", "تعذر تحميل بنود طلبات الشراء.", "Purchase request lines could not be loaded."),
+                NotificationType.Warning
+            )
+        );
+        IfError(
+            ClearCollect(
+                colPurchaseOrderLines,
+                Filter(
+                    FirstN(SortByColumns(PurchaseOrderLines, "ID", SortOrder.Descending), 500),
+                    PO.Id in colPurchaseOrders.ID
+                )
+            ),
+            Notify(
+                If(gblLanguage = "Arabic", "تعذر تحميل بنود أوامر الشراء.", "Purchase order lines could not be loaded."),
+                NotificationType.Warning
+            )
+        );
+        IfError(
+            ClearCollect(
+                colGoodsReceiptLines,
+                Filter(
+                    FirstN(SortByColumns(GoodsReceivedNoteLines, "ID", SortOrder.Descending), 500),
+                    GRN.Id in colGoodsReceipts.ID
+                )
+            ),
+            Notify(
+                If(gblLanguage = "Arabic", "تعذر تحميل بنود الاستلام.", "Goods receipt lines could not be loaded."),
+                NotificationType.Warning
+            )
+        );
+        Set(varPOTotal, CountRows(colPurchaseOrders));
+        Set(varPOSubmitted, CountIf(colPurchaseOrders, POStatus.Value = "Submitted"));
+        Set(varPOPending, CountIf(colPurchaseOrders, POStatus.Value = "Issued"));
+        Set(varPOInProgress, CountIf(colPurchaseOrders, POStatus.Value = "InProgress"));
+        Set(varPOCompleted, CountIf(colPurchaseOrders, POStatus.Value = "Completed"));
+        Set(varPOCancelled, CountIf(colPurchaseOrders, POStatus.Value = "Cancelled"))
+    Children:
+      - conPcNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpPcNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpPcTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="ShoppingCart"
+            ModuleName: =If(gblLanguage = "Arabic", "المشتريات", "Procurement")
+            OnSelectTitle: |-
+              =Set(varProcurementTab, "Main");
+              Set(varNavSelectedID, 31)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "المشتريات", "Procurement")
+            ScreenTitle: =If(gblLanguage = "Arabic", "الرئيسية", "Main")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpPcPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conPcPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =If(App.Width < 700, cmpPcPhone.Height + 12, 16)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 16)
+            PaddingRight: =16
+            PaddingTop: =cmpPcTop.Height + 12
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - cmpPcKpi:
+                Control: CanvasComponent
+                ComponentName: cmpKPIwNav
+                Properties:
+                  AnimationEffect: ="None"
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 5,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "Clipboard",
+                            Value: CountRows(colPurchaseRequests),
+                            Label: If(gblLanguage = "Arabic", "طلبات الشراء", "Purchase requests"),
+                            Subtitle: If(gblLanguage = "Arabic", "ضمن النطاق", "In scope"),
+                            Screen: "PRs",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "Clock",
+                            Value: CountIf(colPurchaseOrders, ApprovalStatus.Value = "Pending"),
+                            Label: If(gblLanguage = "Arabic", "أوامر معلّقة", "Pending orders"),
+                            Subtitle: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Awaiting approval"),
+                            Screen: "Approvals",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Receipt",
+                            Value: CountRows(colPurchaseOrders),
+                            Label: If(gblLanguage = "Arabic", "أوامر الشراء", "Purchase orders"),
+                            Subtitle: If(gblLanguage = "Arabic", "ضمن النطاق", "In scope"),
+                            Screen: "POs",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Truck",
+                            Value: CountRows(colGoodsReceipts),
+                            Label: If(gblLanguage = "Arabic", "الاستلامات", "Goods receipts"),
+                            Subtitle: If(gblLanguage = "Arabic", "ضمن النطاق", "In scope"),
+                            Screen: "GRNs",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 5,
+                            Icon: "Money",
+                            Value: CountIf(colPurchaseOrders, PaymentStatus.Value = "unpaid"),
+                            Label: If(gblLanguage = "Arabic", "غير مدفوعة", "Unpaid orders"),
+                            Subtitle: If(gblLanguage = "Arabic", "بانتظار السداد", "Outstanding payment"),
+                            Screen: "POs",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  Height: |-
+                    =With(
+                        {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 5))},
+                        RoundUp(5 / cols, 0) * 108
+                    )
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  IsLoading: =false
+                  KPINav: |-
+                    =Switch(
+                        varClickScreen,
+                        "PRs", Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varNavSelectedID, 32); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        "POs", Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varNavSelectedID, 33); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        "GRNs", Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varNavSelectedID, 34); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        "Approvals", Navigate(ScrApprovalCenter, ScreenTransition.None)
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+            - conPcCharts:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 560, 280)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - conPcPrStatus:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Height: =280
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
+                      Children:
+                        - lblPcPrChart:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "طلبات الشراء حسب الحالة", "Purchase requests by status")
+                              Width: =Parent.Width
+                        - cmpPcPie:
+                            Control: CanvasComponent
+                            ComponentName: cmpPieChart
+                            Properties:
+                              ChartData: |-
+                                =Table(
+                                    {Label: If(gblLanguage = "Arabic", "مسودة", "Draft"), Value: CountIf(colPurchaseRequests, Status.Value = "Draft")},
+                                    {Label: If(gblLanguage = "Arabic", "مقدّم", "Submitted"), Value: CountIf(colPurchaseRequests, Status.Value = "Submitted")},
+                                    {Label: If(gblLanguage = "Arabic", "معتمد", "Approved"), Value: CountIf(colPurchaseRequests, Status.Value = "Approved")},
+                                    {Label: If(gblLanguage = "Arabic", "مرفوض", "Rejected"), Value: CountIf(colPurchaseRequests, Status.Value = "Rejected")},
+                                    {Label: If(gblLanguage = "Arabic", "ملغى", "Cancelled"), Value: CountIf(colPurchaseRequests, Status.Value = "Cancelled")}
+                                )
+                              ChartTitle: =If(gblLanguage = "Arabic", "طلبات الشراء حسب الحالة", "Purchase requests by status")
+                              DonutMode: =true
+                              DonutThickness: =0.4
+                              FillPortions: =1
+                              Height: =220
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowLabels: =false
+                              ShowLegend: =true
+                              ShowPercentages: =true
+                              ShowTitle: =false
+                              ShowValues: =true
+                              Theme: =gblTheme.Mode
+                              Width: =Parent.Width
+                  - conPcPoStatus:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Height: =280
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
+                      Children:
+                        - lblPcPoChart:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "أوامر الشراء حسب الحالة", "Purchase orders by status")
+                              Width: =Parent.Width
+                        - galPcPoStatus:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              BorderThickness: =0
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =220
+                              Items: |-
+                                =Table(
+                                    {Label: If(gblLanguage = "Arabic", "الكل", "All"), Value: varPOTotal},
+                                    {Label: If(gblLanguage = "Arabic", "مقدّم", "Submitted"), Value: varPOSubmitted},
+                                    {Label: If(gblLanguage = "Arabic", "صادر", "Issued"), Value: varPOPending},
+                                    {Label: If(gblLanguage = "Arabic", "قيد التنفيذ", "In progress"), Value: varPOInProgress},
+                                    {Label: If(gblLanguage = "Arabic", "مكتمل", "Completed"), Value: varPOCompleted},
+                                    {Label: If(gblLanguage = "Arabic", "ملغى", "Cancelled"), Value: varPOCancelled}
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowScrollbar: =false
+                              TemplatePadding: =4
+                              TemplateSize: =36
+                              Width: =Parent.Width
+                            Children:
+                              - conPcPoStatRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =Parent.TemplateHeight
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - lblPcPoStatName:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextSecondary")
+                                          FillPortions: =1
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =28
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =8
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.BodySmall
+                                          Text: =ThisItem.Label
+                                          Width: =Parent.Width
+                                    - lblPcPoStatValue:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Right
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FillPortions: =0
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =28
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Body
+                                          Text: =Text(ThisItem.Value)
+                                          Width: =64
+            - cmpPcActivity:
+                Control: CanvasComponent
+                ComponentName: cmpRecentActivities
+                Properties:
+                  FillPortions: =0
+                  Height: =420
+                  Items: |-
+                    =ForAll(
+                        FirstN(
+                            SortByColumns(ProcurementActivityLog, "ActionDate", SortOrder.Descending),
+                            20
+                        ) As log,
+                        {
+                            ID: log.ID,
+                            Module: "Procurement",
+                            ActivityType: Coalesce(log.EntityType.Value, "Procurement"),
+                            Action: Coalesce(log.ActionType.Value, ""),
+                            Title: Coalesce(log.ActionType.Value, "") & " · " & Coalesce(log.EntityType.Value, "") & " " & Coalesce(log.EntityNumber, ""),
+                            Description: If(
+                                log.IsSensitive,
+                                If(gblLanguage = "Arabic", "التفاصيل مخفية", "Details hidden"),
+                                Coalesce(log.Details, "")
+                            ),
+                            ActorName: Coalesce(log.PerformedByName, ""),
+                            ActivityDate: log.ActionDate,
+                            RecordType: Coalesce(log.EntityType.Value, ""),
+                            RecordID: Coalesce(log.EntityID, 0),
+                            Status: Switch(
+                                Coalesce(log.Severity.Value, "Info"),
+                                "Critical", "Critical",
+                                "Important", "Important",
+                                "Info"
+                            ),
+                            Icon: Coalesce(log.ActionType.Value, "Procurement")
+                        }
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  MaxItems: =12
+                  OnSelect: |-
+                    =With(
+                        {row: cmpPcActivity.SelectedActivity},
+                        Switch(
+                            row.RecordType,
+                            "Purchase Request",
+                                Set(varCurrentPR, LookUp(PurchaseRequests, ID = row.RecordID));
+                                Set(varProcurementEntity, "PurchaseRequest");
+                                Set(varProcurementMode, "View");
+                                Set(varProcurementTab, "PRs");
+                                Set(varNavSelectedID, 32);
+                                Navigate(scrPRs, ScreenTransition.None),
+                            "PR Line",
+                                Set(varCurrentPR, LookUp(PurchaseRequests, ID = LookUp(PurchaseRequestLines, ID = row.RecordID, PRID)));
+                                Set(varProcurementEntity, "PurchaseRequest");
+                                Set(varProcurementMode, "View");
+                                Set(varProcurementTab, "PRs");
+                                Set(varNavSelectedID, 32);
+                                Navigate(scrPRs, ScreenTransition.None),
+                            "Purchase Order",
+                                Set(varCurrentPO, LookUp(PurchaseOrders, ID = row.RecordID));
+                                Set(varProcurementEntity, "PurchaseOrder");
+                                Set(varProcurementMode, "View");
+                                Set(varProcurementTab, "POs");
+                                Set(varNavSelectedID, 33);
+                                Navigate(scrPOs, ScreenTransition.None),
+                            "PO Line",
+                                Set(varCurrentPO, LookUp(PurchaseOrders, ID = LookUp(PurchaseOrderLines, ID = row.RecordID, POID)));
+                                Set(varProcurementEntity, "PurchaseOrder");
+                                Set(varProcurementMode, "View");
+                                Set(varProcurementTab, "POs");
+                                Set(varNavSelectedID, 33);
+                                Navigate(scrPOs, ScreenTransition.None),
+                            "GRN",
+                                Set(varCurrentGRN, LookUp(GoodsReceivedNotes, ID = row.RecordID));
+                                Set(varProcurementEntity, "GRN");
+                                Set(varProcurementMode, "View");
+                                Set(varProcurementTab, "GRNs");
+                                Set(varNavSelectedID, 34);
+                                Navigate(ScrGRN, ScreenTransition.None),
+                            "Vendor",
+                                Set(varCurrentVendor, LookUp(Vendors, ID = row.RecordID));
+                                Set(varaddvendor, false);
+                                Set(varProcurementTab, "Vendors");
+                                Set(varNavSelectedID, 35);
+                                Set(varProcurementMode, "View");
+                                Navigate(scrVendors, ScreenTransition.None),
+                            Notify(
+                                If(gblLanguage = "Arabic", "لا توجد شاشة لهذا السجل.", "This activity has no screen to open."),
+                                NotificationType.Information
+                            )
+                        )
+                    )
+                  Refresh: =Refresh(ProcurementActivityLog)
+                  ShowViewAll: =false
+                  Title: =If(gblLanguage = "Arabic", "سجل نشاط المشتريات", "Procurement activity")
+                  Width: =Parent.Width
+            - conPcRecent:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 680, 340)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - conPcRecentPr:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Height: =340
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
+                      Children:
+                        - conPcRecentPrHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - lblPcRecentPr:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =28
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =8
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =If(gblLanguage = "Arabic", "طلبات الشراء الحديثة", "Recent purchase requests")
+                                    Width: =Parent.Width
+                              - btnPcViewPr:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Transparent
+                                    FillPortions: =0
+                                    Height: =32
+                                    OnSelect: |-
+                                      =Set(varCurrentPR, Blank());
+                                      Set(varProcurementTab, "PRs");
+                                      Set(varNavSelectedID, 32);
+                                      Set(varProcurementMode, "View");
+                                      Navigate(scrPRs, ScreenTransition.None)
+                                    Text: =If(gblLanguage = "Arabic", "الكل", "View all")
+                                    Width: =88
+                        - galPcRecentPr:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              BorderThickness: =0
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =280
+                              Items: |-
+                                =FirstN(
+                                    SortByColumns(colPurchaseRequests, "Created", SortOrder.Descending),
+                                    20
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowScrollbar: =true
+                              TemplatePadding: =4
+                              TemplateSize: =56
+                              Width: =Parent.Width
+                            Children:
+                              - conPcPrRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    Fill: =Color.Transparent
+                                    Height: =Parent.TemplateHeight
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - imgPcPr:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Clipboard", fxThemeInk("Primary"))
+                                          ImagePosition: =ImagePosition.Fit
+                                          Width: =18
+                                          X: =0
+                                          Y: =(Parent.Height - Self.Height) / 2
+                                    - lblPcPrTitle:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =22
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.BodySmall
+                                          Text: =Coalesce(ThisItem.ReasonRequired, "-")
+                                          Width: =Parent.Width - 160
+                                          Wrap: =false
+                                          X: =28
+                                          Y: =4
+                                    - lblPcPrBy:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Caption
+                                          Text: |-
+                                            =Concatenate(
+                                                If(gblLanguage = "Arabic", "مقدم الطلب: ", "Requested by: "),
+                                                Coalesce(ThisItem.Requester.Value, "-")
+                                            )
+                                          Width: =Parent.Width - 160
+                                          Wrap: =false
+                                          X: =28
+                                          Y: =26
+                                    - lblPcPrDate:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Right
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =18
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Caption
+                                          Text: =If(IsBlank(ThisItem.Created), "-", Text(ThisItem.Created, "dd mmm yyyy"))
+                                          Width: =120
+                                          X: =Parent.Width - 128
+                                          Y: =4
+                                    - lblPcPrStatus:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: |-
+                                            =fxToneInk(
+                                                Switch(
+                                                    ThisItem.Status.Value,
+                                                    "Approved", "approved",
+                                                    "Rejected", "rejected",
+                                                    "Cancelled", "danger",
+                                                    "Submitted", "in progress",
+                                                    "Pending PO", "info",
+                                                    "pending"
+                                                )
+                                            )
+                                          Fill: |-
+                                            =fxToneFill(
+                                                Switch(
+                                                    ThisItem.Status.Value,
+                                                    "Approved", "approved",
+                                                    "Rejected", "rejected",
+                                                    "Cancelled", "danger",
+                                                    "Submitted", "in progress",
+                                                    "Pending PO", "info",
+                                                    "pending"
+                                                )
+                                            )
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          PaddingRight: =4
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Caption
+                                          Text: =Coalesce(ThisItem.Status.Value, "-")
+                                          Width: =120
+                                          X: =Parent.Width - 128
+                                          Y: =26
+                                    - btnPcPrOpen:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Transparent
+                                          Height: =Parent.Height
+                                          OnSelect: |-
+                                            =Set(varCurrentPR, LookUp(PurchaseRequests, ID = ThisItem.ID));
+                                            Set(varProcurementEntity, "PurchaseRequest");
+                                            Set(varProcurementMode, "View");
+                                            Set(varProcurementTab, "PRs");
+                                            Set(varNavSelectedID, 32);
+                                            Navigate(scrPRs, ScreenTransition.None)
+                                          Text: =""
+                                          Tooltip: =Coalesce(ThisItem.ReasonRequired, "")
+                                          Visible: =true
+                                          Width: =Parent.Width
+                                          X: =0
+                                          Y: =0
+                  - conPcRecentPo:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =1
+                        Height: =340
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
+                      Children:
+                        - conPcRecentPoHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                            Children:
+                              - lblPcRecentPo:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =28
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =8
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =If(gblLanguage = "Arabic", "أوامر الشراء الحديثة", "Recent purchase orders")
+                                    Width: =Parent.Width
+                              - btnPcViewPo:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Transparent
+                                    FillPortions: =0
+                                    Height: =32
+                                    OnSelect: |-
+                                      =Set(varCurrentPO, Blank());
+                                      Set(varProcurementTab, "POs");
+                                      Set(varNavSelectedID, 33);
+                                      Set(varProcurementMode, "View");
+                                      Navigate(scrPOs, ScreenTransition.None)
+                                    Text: =If(gblLanguage = "Arabic", "الكل", "View all")
+                                    Width: =88
+                        - galPcRecentPo:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              BorderThickness: =0
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =280
+                              Items: |-
+                                =FirstN(
+                                    SortByColumns(colPurchaseOrders, "Created", SortOrder.Descending),
+                                    20
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowScrollbar: =true
+                              TemplatePadding: =4
+                              TemplateSize: =56
+                              Width: =Parent.Width
+                            Children:
+                              - conPcPoRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    Fill: =Color.Transparent
+                                    Height: =Parent.TemplateHeight
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - imgPcPo:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Receipt", fxThemeInk("Primary"))
+                                          ImagePosition: =ImagePosition.Fit
+                                          Width: =18
+                                          X: =0
+                                          Y: =(Parent.Height - Self.Height) / 2
+                                    - lblPcPoTitle:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =22
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.BodySmall
+                                          Text: =Coalesce(ThisItem.Title, "-")
+                                          Width: =Parent.Width - 210
+                                          Wrap: =false
+                                          X: =28
+                                          Y: =4
+                                    - lblPcPoVendor:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Caption
+                                          Text: |-
+                                            =Concatenate(
+                                                If(gblLanguage = "Arabic", "المورد: ", "Vendor: "),
+                                                Coalesce(ThisItem.Vendors.Value, "-")
+                                            )
+                                          Width: =Parent.Width - 210
+                                          Wrap: =false
+                                          X: =28
+                                          Y: =26
+                                    - lblPcPoAmount:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Right
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Caption
+                                          Text: =Concatenate(Text(ThisItem.Total, "#,##0.00"), " $")
+                                          Width: =88
+                                          X: =Parent.Width - 96
+                                          Y: =4
+                                    - lblPcPoStatus:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: |-
+                                            =fxToneInk(
+                                                Switch(
+                                                    ThisItem.POStatus.Value,
+                                                    "Completed", "completed",
+                                                    "Cancelled", "danger",
+                                                    "Submitted", "in progress",
+                                                    "InProgress", "in progress",
+                                                    "Issued", "info",
+                                                    "pending"
+                                                )
+                                            )
+                                          Fill: |-
+                                            =fxToneFill(
+                                                Switch(
+                                                    ThisItem.POStatus.Value,
+                                                    "Completed", "completed",
+                                                    "Cancelled", "danger",
+                                                    "Submitted", "in progress",
+                                                    "InProgress", "in progress",
+                                                    "Issued", "info",
+                                                    "pending"
+                                                )
+                                            )
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          PaddingRight: =4
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.Caption
+                                          Text: =Coalesce(ThisItem.POStatus.Value, "-")
+                                          Width: =88
+                                          X: =Parent.Width - 96
+                                          Y: =26
+                                    - btnPcPoOpen:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Transparent
+                                          Height: =Parent.Height
+                                          OnSelect: |-
+                                            =Set(varCurrentPO, LookUp(PurchaseOrders, ID = ThisItem.ID));
+                                            Set(varProcurementEntity, "PurchaseOrder");
+                                            Set(varProcurementMode, "View");
+                                            Set(varProcurementTab, "POs");
+                                            Set(varNavSelectedID, 33);
+                                            Navigate(scrPOs, ScreenTransition.None)
+                                          Text: =""
+                                          Tooltip: =Coalesce(ThisItem.Title, "")
+                                          Visible: =true
+                                          Width: =Parent.Width
+                                          X: =0
+                                          Y: =0
+            - lblPcQuick:
+                Control: ModernText@1.0.0
+                Properties:
+                  Color: =fxThemeColor("TextPrimary")
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  FontWeight: =gblTheme.FontWeights.Medium
+                  Height: =28
+                  Size: =gblTheme.Typography.Body
+                  Text: =If(gblLanguage = "Arabic", "وصول سريع", "Quick access")
+                  Width: =Parent.Width
+            - cmpPcModules:
+                Control: CanvasComponent
+                ComponentName: cmpModuleNav
+                Properties:
+                  AnimationEffect: ="None"
+                  CardClick: |-
+                    =Switch(
+                        varSelectedScreen,
+                        "PRs", Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varNavSelectedID, 32); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        "POs", Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varNavSelectedID, 33); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        "GRNs", Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varNavSelectedID, 34); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        "Vendors", Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varNavSelectedID, 35); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        "NewPR",
+                            Set(varProcurementEntity, "PurchaseRequest");
+                            Set(varProcurementMode, "New");
+                            Set(varCurrentPR, Blank());
+                            Set(varProcurementTab, "PRs");
+                            Set(varNavSelectedID, 32);
+                            Navigate(scrPREditor, ScreenTransition.Cover),
+                        "Reports",
+                            Notify(
+                                If(gblLanguage = "Arabic", "تقارير المشتريات قيد الإعداد.", "Procurement reports are not on a screen yet."),
+                                NotificationType.Information
+                            )
+                    )
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 6,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Screen: "NewPR",
+                            Icon: "Add",
+                            Label: If(gblLanguage = "Arabic", "طلب شراء جديد", "New PR"),
+                            Descripation: If(gblLanguage = "Arabic", "إنشاء طلب شراء", "Create a purchase request"),
+                            IconBg: "",
+                            IconColor: "",
+                            Value: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Screen: "PRs",
+                            Icon: "Clipboard",
+                            Label: If(gblLanguage = "Arabic", "طلبات الشراء", "Purchase requests"),
+                            Descripation: If(gblLanguage = "Arabic", "كل الطلبات", "All requests"),
+                            IconBg: "",
+                            IconColor: "",
+                            Value: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Screen: "POs",
+                            Icon: "Receipt",
+                            Label: If(gblLanguage = "Arabic", "أوامر الشراء", "Purchase orders"),
+                            Descripation: If(gblLanguage = "Arabic", "كل الأوامر", "All orders"),
+                            IconBg: "",
+                            IconColor: "",
+                            Value: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Screen: "GRNs",
+                            Icon: "Truck",
+                            Label: If(gblLanguage = "Arabic", "الاستلامات", "Goods receipts"),
+                            Descripation: If(gblLanguage = "Arabic", "إيصالات الاستلام", "Receipt notes"),
+                            IconBg: "",
+                            IconColor: "",
+                            Value: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 5,
+                            Screen: "Vendors",
+                            Icon: "Users",
+                            Label: If(gblLanguage = "Arabic", "الموردون", "Vendors"),
+                            Descripation: If(gblLanguage = "Arabic", "دليل الموردين", "Vendor directory"),
+                            IconBg: "",
+                            IconColor: "",
+                            Value: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 6,
+                            Screen: "Reports",
+                            Icon: "Chart",
+                            Label: If(gblLanguage = "Arabic", "التقارير", "Reports"),
+                            Descripation: If(gblLanguage = "Arabic", "قيد الإعداد", "Not on a screen yet"),
+                            IconBg: "",
+                            IconColor: "",
+                            Value: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  Height: |-
+                    =With(
+                        {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 6))},
+                        RoundUp(6 / cols, 0) * 82
+                    )
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  IsLoading: =false
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width

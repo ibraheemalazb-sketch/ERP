@@ -1,0 +1,1953 @@
+Screens:
+  scrPrintPR:
+    Properties:
+      Fill: =If(scrPrintPR.Printing, RGBA(255, 255, 255, 1), fxThemeColor("Background"))
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Procurement");
+        Set(varCurrentScreen, "Procurement");
+        Set(VarScreen, "Procurement");
+        Set(varProcurementTab, "PRs");
+        Set(varNavSelectedID, 32);
+        Set(varProcurementEntity, "PurchaseRequest");
+        ClearCollect(
+            colPRPrintLines,
+            SortByColumns(
+                Filter(PurchaseRequestLines, PRID = varCurrentPR.ID),
+                "LineNumber",
+                SortOrder.Ascending
+            )
+        );
+        Set(varPRNormalItemsPerPage, 20);
+        Set(varPRLastPageItems, 11);
+        Set(
+            varPRTotalPages,
+            If(
+                CountRows(colPRPrintLines) <= varPRLastPageItems,
+                1,
+                1 + RoundUp(
+                    (CountRows(colPRPrintLines) - varPRLastPageItems) / varPRNormalItemsPerPage,
+                    0
+                )
+            )
+        );
+        Set(varSelectedPRPrintPage, 1);
+        ClearCollect(
+            colPRPrintPages,
+            ForAll(
+                Sequence(varPRTotalPages),
+                With(
+                    {
+                        PageNum: Value,
+                        StartLine: (Value - 1) * varPRNormalItemsPerPage + 1,
+                        PageLineCount: If(
+                            Value = varPRTotalPages,
+                            CountRows(colPRPrintLines) - (Value - 1) * varPRNormalItemsPerPage,
+                            varPRNormalItemsPerPage
+                        )
+                    },
+                    {
+                        PageNumber: PageNum,
+                        IsFirstPage: PageNum = 1,
+                        IsLastPage: PageNum = varPRTotalPages,
+                        Lines: Filter(
+                            colPRPrintLines,
+                            LineNumber >= StartLine && LineNumber < StartLine + PageLineCount
+                        )
+                    }
+                )
+            )
+        )
+    Children:
+      - cmpPrintNav:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("NavBackground")
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingBottom: =12
+            PaddingLeft: =8
+            PaddingRight: =8
+            PaddingTop: =12
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Visible: =And(App.Width >= 700, Not(scrPrintPR.Printing))
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - conPrintNavBrand:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =Color.Transparent
+                  Height: =56
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =10
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingLeft: =4
+                  PaddingRight: =4
+                  Width: =Parent.Width
+                Children:
+                  - imgPrintNavLogo:
+                      Control: Image@2.2.3
+                      Properties:
+                        BorderStyle: =BorderStyle.None
+                        Height: =36
+                        Image: =hdp
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =36
+                  - lblPrintNavBrand:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("NavText")
+                        Font: =Font.'Segoe UI'
+                        FontWeight: =FontWeight.Semibold
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =16
+                        Text: ="HDP"
+                        Visible: =gblMenuExpanded
+                        Width: =120
+            - btnPrintNavToggle:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Align: =Align.Center
+                  Appearance: =ButtonAppearance.Transparent
+                  BasePaletteColor: =fxThemeColor("NavText")
+                  Height: =40
+                  Icon: =If(gblMenuExpanded, "Navigation", "OpenPane")
+                  Layout: =ButtonLayout.IconOnly
+                  OnSelect: =Set(gblMenuExpanded, Not(gblMenuExpanded))
+                  Text: |-
+                    =If(gblLanguage = "Arabic", "القائمة", "Menu")
+                  Width: =Parent.Width
+            - galPrintNav:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 120
+                  Items: |-
+                    =Table(
+                        {ID: 31, Title: If(gblLanguage = "Arabic", "الرئيسية", "Main"), Icon: "Home", Screen: "Main"},
+                        {ID: 32, Title: If(gblLanguage = "Arabic", "الطلبات", "Requests"), Icon: "Clipboard", Screen: "PRs"},
+                        {ID: 33, Title: If(gblLanguage = "Arabic", "الأوامر", "Orders"), Icon: "Receipt", Screen: "POs"},
+                        {ID: 34, Title: If(gblLanguage = "Arabic", "الاستلام", "Receipts"), Icon: "Truck", Screen: "GRNs"},
+                        {ID: 35, Title: If(gblLanguage = "Arabic", "الموردون", "Vendors"), Icon: "Users", Screen: "Vendors"}
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  ShowScrollbar: =false
+                  TemplatePadding: =4
+                  TemplateSize: =44
+                  Width: =Parent.Width
+                Children:
+                  - btnPrintNavItem:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Align: =If(gblMenuExpanded, Align.Left, Align.Center)
+                        Appearance: =If(ThisItem.ID = varNavSelectedID, ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                        BasePaletteColor: =If(ThisItem.ID = varNavSelectedID, fxThemeColor("Primary"), fxThemeColor("NavText"))
+                        Height: =Parent.TemplateHeight - 4
+                        Icon: =ThisItem.Icon
+                        Layout: =If(gblMenuExpanded, ButtonLayout.IconBefore, ButtonLayout.IconOnly)
+                        OnSelect: |-
+                          =Set(varNavSelectedID, ThisItem.ID);
+                          Set(varProcurementTab, ThisItem.Screen);
+                          Switch(
+                              ThisItem.Screen,
+                              "Main",
+                              Navigate(scrProcurement, ScreenTransition.None),
+                              "PRs",
+                              Set(varProcurementMode, "View");
+                              Navigate(scrPRs, ScreenTransition.None),
+                              "POs",
+                              Set(varCurrentPO, Blank());
+                              Set(varProcurementMode, "View");
+                              Navigate(scrPOs, ScreenTransition.None),
+                              "GRNs",
+                              Set(varCurrentGRN, Blank());
+                              Set(varProcurementMode, "View");
+                              Navigate(ScrGRN, ScreenTransition.None),
+                              "Vendors",
+                              Set(varCurrentVendor, Blank());
+                              Set(varaddvendor, false);
+                              Set(varProcurementMode, "View");
+                              Navigate(scrVendors, ScreenTransition.None)
+                          )
+                        Text: =ThisItem.Title
+                        Width: =Parent.TemplateWidth
+      - cmpPrintTop:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Surface")
+            Height: =56
+            LayoutAlignItems: =LayoutAlignItems.Center
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =8
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            PaddingLeft: =16
+            PaddingRight: =16
+            Visible: =Not(scrPrintPR.Printing)
+            Width: =Parent.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+          Children:
+            - btnPrintTopBack:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =40
+                  Icon: ="ArrowLeft"
+                  Layout: =ButtonLayout.IconOnly
+                  OnSelect: =Back()
+                  Text: |-
+                    =If(gblLanguage = "Arabic", "رجوع", "Back")
+                  Width: =40
+            - lblPrintTopTitle:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("Text")
+                  Font: =Font.'Segoe UI'
+                  FontWeight: =FontWeight.Semibold
+                  Height: =40
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =15
+                  Text: |-
+                    =If(
+                        gblLanguage = "Arabic",
+                        "طباعة طلب الشراء",
+                        "Print purchase request"
+                    )
+                  Width: =220
+            - lblPrintTopNumber:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("TextMuted")
+                  Font: =Font.'Segoe UI'
+                  Height: =40
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =13
+                  Text: =Coalesce(varCurrentPR.PRNumber, "")
+                  Width: =160
+      - cmpPrintPhone:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Surface")
+            Height: =64
+            LayoutAlignItems: =LayoutAlignItems.Center
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            Visible: =And(App.Width < 700, Not(scrPrintPR.Printing))
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - 64
+          Children:
+            - galPrintPhone:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  Fill: =Color.Transparent
+                  Height: =64
+                  Items: |-
+                    =Table(
+                        {ID: 31, Title: If(gblLanguage = "Arabic", "الرئيسية", "Main"), Icon: "Home", Screen: "Main"},
+                        {ID: 32, Title: If(gblLanguage = "Arabic", "الطلبات", "Requests"), Icon: "Clipboard", Screen: "PRs"},
+                        {ID: 33, Title: If(gblLanguage = "Arabic", "الأوامر", "Orders"), Icon: "Receipt", Screen: "POs"},
+                        {ID: 34, Title: If(gblLanguage = "Arabic", "الاستلام", "Receipts"), Icon: "Truck", Screen: "GRNs"},
+                        {ID: 35, Title: If(gblLanguage = "Arabic", "الموردون", "Vendors"), Icon: "Users", Screen: "Vendors"}
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =Parent.Width / 5
+                  Width: =Parent.Width
+                Children:
+                  - btnPrintPhoneItem:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Align: =Align.Center
+                        Appearance: =If(ThisItem.ID = varNavSelectedID, ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                        BasePaletteColor: =If(ThisItem.ID = varNavSelectedID, fxThemeColor("Primary"), fxThemeColor("TextMuted"))
+                        Height: =56
+                        Icon: =ThisItem.Icon
+                        Layout: =ButtonLayout.IconOnly
+                        OnSelect: |-
+                          =Set(varNavSelectedID, ThisItem.ID);
+                          Set(varProcurementTab, ThisItem.Screen);
+                          Switch(
+                              ThisItem.Screen,
+                              "Main",
+                              Navigate(scrProcurement, ScreenTransition.None),
+                              "PRs",
+                              Set(varProcurementMode, "View");
+                              Navigate(scrPRs, ScreenTransition.None),
+                              "POs",
+                              Set(varCurrentPO, Blank());
+                              Set(varProcurementMode, "View");
+                              Navigate(scrPOs, ScreenTransition.None),
+                              "GRNs",
+                              Set(varCurrentGRN, Blank());
+                              Set(varProcurementMode, "View");
+                              Navigate(ScrGRN, ScreenTransition.None),
+                              "Vendors",
+                              Set(varCurrentVendor, Blank());
+                              Set(varaddvendor, false);
+                              Set(varProcurementMode, "View");
+                              Navigate(scrVendors, ScreenTransition.None)
+                          )
+                        Text: =ThisItem.Title
+                        Width: =Parent.TemplateWidth
+      - conPrintView:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =If(scrPrintPR.Printing, RGBA(255, 255, 255, 1), Color.Transparent)
+            Height: =Parent.Height - If(scrPrintPR.Printing, 0, 56) - If(And(App.Width < 700, Not(scrPrintPR.Printing)), 64, 0)
+            LayoutAlignItems: =LayoutAlignItems.Center
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowX: =LayoutOverflow.Scroll
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =If(scrPrintPR.Printing, 0, 24)
+            PaddingTop: =If(scrPrintPR.Printing, 0, 8)
+            Width: =Parent.Width - If(scrPrintPR.Printing, 0, If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68)))
+            X: =If(scrPrintPR.Printing, 0, If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68)))
+            Y: =If(scrPrintPR.Printing, 0, 56)
+          Children:
+            - PrintContainer1:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =fxThemeColor("Surface")
+                  Height: =71
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutJustifyContent: =LayoutJustifyContent.End
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =20
+                  PaddingTop: =8
+                  RadiusBottomLeft: =8
+                  RadiusBottomRight: =8
+                  RadiusTopLeft: =8
+                  RadiusTopRight: =8
+                  Visible: =Not(scrPrintPR.Printing)
+                  Width: =794
+                Children:
+                  - btnBackPR:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =ButtonAppearance.Secondary
+                        Icon: ="ArrowCircleLeft"
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        OnSelect: =Back()
+                        Text: =""
+                        Width: =50
+                  - btnPRNextPage:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage="Arabic","الصفحة التالية","Next page")
+                        Align: =Align.Center
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =If(varSelectedPRPrintPage < CountRows(colPRPrintPages), ButtonAppearance.Secondary, ButtonAppearance.Subtle)
+                        FontWeight: =""
+                        Icon: ="ArrowImport"
+                        Layout: =ButtonLayout.IconAfter
+                        OnSelect: |-
+                          =If(
+                              varSelectedPRPrintPage < CountRows(colPRPrintPages),
+                              Set(
+                                  varSelectedPRPrintPage,
+                                  varSelectedPRPrintPage + 1
+                              )
+                          )
+                        PaddingBottom: =5
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =5
+                        Text: =If(gblLanguage="Arabic","التالي","Next")
+                        VerticalAlign: =VerticalAlign.Middle
+                        Width: =90
+                  - conPRPageSelector:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.SetByContainer
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        LayoutOverflowX: =LayoutOverflow.Scroll
+                        Width: =420
+                      Children:
+                        - galPRPageSelector:
+                            Control: Gallery@2.15.0
+                            Variant: Horizontal
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage="Arabic","اختيار الصفحة","Page selector")
+                              AlignInContainer: =AlignInContainer.Center
+                              BorderStyle: =BorderStyle.None
+                              Fill: =RGBA(0,0,0,0)
+                              Height: =50
+                              Items: =colPRPrintPages
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowScrollbar: =false
+                              TemplatePadding: =4
+                              TemplateSize: =150
+                              Width: =300
+                            Children:
+                              - Container38:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    Height: =32
+                                    Width: =Parent.TemplateWidth
+                                    Y: =8
+                                  Children:
+                                    - btnPRPage:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          AccessibleLabel: =If(gblLanguage="Arabic","الصفحة "&ThisItem.PageNumber,"Page "&ThisItem.PageNumber)
+                                          Align: =Align.Center
+                                          Appearance: =If(ThisItem.PageNumber = varSelectedPRPrintPage, ButtonAppearance.Primary, ButtonAppearance.Secondary)
+                                          FontWeight: =""
+                                          Height: =Parent.Height
+                                          Icon: ="Print"
+                                          OnSelect: |-
+                                            =Set(
+                                                varSelectedPRPrintPage,
+                                                ThisItem.PageNumber
+                                            )
+                                          PaddingBottom: =5
+                                          PaddingLeft: =12
+                                          PaddingRight: =12
+                                          PaddingTop: =5
+                                          Text: |-
+                                            =If(
+                                                gblLanguage = "Arabic",
+                                                "صفحة " & ThisItem.PageNumber & " - طباعة",
+                                                "Page " & ThisItem.PageNumber & " - Print"
+                                            )
+                                          VerticalAlign: =VerticalAlign.Middle
+                                          Width: =Parent.Width
+                                    - Button10:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Outline
+                                          Height: =Parent.Height
+                                          OnSelect: |-
+                                            =Set(
+                                                varSelectedPRPrintPage,
+                                                ThisItem.PageNumber
+                                            );
+                                            Set(
+                                                varStartPRPrint,
+                                                true
+                                            )
+                                          Text: =""
+                                          Width: =Parent.Width
+                  - btnPRPreviousPage:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage="Arabic","الصفحة السابقة","Previous page")
+                        Align: =Align.Center
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =If(varSelectedPRPrintPage > 1, ButtonAppearance.Secondary, ButtonAppearance.Subtle)
+                        FontWeight: =""
+                        Icon: ="ArrowLeft"
+                        OnSelect: |-
+                          =If(
+                              varSelectedPRPrintPage > 1,
+                              Set(
+                                  varSelectedPRPrintPage,
+                                  varSelectedPRPrintPage - 1
+                              )
+                          )
+                        PaddingBottom: =5
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =5
+                        Text: =If(gblLanguage="Arabic","السابق","Previous")
+                        VerticalAlign: =VerticalAlign.Middle
+                        Width: =90
+                  - tmrPRPrintDelay:
+                      Control: Timer@2.1.0
+                      Properties:
+                        Duration: =2
+                        Height: =1
+                        OnTimerEnd: |-
+                          =Set(
+                              varStartPRPrint,
+                              false
+                          );
+                          Print()
+                        Start: =varStartPRPrint
+                        Visible: =false
+                        Width: =1
+                  - Button11:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =ButtonAppearance.Primary
+                        Icon: ="Print"
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        OnSelect: =Print()
+                        Text: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              "طباعة",
+                              "Print"
+                          )
+            - galPRPrintPages_1:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  BorderStyle: =BorderStyle.None
+                  Fill: =RGBA(255, 255, 255, 1)
+                  Height: =1123
+                  Items: |-
+                    =Filter(
+                        colPRPrintPages,
+                        PageNumber = varSelectedPRPrintPage
+                    )
+                  TemplatePadding: =0
+                  TemplateSize: =1123
+                  Width: =794
+                Children:
+                  - conPage_1:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Height: =25
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Width: =762
+                        X: =16
+                        Y: =1095
+                      Children:
+                        - Text7_1:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Align: =Align.Center
+                              FillPortions: =1
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingTop: =0
+                              Size: =9
+                              Text: =If(gblLanguage="Arabic","صفحة " & ThisItem.PageNumber & " من " & varPRTotalPages,"Page " & ThisItem.PageNumber & " of " & varPRTotalPages)
+                              Width: =Parent.Width
+                  - CocPRDetailsStaff_2:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Height: =220
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Visible: =ThisItem.IsLastPage
+                        Width: =762
+                        X: =16
+                        Y: =conPRReasonRequired.Y + conPRReasonRequired.Height
+                      Children:
+                        - conApprovalSection_2:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              FillPortions: =0
+                              Height: =220
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutMinHeight: =16
+                              LayoutMinWidth: =16
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              X: =40
+                              Y: =40
+                            Children:
+                              - conApprovalRow1_1:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                  Children:
+                                    - conRequester_2:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =RGBA(0,0,0,1)
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                        Children:
+                                          - txtRequesterName_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                Fill: =RGBA(131, 204, 235, 1)
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                Height: =25
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =4
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                Size: =13
+                                                Text: |-
+                                                  ="Requester Name: " &LookUp(
+                                                      Employees,
+                                                      ID = varCurrentPR.RequesterID,
+                                                      FullName
+                                                  )
+                                                Width: =Parent.Width
+                                          - conRequesterSignature_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                              Children:
+                                                - txtRequesterSignature_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Signature"
+                                                      Width: =Parent.Width*0.30
+                                                - txtRequesterSignatureValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                                          - conRequesterDate_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                              Children:
+                                                - txtRequesterDate_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Date"
+                                                      Width: =Parent.Width*0.15
+                                                - txtRequesterDateValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                                    - conSupervisor_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =RGBA(0,0,0,1)
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                        Children:
+                                          - txtSupervisorName_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                Fill: =RGBA(131, 204, 235, 1)
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                Height: =25
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =4
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                Size: =13
+                                                Text: |-
+                                                  ="Supervisor Name: "& LookUp(
+                                                      Employees,
+                                                      ID = varCurrentPR.RequesterID,
+                                                      Manager.Value
+                                                  )
+                                                Width: =Parent.Width
+                                          - conSupervisorSignature_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                              Children:
+                                                - txtSupervisorSignature_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Signature"
+                                                      Width: =Parent.Width*0.30
+                                                - txtSupervisorSignatureValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                                          - conSupervisorDate_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                              Children:
+                                                - txtSupervisorDate_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Date"
+                                                      Width: =Parent.Width*0.15
+                                                - txtSupervisorDateValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                              - conApprovalRow2_1:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                  Children:
+                                    - conFinance_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =RGBA(0,0,0,1)
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                        Children:
+                                          - txtFinance_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                AutoHeight: =true
+                                                Fill: =RGBA(131, 204, 235, 1)
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                Height: =25
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =2
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                Size: =12
+                                                Text: |-
+                                                  ="Verified By Finance: " & LookUp(
+                                                      Employees,
+                                                      ID = varCurrentPR.FinancialApprover.Id,
+                                                      FullName
+                                                  )
+                                                Width: =Parent.Width
+                                          - conFinanceSignature_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                              Children:
+                                                - txtFinanceSignature_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Signature"
+                                                      Width: =Parent.Width*0.30
+                                                - txtFinanceSignatureValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                                          - conFinanceDate_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                              Children:
+                                                - txtFinanceDate_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      LayoutMinWidth: =0
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Date"
+                                                      Width: =Parent.Width*0.15
+                                                - txtFinanceDateValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      LayoutMinWidth: =0
+                                                      Size: =13
+                                                      Text: =""
+                                    - conApprovedBy_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderColor: =RGBA(0,0,0,1)
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Vertical
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                        Children:
+                                          - txtApprovedBy_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                AutoHeight: =true
+                                                Fill: =RGBA(131, 204, 235, 1)
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                Height: =25
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =4
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                Size: =13
+                                                Text: |-
+                                                  ="Approved By:" &LookUp(
+                                                      Employees,
+                                                      ID = varCurrentPR.Approver.Id,
+                                                      FullName
+                                                  )
+                                                Width: =Parent.Width
+                                          - conApprovedSignature_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                              Children:
+                                                - txtApprovedSignature_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Signature"
+                                                      Width: =Parent.Width*0.30
+                                                - txtApprovedSignatureValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                                          - conApprovedDate_1:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                LayoutAlignItems: =LayoutAlignItems.Center
+                                                LayoutDirection: =LayoutDirection.Horizontal
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                              Children:
+                                                - txtApprovedDate_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Font: =Font.Georgia
+                                                      FontWeight: =FontWeight.Bold
+                                                      Height: =25
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =4
+                                                      PaddingTop: =0
+                                                      Size: =13
+                                                      Text: ="Date"
+                                                      Width: =Parent.Width*0.15
+                                                - txtApprovedDateValue_1:
+                                                    Control: ModernText@1.0.0
+                                                    Properties:
+                                                      FillPortions: =1
+                                                      Height: =25
+                                                      Size: =13
+                                                      Text: =""
+                              - conApprovalRow3_1:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    BorderColor: =RGBA(0,0,0,1)
+                                    BorderThickness: =1
+                                    DropShadow: =DropShadow.None
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                    PaddingBottom: =3
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                  Children:
+                                    - txtReceivedByProcurement_1:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Start
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Bold
+                                          Height: =25
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =4
+                                          PaddingRight: =2
+                                          PaddingTop: =0
+                                          Size: =13
+                                          Text: ="Received By Procurement:"
+                                          Width: =Parent.Width*0.5
+                                    - conProcurementSignature_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Start
+                                          DropShadow: =DropShadow.None
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          Width: =Parent.Width*0.5
+                                        Children:
+                                          - txtProcurementSignature_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                FillPortions: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                Height: =25
+                                                PaddingBottom: =0
+                                                PaddingLeft: =4
+                                                PaddingTop: =0
+                                                Size: =13
+                                                Text: ="Signature"
+                                                Width: =Parent.Width*0.15
+                                          - txtProcurementSignatureValue_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                FillPortions: =1
+                                                Height: =25
+                                                Size: =13
+                                                Text: =""
+                                    - conProcurementDate_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          AlignInContainer: =AlignInContainer.Start
+                                          DropShadow: =DropShadow.None
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          Width: =Parent.Width*0.5
+                                        Children:
+                                          - txtProcurementDate_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                FillPortions: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                Height: =25
+                                                PaddingBottom: =0
+                                                PaddingLeft: =4
+                                                PaddingTop: =0
+                                                Size: =13
+                                                Text: ="Date"
+                                                Width: =Parent.Width*0.15
+                                          - txtProcurementDateValue_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                FillPortions: =1
+                                                Height: =25
+                                                Size: =13
+                                                Text: =""
+                        - Container5_22:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Height: =220
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutMinHeight: =16
+                              LayoutMinWidth: =16
+                              Width: =Parent.Width*0.25
+                              X: =40
+                              Y: =40
+                  - conFooterPR_1:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Height: =50
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Vertical
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Visible: =ThisItem.IsLastPage
+                        Width: =762
+                        X: =16
+                        Y: =CocPRDetailsStaff_2.Y + CocPRDetailsStaff_2.Height
+                      Children:
+                        - Text4_2:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Align: =Align.Center
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Height: =25
+                              LayoutMinHeight: =16
+                              LayoutMinWidth: =16
+                              Size: =10
+                              Text: |-
+                                ="Note: Purchase may proceed if actual cost is no more than 25% greater or less than estimated price. If actual price exceeds this range, PR must be reviewed."
+                        - Rectangle9_1:
+                            Control: Rectangle@2.3.0
+                            Properties:
+                              BorderColor: =RGBA(0, 0, 0, 0)
+                              BorderStyle: =BorderStyle.None
+                              BorderThickness: =2
+                              DisabledFill: =RGBA(161, 159, 157, 1)
+                              Fill: =RGBA(0, 0, 0, 1)
+                              FocusedBorderThickness: =4
+                              Height: =0.5
+                              HoverFill: =RGBA(0, 120, 212, 1)
+                              LayoutMinHeight: =16
+                              LayoutMinWidth: =16
+                              PressedFill: =RGBA(0, 120, 212, 1)
+                              Width: =500
+                        - Text4_3:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Align: =Align.Center
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Height: =25
+                              LayoutMinHeight: =16
+                              LayoutMinWidth: =16
+                              Size: =10
+                              Text: |-
+                                ="Form Distribution:                Original to Finance,                    copy to Logistics &                           copy retained for Requesting department."
+                  - conPRPage:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Height: =Parent.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Vertical
+                        PaddingBottom: =5
+                        PaddingLeft: =16
+                        PaddingRight: =16
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - conPRTitle_1:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              FillPortions: =0
+                              Height: =70
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              PaddingBottom: =8
+                              PaddingRight: =8
+                              PaddingTop: =8
+                              Width: =Parent.Width
+                            Children:
+                              - Image1_1:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    BorderStyle: =BorderStyle.None
+                                    Image: =hdp_1
+                                    LayoutMinHeight: =0
+                                    PaddingBottom: =5
+                                    PaddingTop: =5
+                                    Width: =150
+                              - Text1_3:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    FillPortions: =1
+                                    Font: =Font.Georgia
+                                    FontWeight: =FontWeight.Bold
+                                    Text: ="Purchase/ Services Request (PR) "
+                                    Width: =500
+                              - Text1_4:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Align: =Align.Right
+                                    FillPortions: =1
+                                    Font: =Font.Lato
+                                    FontWeight: =FontWeight.Bold
+                                    PaddingBottom: =0
+                                    PaddingTop: =0
+                                    Size: =18
+                                    Text: ="طلب شراء/خدمة "
+                                    Width: =500
+                        - conHeaderPR_3:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              FillPortions: =0
+                              Height: =105
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutMinHeight: =16
+                              LayoutMinWidth: =16
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Width: =Parent.Width*0.328
+                              X: =40
+                              Y: =40
+                            Children:
+                              - conHeaderDates_2:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Height: =100
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                  Children:
+                                    - conHeaderSpacer_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width*0.328
+                                          X: =40
+                                          Y: =40
+                                    - conRequestedDate_2:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width*0.328
+                                          X: =40
+                                          Y: =40
+                                        Children:
+                                          - txtRequestedDateLabel_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =2
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                Text: |-
+                                                  ="Requested Date : تاريخ الطلب "
+                                                Width: =Parent.Width*0.62
+                                          - txtRequestedDateValue_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Center
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                Color: =RGBA(0, 0, 0, 1)
+                                                FillPortions: =1
+                                                Font: =Font.Lato
+                                                FontWeight: =FontWeight.Semibold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =2
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                                Text: |-
+                                                  =Text(
+                                                      varCurrentPR.RequestDate,
+                                                      "dd/mm/yyyy"
+                                                  )
+                                                Width: =Parent.Width*0.5
+                                    - conRequiredDate_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width*0.328
+                                          X: =40
+                                          Y: =40
+                                        Children:
+                                          - txtRequiredDateLabel_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =2
+                                                PaddingLeft: =2
+                                                PaddingRight: =2
+                                                PaddingTop: =2
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                                Text: |-
+                                                  ="Required Date : تاريخ الإحتياج "
+                                                Width: =Parent.Width*0.62
+                                          - txtRequiredDateValue_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Center
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                Color: =RGBA(0, 0, 0, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Open Sans'
+                                                FontWeight: =FontWeight.Semibold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingLeft: =2
+                                                PaddingRight: =2
+                                                PaddingTop: =0
+                                                RadiusBottomLeft: =0
+                                                RadiusBottomRight: =0
+                                                RadiusTopLeft: =0
+                                                RadiusTopRight: =0
+                                                Text: |-
+                                                  =Text(
+                                                      varCurrentPR.RequiredDate,
+                                                      "dd/mm/yyyy"
+                                                  )
+                                                Width: =Parent.Width*0.5
+                              - conHeaderMiddle_1:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0.4
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    Width: =Parent.Width*0.328
+                                    X: =40
+                                    Y: =40
+                              - conHeaderDetails_1:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0.8
+                                    Height: =100
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutMinHeight: =16
+                                    LayoutMinWidth: =16
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                  Children:
+                                    - conPRNumber_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          FillPortions: =0
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width*0.328
+                                          X: =40
+                                          Y: =40
+                                        Children:
+                                          - txtPRNumberLabel_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                FillPortions: =1
+                                                Font: =Font.'Segoe UI'
+                                                FontWeight: =FontWeight.Bold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                Size: =13
+                                                Text: |-
+                                                  ="PR No : "& varCurrentPR.PRNumber
+                                                Width: =Parent.Width*0.5
+                                    - conProjectCode_2:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          FillPortions: =0
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width*0.328
+                                          X: =40
+                                          Y: =40
+                                        Children:
+                                          - txtProjectCodeLabel_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingTop: =0
+                                                Text: ="المشروع Project Code"
+                                                Width: =Parent.Width*0.62
+                                          - txtProjectCodeValue_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Center
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                FillPortions: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Semibold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingTop: =0
+                                                Text: =varCurrentPR.Project.Value
+                                                Width: =Parent.Width*0.5
+                                    - conCurrency_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          BorderThickness: =1
+                                          DropShadow: =DropShadow.None
+                                          FillPortions: =0
+                                          Height: =35
+                                          LayoutAlignItems: =LayoutAlignItems.Center
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutMinHeight: =16
+                                          LayoutMinWidth: =16
+                                          RadiusBottomLeft: =0
+                                          RadiusBottomRight: =0
+                                          RadiusTopLeft: =0
+                                          RadiusTopRight: =0
+                                          Width: =Parent.Width*0.328
+                                          X: =40
+                                          Y: =40
+                                        Children:
+                                          - txtCurrencyLabel_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Bold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                PaddingBottom: =0
+                                                PaddingTop: =0
+                                                Text: ="العمله Currency"
+                                                Width: =Parent.Width*0.62
+                                          - txtCurrencyValue_1:
+                                              Control: ModernText@1.0.0
+                                              Properties:
+                                                Align: =Align.Center
+                                                AlignInContainer: =AlignInContainer.Stretch
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderStyle: =BorderStyle.Solid
+                                                BorderThickness: =1
+                                                FillPortions: =1
+                                                Font: =Font.Georgia
+                                                FontWeight: =FontWeight.Semibold
+                                                LayoutMinHeight: =16
+                                                LayoutMinWidth: =16
+                                                Text: =varCurrentPR.Currency.Value
+                                                Width: =Parent.Width*0.5
+                        - conPRItems_1:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderThickness: =0.5
+                              DropShadow: =DropShadow.None
+                              Fill: =RGBA(255, 255, 255, 1)
+                              FillPortions: =0
+                              Height: =65 + (Max(CountRows(ThisItem.Lines), 1) * 40)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Width: =Parent.Width - 32
+                            Children:
+                              - conPRItemsHeader_4:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0
+                                    Height: =65
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    RadiusBottomLeft: =0
+                                    RadiusBottomRight: =0
+                                    RadiusTopLeft: =0
+                                    RadiusTopRight: =0
+                                    Width: =Parent.Width
+                                  Children:
+                                    - lblHeaderNo_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =1
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="No."
+                                    - lblHeaderBudget_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =2
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="Budget Line" & Char(10) & "البند"
+                                    - lblHeaderDescription_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =6
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="Description" & Char(10) & "التفاصيل"
+                                    - lblHeaderUnit_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =1.5
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="Unit" & Char(10) & "الوحدة"
+                                    - lblHeaderQty_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =1.5
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="Requested Qty" & Char(10) & "الكمية المطلوبة"
+                                    - lblHeaderUnitPrice_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =2
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="Estimated Unit Price" & Char(10) & "قيمة الوحدة تقديرياً"
+                                    - lblHeaderTotal_1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          BorderColor: =RGBA(0, 0, 0, 1)
+                                          BorderThickness: =1
+                                          Fill: =RGBA(131, 204, 235, 1)
+                                          FillPortions: =2
+                                          Font: =Font.Georgia
+                                          FontWeight: =FontWeight.Semibold
+                                          LayoutMinWidth: =0
+                                          Size: =9
+                                          Text: ="Total" & Char(10) & "الإجمالي"
+                              - galPurchaseLines_1:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    BorderColor: =RGBA(0, 0, 0, 1)
+                                    BorderThickness: =1
+                                    Fill: =RGBA(255, 255, 255, 1)
+                                    FillPortions: =0
+                                    Height: =Max(CountRows(ThisItem.Lines), 1) * 40
+                                    Items: =ThisItem.Lines
+                                    TemplatePadding: =0
+                                    TemplateSize: =40
+                                    Width: =Parent.Width
+                                  Children:
+                                    - conLineRow_1:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          Height: =Parent.TemplateHeight
+                                          LayoutAlignItems: =LayoutAlignItems.Stretch
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          Width: =Parent.TemplateWidth
+                                        Children:
+                                          - lblLineNo_1:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Center
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =1
+                                                Font: =Font.'Open Sans'
+                                                LayoutMinWidth: =0
+                                                Size: =9
+                                                Text: =ThisItem.LineNumber
+                                          - lblLineBudget_1:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Center
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =2
+                                                Font: =Font.'Open Sans'
+                                                LayoutMinWidth: =0
+                                                Size: =9
+                                                Text: =ThisItem.BudgetLine.Value
+                                          - lblLineDescription_2:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =6
+                                                Font: =Font.'Open Sans'
+                                                FontWeight: =FontWeight.Semibold
+                                                LayoutMinWidth: =0
+                                                PaddingLeft: =12
+                                                Size: =9
+                                                Text: =ThisItem.Description
+                                          - lblLineUnit_1:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Center
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =1.5
+                                                Font: =Font.'Open Sans'
+                                                LayoutMinWidth: =0
+                                                Size: =9
+                                                Text: =ThisItem.Unit.Value
+                                          - lblLineQty_1:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Center
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =1.5
+                                                Font: =Font.'Open Sans'
+                                                LayoutMinWidth: =0
+                                                Size: =9
+                                                Text: =Text(ThisItem.Quantity,"#,##0.00")
+                                          - lblLineUnitPrice_1:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Right
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =2
+                                                Font: =Font.'Open Sans'
+                                                LayoutMinWidth: =0
+                                                PaddingRight: =10
+                                                Size: =9
+                                                Text: ="$  " & Text(ThisItem.EstimatedUnitPrice,"#,##0.00")
+                                          - lblLineTotal_1:
+                                              Control: Label@2.5.1
+                                              Properties:
+                                                Align: =Align.Right
+                                                BorderColor: =RGBA(0, 0, 0, 1)
+                                                BorderThickness: =1
+                                                Fill: =RGBA(255, 255, 255, 1)
+                                                FillPortions: =2
+                                                Font: =Font.'Open Sans'
+                                                LayoutMinWidth: =0
+                                                PaddingRight: =10
+                                                Size: =9
+                                                Text: ="$  " & Text(ThisItem.Quantity * ThisItem.EstimatedUnitPrice, "#,##0.00")
+                        - conTableTotal_1:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =RGBA(117, 191, 222, 1)
+                              FillPortions: =0
+                              Height: =30
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Visible: =ThisItem.IsLastPage
+                              Width: =Parent.Width
+                              X: =40
+                              Y: =conPRItems_1.Y + conPRItems_1.Height
+                            Children:
+                              - lblTotalCaption_1:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    BorderColor: =RGBA(0, 0, 0, 1)
+                                    BorderThickness: =1
+                                    Fill: =RGBA(117, 191, 222, 1)
+                                    Font: =Font.Georgia
+                                    FontWeight: =FontWeight.Semibold
+                                    LayoutMinHeight: =0
+                                    PaddingRight: =15
+                                    Size: =12
+                                    Text: ="Total Estimated / الإجمالي التقديري"
+                                    Width: =Parent.Width * 0.87
+                              - lblTotalAmount_1:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Right
+                                    BorderColor: =RGBA(0, 0, 0, 1)
+                                    BorderThickness: =1
+                                    Fill: =RGBA(255, 255, 255, 1)
+                                    FillPortions: =3
+                                    Font: =Font.'Segoe UI'
+                                    FontWeight: =FontWeight.Semibold
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingRight: =10
+                                    Size: =12
+                                    Text: |-
+                                      ="$  " & Text(
+                                          Sum(colPRPrintLines, Quantity * EstimatedUnitPrice),
+                                          "#,##0.00"
+                                      )
+                        - conPRReasonRequired:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =RGBA(255, 255, 255, 1)
+                              FillPortions: =0
+                              Height: =100
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              RadiusBottomLeft: =0
+                              RadiusBottomRight: =0
+                              RadiusTopLeft: =0
+                              RadiusTopRight: =0
+                              Visible: =ThisItem.IsLastPage
+                              Width: =762
+                              X: =40
+                              Y: =183 + 65 + (Max(CountRows(ThisItem.Lines), 1) * 40) + 30
+                            Children:
+                              - txtReasonRequiredLabel:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Fill: =RGBA(131, 204, 235, 1)
+                                    Font: =Font.Georgia
+                                    FontWeight: =FontWeight.Bold
+                                    Height: =25
+                                    PaddingBottom: =0
+                                    PaddingLeft: =8
+                                    PaddingTop: =0
+                                    Text: =If(gblLanguage="Arabic","السبب المطلوب / Reason Required","Reason Required / الغرض من الطلب ")
+                                    Width: =Parent.Width
+                              - txtReasonRequired:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    FillPortions: =1
+                                    Height: =45
+                                    PaddingLeft: =10
+                                    PaddingRight: =10
+                                    Text: =Coalesce(varCurrentPR.ReasonRequired,"")
+                                    Width: =Parent.Width

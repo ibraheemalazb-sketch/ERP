@@ -1,0 +1,881 @@
+Screens:
+  scrProjects:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Programs");
+        Set(varCurrentScreen, "Programs");
+        Set(VarProgrammodule, "PHome");
+        Set(varSelectedProject, Blank());
+        Set(varEditorEntity, "");
+        Set(varEditorMode, "");
+        Set(varReturnTab, "General");
+        Set(varProjectTab, "General");
+        Set(varEditingProject, Blank());
+        Set(varEditingMember, Blank());
+        Set(varEditingActivity, Blank());
+        Set(varEditingTask, Blank());
+        Set(varEditingRisk, Blank());
+        ClearCollect(
+            colWeightOptions,
+            {Label: "Low", WeightValue: 1},
+            {Label: "Medium", WeightValue: 3},
+            {Label: "High", WeightValue: 5},
+            {Label: "Critical", WeightValue: 8}
+        );
+        Set(
+            varUserHasAllProjects,
+            !IsEmpty(Filter(colUserProjectAccess, AllProjects = true))
+        );
+        ClearCollect(
+            colUserProjectIDs,
+            ForAll(
+                Filter(
+                    colUserProjectAccess,
+                    And(
+                        EmployeeID = gblCurrentEmployee.ID,
+                        IsActive = true,
+                        AllProjects = false
+                    )
+                ),
+                {Value: ProjectID}
+            )
+        );
+        Clear(colProjectScope);
+        If(
+            varUserHasAllProjects,
+            Collect(colProjectScope, colProjects),
+            Collect(colProjectScope, Filter(colProjects, ID in colUserProjectIDs))
+        );
+        Set(gblProjectCount, CountRows(colProjects));
+        Set(varAllprojects, CountRows(colProjectScope));
+        Set(varActiveProjects, CountIf(colProjectScope, Status.Value = "Active"));
+        Set(varAtRiskProjects, CountIf(colProjectScope, HealthStatus.Value = "At Risk"));
+        Set(varCompletedProjects, CountIf(colProjectScope, Status.Value = "Completed"));
+        Set(varOnTrackProjects, CountIf(colProjectScope, HealthStatus.Value = "On Track"));
+        Set(varDelayedProjects, CountIf(colProjectScope, HealthStatus.Value = "Delayed"));
+        Set(varPlanedProjects, CountIf(colProjectScope, Status.Value = "Planed"));
+        Set(
+            varProjectSummary,
+            Table(
+                {
+                    Label: If(gblLanguage = "Arabic", "كل المشاريع", "All Projects"),
+                    Value: varAllprojects,
+                    Subtitle: If(gblLanguage = "Arabic", "إجمالي المشاريع", "Total Projects"),
+                    isHidden: false
+                },
+                {
+                    Label: If(gblLanguage = "Arabic", "المشاريع النشطة", "Active Projects"),
+                    Value: varActiveProjects,
+                    Subtitle: If(gblLanguage = "Arabic", "قيد التنفيذ", "Currently active"),
+                    isHidden: false
+                },
+                {
+                    Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk Projects"),
+                    Value: varAtRiskProjects,
+                    Subtitle: If(gblLanguage = "Arabic", "تحتاج متابعة", "Projects at risk"),
+                    isHidden: false
+                },
+                {
+                    Label: If(gblLanguage = "Arabic", "مكتملة", "Completed Projects"),
+                    Value: varCompletedProjects,
+                    Subtitle: If(gblLanguage = "Arabic", "أُنجزت", "Successfully completed"),
+                    isHidden: false
+                },
+                {
+                    Label: If(gblLanguage = "Arabic", "على المسار", "On Track Projects"),
+                    Value: varOnTrackProjects,
+                    Subtitle: If(gblLanguage = "Arabic", "ضمن الخطة", "Projects on track"),
+                    isHidden: false
+                },
+                {
+                    Label: If(gblLanguage = "Arabic", "متأخرة", "Delayed Projects"),
+                    Value: varDelayedProjects,
+                    Subtitle: If(gblLanguage = "Arabic", "تجاوزت الخطة", "Projects delayed"),
+                    isHidden: false
+                },
+                {
+                    Label: If(gblLanguage = "Arabic", "مخططة", "Planned Projects"),
+                    Value: varPlanedProjects,
+                    Subtitle: If(gblLanguage = "Arabic", "لم تبدأ بعد", "Projects in planning"),
+                    isHidden: false
+                }
+            )
+        );
+        Clear(colProjectActivityRaw);
+        If(
+            varUserHasAllProjects,
+            Collect(
+                colProjectActivityRaw,
+                FirstN(
+                    SortByColumns(ProjectActivityLog, "Created", SortOrder.Descending),
+                    20
+                )
+            ),
+            ForAll(
+                colUserProjectIDs As access,
+                Collect(
+                    colProjectActivityRaw,
+                    Filter(ProjectActivityLog, Project.Id = access.Value)
+                )
+            )
+        );
+        Clear(colProjectActivityFeed);
+        ForAll(
+            FirstN(
+                SortByColumns(colProjectActivityRaw, "Created", SortOrder.Descending),
+                20
+            ) As log,
+            Collect(
+                colProjectActivityFeed,
+                {
+                    ID: log.ID,
+                    Module: "Projects",
+                    ActivityType: log.RelatedEntity.Value,
+                    Action: log.ActionType.Value,
+                    Title: Coalesce(log.RelatedEntity.Value, "") & " · " & Coalesce(log.ActionType.Value, ""),
+                    Description: Coalesce(log.Details, ""),
+                    ActorName: Coalesce(log.PerformedBy.Value, ""),
+                    ActivityDate: log.Created,
+                    RecordType: Coalesce(log.RelatedEntity.Value, ""),
+                    RecordID: Coalesce(log.RelatedItemId, 0),
+                    Status: Coalesce(log.ActionType.Value, ""),
+                    Icon: "Activity",
+                    ProjectId: log.Project.Id
+                }
+            )
+        )
+    Children:
+      - conProjectNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, 240, 68)
+            X: =0
+            Y: =0
+          Children:
+            - cmpProjectNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true));
+                    If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+                  X: =0
+                  Y: =0
+      - cmpProjectTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            ModuleIcon: ="Layers"
+            ModuleName: =If(gblLanguage = "Arabic", "الرئيسية", "Home")
+            OnSelectTitle: =Navigate(ScrHome, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Theme: =gblTheme.Mode
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
+            Y: =0
+      - cmpProjectPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            X: =0
+            Y: =Parent.Height - Self.Height
+      - conProjectPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutMinHeight: =0
+            LayoutMinWidth: =0
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =If(App.Width < 700, cmpProjectPhoneNav.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpProjectTopBar.Height + 8
+            Width: =Parent.Width
+            X: =0
+            Y: =0
+          Children:
+            - cmpProjectKpi:
+                Control: CanvasComponent
+                ComponentName: cmpKPIwNav
+                Properties:
+                  AnimationEffect: ="None"
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 5,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "Box",
+                            Value: varAllprojects,
+                            Label: If(gblLanguage = "Arabic", "إجمالي المشاريع", "Total Projects"),
+                            Subtitle: If(gblLanguage = "Arabic", "ضمن صلاحيتك", "In your scope"),
+                            Screen: "Projects",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "Activity",
+                            Value: varActiveProjects,
+                            Label: If(gblLanguage = "Arabic", "المشاريع النشطة", "Active Projects"),
+                            Subtitle: If(varAllprojects = 0, "0", Text(Round(varActiveProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
+                            Screen: "",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Target",
+                            Value: varOnTrackProjects,
+                            Label: If(gblLanguage = "Arabic", "على المسار", "On Track"),
+                            Subtitle: If(varAllprojects = 0, "0", Text(Round(varOnTrackProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
+                            Screen: "",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Warning",
+                            Value: varAtRiskProjects,
+                            Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk"),
+                            Subtitle: If(varAllprojects = 0, "0", Text(Round(varAtRiskProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
+                            Screen: "",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 5,
+                            Icon: "Package",
+                            Value: varCompletedProjects,
+                            Label: If(gblLanguage = "Arabic", "مكتملة", "Completed"),
+                            Subtitle: If(varAllprojects = 0, "0", Text(Round(varCompletedProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
+                            Screen: "",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  Height: |-
+                    =With(
+                        {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 5))},
+                        RoundUp(5 / cols, 0) * 108
+                    )
+                  Icons: |-
+                    =Table({Name: "Box", SVG: ""})
+                  IsLoading: =false
+                  KPINav: |-
+                    =If(varClickScreen = "Projects", Navigate(ScrAllProjects, ScreenTransition.Cover))
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+            - conProjectOverview:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 760, 280)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - conProjectStatus:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 250, Parent.Height)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                      Children:
+                        - lblProjectStatus:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "المشاريع حسب الحالة", "Projects by Status")
+                              Width: =Parent.Width
+                        - cmpProjectStatusChart:
+                            Control: CanvasComponent
+                            ComponentName: cmpPieChart
+                            Properties:
+                              ChartData: |-
+                                =Table(
+                                    {Label: If(gblLanguage = "Arabic", "على المسار", "On Track"), Value: varOnTrackProjects},
+                                    {Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk"), Value: varAtRiskProjects},
+                                    {Label: If(gblLanguage = "Arabic", "متأخرة", "Delayed"), Value: varDelayedProjects},
+                                    {Label: If(gblLanguage = "Arabic", "مكتملة", "Completed"), Value: varCompletedProjects},
+                                    {Label: If(gblLanguage = "Arabic", "مخططة", "Planned"), Value: varPlanedProjects}
+                                )
+                              ChartTitle: =If(gblLanguage = "Arabic", "المشاريع حسب الحالة", "Projects by Status")
+                              DonutMode: =true
+                              DonutThickness: =0.4
+                              FillPortions: =1
+                              Height: =200
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ShowLabels: =false
+                              ShowLegend: =true
+                              ShowPercentages: =true
+                              ShowTitle: =false
+                              ShowValues: =true
+                              Theme: =gblTheme.Mode
+                              Width: =Parent.Width
+                  - conProjectProgress:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 250, Parent.Height)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                      Children:
+                        - lblProjectProgress:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "تقدم المشاريع", "Projects Progress")
+                              Width: =Parent.Width
+                        - lblProjectOnTrack:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "على المسار · ", "On track · ") & Text(varOnTrackProjects, "0")
+                              Width: =Parent.Width
+                        - lblProjectAtRisk:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "معرضة للخطر · ", "At risk · ") & Text(varAtRiskProjects, "0")
+                              Width: =Parent.Width
+                        - lblProjectDelayed:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "متأخرة · ", "Delayed · ") & Text(varDelayedProjects, "0")
+                              Width: =Parent.Width
+                        - lblProjectPlanned:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "مخططة · ", "Planned · ") & Text(varPlanedProjects, "0")
+                              Width: =Parent.Width
+                        - lblProjectCompleted:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "مكتملة · ", "Completed · ") & Text(varCompletedProjects, "0")
+                              Width: =Parent.Width
+                  - conProjectBudget:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 220, Parent.Height)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                      Children:
+                        - lblProjectBudget:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "ميزانية المشاريع", "Projects Budget")
+                              Width: =Parent.Width
+                        - lblProjectBudgetEmpty:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =64
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "أرقام الميزانية تُعرض من سجل المشروع في قائمة المشاريع.", "Budget figures are shown from each project record on the project list.")
+                              Width: =Parent.Width
+            - conProjectLower:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 720, 380)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Width: =Parent.Width
+                Children:
+                  - cmpProjectActivity:
+                      Control: CanvasComponent
+                      ComponentName: cmpRecentActivities
+                      Properties:
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 360, Parent.Height)
+                        Items: =colProjectActivityFeed
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        MaxItems: =20
+                        OnSelect: |-
+                          =With(
+                              {row: cmpProjectActivity.SelectedActivity},
+                              Set(varSelectedProject, LookUp(colProjects, ID = row.ProjectId));
+                              Set(varSelectedTask, Blank());
+                              Set(varSelectedActivity, Blank());
+                              Set(varSelectedRisk, Blank());
+                              Set(varSelectedMember, Blank());
+                              Set(
+                                  varProjectTab,
+                                  Switch(
+                                      row.RecordType,
+                                      "Task", "Tasks",
+                                      "Activity", "Activities",
+                                      "Risk", "Risks",
+                                      "Member", "Members",
+                                      "General"
+                                  )
+                              );
+                              Switch(
+                                  row.RecordType,
+                                  "Task", Set(varSelectedTask, LookUp(ProjectsTasks, ID = row.RecordID)),
+                                  "Activity", Set(varSelectedActivity, LookUp(ProjectsActivities, ID = row.RecordID)),
+                                  "Risk", Set(varSelectedRisk, LookUp(Risks, ID = row.RecordID)),
+                                  "Member", Set(varSelectedMember, LookUp(ProjectMembers, ID = row.RecordID))
+                              );
+                              Navigate(ScrAllProjects, ScreenTransition.Cover, {varShowDetails: true})
+                          )
+                        OnViewAll: =Navigate(scrActivities, ScreenTransition.Cover)
+                        Refresh: |-
+                          =Refresh(ProjectActivityLog);
+                          Clear(colProjectActivityRaw);
+                          If(
+                              varUserHasAllProjects,
+                              Collect(
+                                  colProjectActivityRaw,
+                                  FirstN(SortByColumns(ProjectActivityLog, "Created", SortOrder.Descending), 20)
+                              ),
+                              ForAll(
+                                  colUserProjectIDs As access,
+                                  Collect(colProjectActivityRaw, Filter(ProjectActivityLog, Project.Id = access.Value))
+                              )
+                          );
+                          Clear(colProjectActivityFeed);
+                          ForAll(
+                              FirstN(SortByColumns(colProjectActivityRaw, "Created", SortOrder.Descending), 20) As log,
+                              Collect(
+                                  colProjectActivityFeed,
+                                  {
+                                      ID: log.ID,
+                                      Module: "Projects",
+                                      ActivityType: log.RelatedEntity.Value,
+                                      Action: log.ActionType.Value,
+                                      Title: Coalesce(log.RelatedEntity.Value, "") & " · " & Coalesce(log.ActionType.Value, ""),
+                                      Description: Coalesce(log.Details, ""),
+                                      ActorName: Coalesce(log.PerformedBy.Value, ""),
+                                      ActivityDate: log.Created,
+                                      RecordType: Coalesce(log.RelatedEntity.Value, ""),
+                                      RecordID: Coalesce(log.RelatedItemId, 0),
+                                      Status: Coalesce(log.ActionType.Value, ""),
+                                      Icon: "Activity",
+                                      ProjectId: log.Project.Id
+                                  }
+                              )
+                          )
+                        ShowSummary: =true
+                        ShowViewAll: =true
+                        Title: =If(gblLanguage = "Arabic", "الأنشطة الأخيرة", "Recent Activities")
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
+                  - conProjectAlerts:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =If(App.Width < 700, 220, Parent.Height)
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
+                      Children:
+                        - lblProjectAlerts:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =28
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "تنبيهات المشاريع", "Project Alerts")
+                              Width: =Parent.Width
+                        - lblProjectAlertRisk:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =Text(varAtRiskProjects, "0") & If(gblLanguage = "Arabic", " مشروع معرض للخطر", " projects at risk")
+                              Visible: =varAtRiskProjects > 0
+                              Width: =Parent.Width
+                        - lblProjectAlertDelay:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =Text(varDelayedProjects, "0") & If(gblLanguage = "Arabic", " مشروع متأخر", " projects delayed")
+                              Visible: =varDelayedProjects > 0
+                              Width: =Parent.Width
+                        - lblProjectAlertEmpty:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =0
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =13
+                              Text: =If(gblLanguage = "Arabic", "لا توجد تنبيهات", "No project alerts")
+                              Visible: =And(varAtRiskProjects = 0, varDelayedProjects = 0)
+                              Width: =Parent.Width
+            - lblProjectSections:
+                Control: ModernText@1.0.0
+                Properties:
+                  Color: =fxThemeColor("TextPrimary")
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  FontWeight: =gblTheme.FontWeights.Medium
+                  Height: =28
+                  Size: =gblTheme.Typography.Body
+                  Text: =If(gblLanguage = "Arabic", "وصول سريع", "Quick access")
+                  Width: =Parent.Width
+            - cmpProjectModules:
+                Control: CanvasComponent
+                ComponentName: cmpModuleNav
+                Properties:
+                  AnimationEffect: ="None"
+                  CardClick: |-
+                    =Switch(
+                        varSelectedScreen,
+                        "ScrAllProjects",
+                        Navigate(ScrAllProjects, ScreenTransition.Cover),
+                        "scrProjectsPlans",
+                        Navigate(scrProjectsPlans, ScreenTransition.Cover),
+                        "scrTasks",
+                        Navigate(scrTasks, ScreenTransition.Cover),
+                        "Dashboard",
+                        Notify(If(gblLanguage = "Arabic", "لوحة المشاريع قيد التطوير", "Projects Dashboard is coming soon"), NotificationType.Information),
+                        "Reports",
+                        Notify(If(gblLanguage = "Arabic", "التقارير قيد التطوير", "Reports are coming soon"), NotificationType.Information),
+                        "Issues",
+                        Notify(If(gblLanguage = "Arabic", "المشكلات والمخاطر قيد التطوير", "Issues and Risks is coming soon"), NotificationType.Information),
+                        "Documents",
+                        Notify(If(gblLanguage = "Arabic", "الوثائق قيد التطوير", "Documents are coming soon"), NotificationType.Information),
+                        Notify(If(gblLanguage = "Arabic", "لا توجد صفحة مرتبطة", "No screen configured"), NotificationType.Information)
+                    )
+                  ColumnsLayout: |-
+                    ={
+                        Mobile: 1,
+                        Tablet: 2,
+                        Desktop: 4,
+                        MobileBreakpoint: 640,
+                        TabletBreakpoint: 1024,
+                        DesktopBreakpoint: 1366
+                    }
+                  Data: |-
+                    =Table(
+                        {
+                            ID: 1,
+                            Icon: "Box",
+                            Tab: "Projects",
+                            Label: If(gblLanguage = "Arabic", "قائمة المشاريع", "Projects List"),
+                            Descripation: If(gblLanguage = "Arabic", "عرض المشاريع", "View projects"),
+                            Screen: "ScrAllProjects",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 2,
+                            Icon: "BarChart",
+                            Tab: "Dashboard",
+                            Label: If(gblLanguage = "Arabic", "لوحة المشاريع", "Projects Dashboard"),
+                            Descripation: If(gblLanguage = "Arabic", "عرض بيانات المشاريع", "View project data"),
+                            Screen: "Dashboard",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 3,
+                            Icon: "Calendar",
+                            Tab: "Gantt",
+                            Label: If(gblLanguage = "Arabic", "المخطط الزمني", "Gantt"),
+                            Descripation: If(gblLanguage = "Arabic", "عرض خطط وأنشطة المشاريع", "View project plans and activities"),
+                            Screen: "scrProjectsPlans",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 4,
+                            Icon: "Grid",
+                            Tab: "Tasks",
+                            Label: If(gblLanguage = "Arabic", "المهام", "Tasks"),
+                            Descripation: If(gblLanguage = "Arabic", "متابعة مهام المشاريع", "Follow project tasks"),
+                            Screen: "scrTasks",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 5,
+                            Icon: "Mail",
+                            Tab: "Reports",
+                            Label: If(gblLanguage = "Arabic", "التقارير", "Reports"),
+                            Descripation: If(gblLanguage = "Arabic", "عرض جميع التقارير", "View all reports"),
+                            Screen: "Reports",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 6,
+                            Icon: "Warning",
+                            Tab: "Issues",
+                            Label: If(gblLanguage = "Arabic", "المشكلات والمخاطر", "Issues and Risks"),
+                            Descripation: If(gblLanguage = "Arabic", "متابعة المشكلات والمخاطر", "Monitor issues and risks"),
+                            Screen: "Issues",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        },
+                        {
+                            ID: 7,
+                            Icon: "Folder",
+                            Tab: "Documents",
+                            Label: If(gblLanguage = "Arabic", "الوثائق", "Documents"),
+                            Descripation: If(gblLanguage = "Arabic", "عرض وثائق المشاريع", "View project documents"),
+                            Screen: "Documents",
+                            IconBg: "",
+                            IconColor: fxThemeInk("Primary"),
+                            SparklineData: "",
+                            isHidden: false
+                        }
+                    )
+                  FillPortions: =0
+                  Height: |-
+                    =With(
+                        {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4))},
+                        RoundUp(7 / cols, 0) * 82
+                    )
+                  Icons: |-
+                    =Table({Name: "Box", SVG: ""})
+                  IsLoading: =false
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Style: ="Compact"
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
