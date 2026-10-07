@@ -23,9 +23,9 @@ Screens:
         Set(varReturnTab, "General");
         Set(varEditingProject, Blank());
         Set(varEditingMember, Blank());
-        Set(varEditingActivity, Blank());
-        Set(varEditingTask, Blank());
-        Set(varEditingRisk, Blank());
+        Set(varEditingActivity, "");
+        Set(varEditingTask, "");
+        Set(varEditingRisk, "");
         Set(varUserHasAllProjects, CountIf(colUserProjectAccess, AllProjects = true) > 0);
         ClearCollect(
             colUserProjectIDs,
@@ -397,7 +397,7 @@ Screens:
                   DropShadow: =DropShadow.None
                   Fill: =Color.Transparent
                   FillPortions: =0
-                  Height: =If(App.Width < 700, 900, 350)
+                  Height: =If(App.Width < 700, 460 + 12 + 360 + 12 + 220, 400)
                   LayoutAlignItems: =LayoutAlignItems.Stretch
                   LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
                   LayoutGap: =12
@@ -405,7 +405,7 @@ Screens:
                   LayoutMinWidth: =0
                   Width: =Parent.Width
                 Children:
-                  - conProjectStatus:
+                  - conProjectHealth:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
@@ -430,7 +430,7 @@ Screens:
                         RadiusTopRight: =gblTheme.Radius.XL
                         Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
                       Children:
-                        - lblProjectStatus:
+                        - lblProjectHealth:
                             Control: ModernText@1.0.0
                             Properties:
                               Color: =fxThemeColor("TextPrimary")
@@ -440,9 +440,9 @@ Screens:
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
                               Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "المشاريع حسب الحالة", "Projects by Status")
+                              Text: =If(gblLanguage = "Arabic", "المشاريع حسب الحالة الصحية", "Projects by Health")
                               Width: =Parent.Width
-                        - cmpProjectStatusChart:
+                        - cmpProjectHealthChart:
                             Control: CanvasComponent
                             ComponentName: cmpPieChart
                             Properties:
@@ -450,13 +450,23 @@ Screens:
                               AnimationDuration: =
                               ChartData: |-
                                 =Table(
-                                    {Label: If(gblLanguage = "Arabic", "على المسار", "On Track"), Value: varOnTrackProjects},
-                                    {Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk"), Value: varAtRiskProjects},
-                                    {Label: If(gblLanguage = "Arabic", "متأخرة", "Delayed"), Value: varDelayedProjects},
-                                    {Label: If(gblLanguage = "Arabic", "مكتملة", "Completed"), Value: varCompletedProjects},
-                                    {Label: If(gblLanguage = "Arabic", "مخططة", "Planned"), Value: varPlanedProjects}
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "على المسار", "On Track"),
+                                        Value: varOnTrackProjects,
+                                        Color: If(gblTheme.Mode = "Dark", "#4ADE80", "#16A34A")
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk"),
+                                        Value: varAtRiskProjects,
+                                        Color: If(gblTheme.Mode = "Dark", "#FBBF24", "#D97706")
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "متأخرة", "Delayed"),
+                                        Value: varDelayedProjects,
+                                        Color: If(gblTheme.Mode = "Dark", "#F87171", "#DC2626")
+                                    }
                                 )
-                              ChartTitle: =If(gblLanguage = "Arabic", "المشاريع حسب الحالة", "Projects by Status")
+                              ChartTitle: =If(gblLanguage = "Arabic", "المشاريع حسب الحالة الصحية", "Projects by Health")
                               DefaultColors: =
                               DonutMode: =true
                               DonutThickness: =0.24
@@ -471,147 +481,83 @@ Screens:
                               ShowValues: =true
                               Theme: =gblTheme.Mode
                               Width: =Parent.Width
-                  - conProjectProgress:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
+                  - cmpProjectSectors:
+                      Control: CanvasComponent
+                      ComponentName: cmpBarList
                       Properties:
-                        BorderColor: =fxThemeColor("Border")
-                        BorderThickness: =1
-                        DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("Surface")
-                        FillPortions: =0
-                        Height: =If(App.Width < 700, 250, Parent.Height)
-                        LayoutAlignItems: =LayoutAlignItems.Stretch
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =6
+                        AbbreviateAt: =
+                        Currency: =
+                        Data: |-
+                          =ForAll(
+                              Distinct(colProjectScope, Sector.Value) As sector,
+                              {
+                                  Label: If(
+                                      IsBlank(sector.Value),
+                                      If(gblLanguage = "Arabic", "بدون قطاع", "No sector"),
+                                      sector.Value
+                                  ),
+                                  Value: If(
+                                      IsBlank(sector.Value),
+                                      CountIf(colProjectScope, IsBlank(Sector.Value)),
+                                      CountRows(Filter(colProjectScope, Sector.Value = sector.Value))
+                                  ),
+                                  Subtitle: If(gblLanguage = "Arabic", "مشروع", "Projects"),
+                                  Icon: "Flag",
+                                  Color: "",
+                                  isHidden: false
+                              }
+                          )
+                        EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد مشاريع", "No projects")
+                        Height: =If(App.Width < 700, 360, Parent.Height)
+                        IsLoading: =false
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
-                        PaddingBottom: =12
-                        PaddingLeft: =12
-                        PaddingRight: =12
-                        PaddingTop: =12
-                        RadiusBottomLeft: =gblTheme.Radius.XL
-                        RadiusBottomRight: =gblTheme.Radius.XL
-                        RadiusTopLeft: =gblTheme.Radius.XL
-                        RadiusTopRight: =gblTheme.Radius.XL
+                        OnBarClick: =
+                        Palette: =
+                        ShowRowSubtitle: =false
+                        Subtitle: =If(gblLanguage = "Arabic", "عدد المشاريع", "Project count")
+                        Theme: =gblTheme.Mode
+                        Title: =If(gblLanguage = "Arabic", "المشاريع حسب القطاع", "Projects by Sector")
+                        ValueFormat: ="Number"
                         Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
-                      Children:
-                        - lblProjectProgress:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: =28
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "تقدم المشاريع", "Projects Progress")
-                              Width: =Parent.Width
-                        - lblProjectOnTrack:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "على المسار · ", "On track · ") & Text(varOnTrackProjects, "0")
-                              Width: =Parent.Width
-                        - lblProjectAtRisk:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "معرضة للخطر · ", "At risk · ") & Text(varAtRiskProjects, "0")
-                              Width: =Parent.Width
-                        - lblProjectDelayed:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "متأخرة · ", "Delayed · ") & Text(varDelayedProjects, "0")
-                              Width: =Parent.Width
-                        - lblProjectPlanned:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "مخططة · ", "Planned · ") & Text(varPlanedProjects, "0")
-                              Width: =Parent.Width
-                        - lblProjectCompleted:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "مكتملة · ", "Completed · ") & Text(varCompletedProjects, "0")
-                              Width: =Parent.Width
-                  - conProjectBudget:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
+                  - cmpProjectBudgetSpent:
+                      Control: CanvasComponent
+                      ComponentName: cmpBarList
                       Properties:
-                        BorderColor: =fxThemeColor("Border")
-                        BorderThickness: =1
-                        DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("Surface")
-                        FillPortions: =0
+                        AbbreviateAt: =10000
+                        Currency: ="USD"
+                        Data: |-
+                          =Table(
+                              {
+                                  Label: If(gblLanguage = "Arabic", "الميزانية", "Budget"),
+                                  Value: Sum(colProjectScope, Budget),
+                                  Subtitle: If(gblLanguage = "Arabic", "إجمالي الميزانية", "Total budget"),
+                                  Icon: "Wallet",
+                                  Color: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5"),
+                                  isHidden: false
+                              },
+                              {
+                                  Label: If(gblLanguage = "Arabic", "المنصرف", "Spent"),
+                                  Value: Sum(colProjectScope, Spent),
+                                  Subtitle: If(gblLanguage = "Arabic", "إجمالي المنصرف", "Total spent"),
+                                  Icon: "Money",
+                                  Color: If(gblTheme.Mode = "Dark", "#FB923C", "#C2410C"),
+                                  isHidden: false
+                              }
+                          )
+                        EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد أرقام", "No figures")
                         Height: =If(App.Width < 700, 220, Parent.Height)
-                        LayoutAlignItems: =LayoutAlignItems.Stretch
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =8
+                        IsLoading: =false
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
-                        PaddingBottom: =12
-                        PaddingLeft: =12
-                        PaddingRight: =12
-                        PaddingTop: =12
-                        RadiusBottomLeft: =gblTheme.Radius.XL
-                        RadiusBottomRight: =gblTheme.Radius.XL
-                        RadiusTopLeft: =gblTheme.Radius.XL
-                        RadiusTopRight: =gblTheme.Radius.XL
+                        OnBarClick: =
+                        Palette: =
+                        ShowRowSubtitle: =true
+                        Subtitle: =If(gblLanguage = "Arabic", "ضمن صلاحيتك", "In your scope")
+                        Theme: =gblTheme.Mode
+                        Title: =If(gblLanguage = "Arabic", "الميزانية والمنصرف", "Budget and Spent")
+                        ValueFormat: ="Currency"
                         Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
-                      Children:
-                        - lblProjectBudget:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: =28
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "ميزانية المشاريع", "Projects Budget")
-                              Width: =Parent.Width
-                        - lblProjectBudgetEmpty:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              FillPortions: =1
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =64
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "أرقام الميزانية تُعرض من سجل المشروع في قائمة المشاريع.", "Budget figures are shown from each project record on the project list.")
-                              Width: =Parent.Width
             - conProjectLower:
                 Control: GroupContainer@1.5.0
                 Variant: AutoLayout
@@ -619,9 +565,9 @@ Screens:
                   DropShadow: =DropShadow.None
                   Fill: =Color.Transparent
                   FillPortions: =0
-                  Height: =If(App.Width < 700, 720, 380)
+                  Height: =If(App.Width < 700, 360, 380)
                   LayoutAlignItems: =LayoutAlignItems.Stretch
-                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutDirection: =LayoutDirection.Vertical
                   LayoutGap: =12
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
@@ -631,7 +577,7 @@ Screens:
                       Control: CanvasComponent
                       ComponentName: cmpLastActivities
                       Properties:
-                        Height: =If(App.Width < 700, 360, Parent.Height)
+                        Height: =Parent.Height
                         Items: |-
                           =ForAll(
                               colProjectActivityFeed As row,
@@ -785,80 +731,7 @@ Screens:
                         ShowSummary: =true
                         ShowViewAll: =true
                         Title: =If(gblLanguage = "Arabic", "الأنشطة الأخيرة", "Recent Activities")
-                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
-                  - conProjectAlerts:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        BorderColor: =fxThemeColor("Border")
-                        BorderThickness: =1
-                        DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("Surface")
-                        FillPortions: =0
-                        Height: =If(App.Width < 700, 220, Parent.Height)
-                        LayoutAlignItems: =LayoutAlignItems.Stretch
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =8
-                        LayoutMinHeight: =0
-                        LayoutMinWidth: =0
-                        PaddingBottom: =12
-                        PaddingLeft: =12
-                        PaddingRight: =12
-                        PaddingTop: =12
-                        RadiusBottomLeft: =gblTheme.Radius.XL
-                        RadiusBottomRight: =gblTheme.Radius.XL
-                        RadiusTopLeft: =gblTheme.Radius.XL
-                        RadiusTopRight: =gblTheme.Radius.XL
-                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
-                      Children:
-                        - lblProjectAlerts:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: =28
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "تنبيهات المشاريع", "Project Alerts")
-                              Width: =Parent.Width
-                        - lblProjectAlertRisk:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =Text(varAtRiskProjects, "0") & If(gblLanguage = "Arabic", " مشروع معرض للخطر", " projects at risk")
-                              Visible: =varAtRiskProjects > 0
-                              Width: =Parent.Width
-                        - lblProjectAlertDelay:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =Text(varDelayedProjects, "0") & If(gblLanguage = "Arabic", " مشروع متأخر", " projects delayed")
-                              Visible: =varDelayedProjects > 0
-                              Width: =Parent.Width
-                        - lblProjectAlertEmpty:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =13
-                              Text: =If(gblLanguage = "Arabic", "لا توجد تنبيهات", "No project alerts")
-                              Visible: =And(varAtRiskProjects = 0, varDelayedProjects = 0)
-                              Width: =Parent.Width
+                        Width: =Parent.Width
             - lblProjectSections:
                 Control: ModernText@1.0.0
                 Properties:
