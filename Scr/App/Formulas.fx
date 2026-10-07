@@ -333,7 +333,7 @@ fxToneInk(Tone: Text): Color =
 fnProcNotify(
     pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
     pEntity: Text, pItemID: Number, pRecordType: Text
-): Void = {
+): Void =
     If(
         And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
         Patch(
@@ -356,23 +356,25 @@ fnProcNotify(
                 ReadDate: Blank()
             }
         )
-    )
-};
+    );
 
 // Shared fields for ProcurementActivityLog. Now(), GUID(), and the actor are
 // applied inside fnWriteLog so each row gets a fresh correlation id.
-nfLogDefaults = {
-    Module: {Value: "Procurement"},
-    Source: {Value: "Power Apps"},
-    IsSystemAction: false,
-    IsSensitive: false
-};
+nfLogDefaults =
+    Patch(
+        {Module: {Value: "Procurement"}},
+        {
+            Source: {Value: "Power Apps"},
+            IsSystemAction: false,
+            IsSensitive: false
+        }
+    );
 
 fnWriteLog(
     pEntityType: Text, pEntityID: Number, pEntityNumber: Text, pAction: Text, pSeverity: Text,
     pProjectID: Number, pProjectCode: Text, pAmount: Number, pCurrency: Text,
     pField: Text, pOld: Text, pNew: Text, pDetails: Text, pReason: Text, pApprovalLevel: Number
-): Void = {
+): Void =
     With(
         {
             actor: If(
@@ -425,8 +427,7 @@ fnWriteLog(
                 Trace("ProcurementActivityLog refresh failed: " & FirstError.Message, TraceSeverity.Warning)
             )
         )
-    )
-};
+    );
 
 // HR activity log. Training screens already call fnLogHR with this argument order.
 // Now(), GUID(), and the actor are applied here so each row gets a fresh correlation id.
@@ -435,7 +436,7 @@ fnLogHR(
     pEntityType: Text, pEntityID: Number, pEntityNumber: Text, pAction: Text, pSeverity: Text,
     pProjectID: Number, pAmount: Number, pCurrency: Text,
     pField: Text, pOld: Text, pNew: Text, pDetails: Text, pReason: Text, pSensitive: Boolean
-): Void = {
+): Void =
     With(
         {
             actor: If(
@@ -493,46 +494,65 @@ fnLogHR(
                 Trace("HRActivityLog refresh failed: " & FirstError.Message, TraceSeverity.Warning)
             )
         )
-    )
-};
+    );
 
 // One ApprovalHistory row for a leave request. Choice labels match the list:
 // Action Submitted / Approved / Rejected, ApprovalLevel "Level 1",
 // ApprovalType "Manager", Priority "Normal".
 
-fxLeaveApproval(
+fnLeaveApproval(
     pDecision: Text, pAction: Text, pComments: Text, pItemID: Number,
     pRequesterID: Number, pRequesterName: Text,
     pApproverID: Number, pApproverName: Text, pApproverEmail: Text, pApproverNo: Text,
     pLeaveType: Text, pProjectID: Number, pAssigned: DateTime
-) = {
-    Title: Left(Coalesce(pRequesterName, "") & " - " & Coalesce(pLeaveType, "Leave"), 255),
-    RequestItemID: Text(pItemID),
-    RequestType: {Value: "Leave Request"},
-    Decision: {Value: pDecision},
-    Comments: pComments,
-    DecisionDate: If(pDecision <> "Pending", Now()),
-    Approver: {Id: pApproverID, Value: Coalesce(pApproverName, "")},
-    Requester: {Id: pRequesterID, Value: Coalesce(pRequesterName, "")},
-    ApprovalLevel: {Value: "Level 1"},
-    Sequence: 1,
-    AssignedDate: Coalesce(pAssigned, Now()),
-    RequestNumber: "LV-" & Text(pItemID, "000"),
-    ApprovalInstanceID: "LV-" & Text(pItemID, "000") & "-1",
-    Module: {Value: "HR"},
-    EntityType: {Value: "LeaveRequest"},
-    Action: {Value: pAction},
-    ApprovalType: {Value: "Manager"},
-    ActionDate: Now(),
-    ApproverEmail: pApproverEmail,
-    ApproverNo: pApproverNo,
-    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID),
-    ApproverID: If(Coalesce(pApproverID, 0) > 0, pApproverID),
-    RequesterID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID),
-    Month: Text(Now(), "yyyy-MM"),
-    Priority: {Value: "Normal"},
-    RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID)
-};
+): Void =
+    With(
+        {
+            step: LookUp(
+                ApprovalHistory,
+                And(
+                    RequestItemID = Text(pItemID),
+                    EntityType.Value = "LeaveRequest"
+                )
+            )
+        },
+        IfError(
+            Patch(
+                ApprovalHistory,
+                If(IsBlank(step), Defaults(ApprovalHistory), step),
+                {
+                    Title: Left(Coalesce(pRequesterName, "") & " - " & Coalesce(pLeaveType, "Leave"), 255),
+                    RequestItemID: Text(pItemID),
+                    RequestType: {Value: "Leave Request"},
+                    Decision: {Value: pDecision},
+                    Comments: pComments,
+                    DecisionDate: If(pDecision <> "Pending", Now()),
+                    Approver: {Id: pApproverID, Value: Coalesce(pApproverName, "")},
+                    Requester: {Id: pRequesterID, Value: Coalesce(pRequesterName, "")},
+                    ApprovalLevel: {Value: "Level 1"},
+                    Sequence: 1,
+                    AssignedDate: Coalesce(pAssigned, Now()),
+                    RequestNumber: "LV-" & Text(pItemID, "000"),
+                    ApprovalInstanceID: "LV-" & Text(pItemID, "000") & "-1",
+                    Module: {Value: "HR"},
+                    EntityType: {Value: "LeaveRequest"},
+                    Action: {Value: pAction},
+                    ApprovalType: {Value: "Manager"},
+                    ActionDate: Now(),
+                    ApproverEmail: pApproverEmail,
+                    ApproverNo: pApproverNo,
+                    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID),
+                    ApproverID: If(Coalesce(pApproverID, 0) > 0, pApproverID),
+                    RequesterID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID),
+                    Month: Text(Now(), "yyyy-MM"),
+                    Priority: {Value: "Normal"},
+                    RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID)
+                }
+            );
+            false,
+            Trace("Leave approval log failed: " & FirstError.Message, TraceSeverity.Error)
+        )
+    );
 
 // Project activity log. The programs home reads Date, ProjectID, PerformedByID,
 // PerformedBy, RelatedEntity, RelatedItemId, ActionType, and Details.
@@ -540,7 +560,7 @@ fxLeaveApproval(
 fnProjLog(
     pTitle: Text, pProjectID: Number, pProjectName: Text,
     pEntity: Text, pItemID: Number, pAction: Text, pDetails: Text
-): Void = {
+): Void =
     With(
         {
             actor: If(
@@ -571,15 +591,14 @@ fnProjLog(
             false,
             Trace("ProjectActivityLog write failed: " & FirstError.Message, TraceSeverity.Warning)
         )
-    )
-};
+    );
 
 // In-app notice for a project assignment. Skips the person who performed the action.
 
 fnProjNotify(
     pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
     pEntity: Text, pItemID: Number, pRecordType: Text
-): Void = {
+): Void =
     If(
         And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
         IfError(
@@ -606,15 +625,14 @@ fnProjNotify(
             false,
             Trace("Project notification failed: " & FirstError.Message, TraceSeverity.Warning)
         )
-    )
-};
+    );
 
 // In-app notification for someone other than the person who performed the HR action.
 
 fnHRNotify(
     pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
     pEntity: Text, pItemID: Number, pRecordType: Text
-): Void = {
+): Void =
     If(
         And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
         IfError(
@@ -641,5 +659,4 @@ fnHRNotify(
             false,
             Trace("HR notification failed: " & FirstError.Message, TraceSeverity.Warning)
         )
-    )
-};
+    );
