@@ -40,7 +40,7 @@ ComponentDefinitions:
       Data:
         PropertyKind: Input
         DisplayName: Data
-        Description: In-memory module table. Pass an already-loaded table. This component does not query Dataverse or SharePoint. The description column is Descripation.
+        Description: In-memory module table. IconColor is the icon line and IconBg is the icon tile. Pass an already-loaded table. This component does not query Dataverse or SharePoint. The description column is Descripation.
         DataType: Table
         Default: |-
           =Table(
@@ -113,7 +113,7 @@ ComponentDefinitions:
       Icons:
         PropertyKind: Input
         DisplayName: Icons
-        Description: Kept so existing screens still bind. Cards draw their own outline SVG from Data.Icon and do not read this table.
+        Description: Kept so existing screens still bind. Set IconColor and IconBg on each Data row. Cards do not read this table.
         DataType: Table
         Default: |-
           =Table(
@@ -327,10 +327,13 @@ ComponentDefinitions:
                   Fill: |-
                     =If(
                         cmpModuleNav.Style = "Filled",
-                        If(
-                            gblTheme.Mode = "Dark",
-                            gblTheme.Dark.Colors.PrimaryLight,
-                            gblTheme.Light.Colors.PrimaryLight
+                        IfError(
+                            ColorValue(ThisItem.IconBg),
+                            If(
+                                gblTheme.Mode = "Dark",
+                                gblTheme.Dark.Colors.PrimaryLight,
+                                gblTheme.Light.Colors.PrimaryLight
+                            )
                         ),
                         If(
                             gblTheme.Mode = "Dark",
@@ -385,10 +388,13 @@ ComponentDefinitions:
                       Properties:
                         DropShadow: =DropShadow.None
                         Fill: |-
-                          =If(
-                              gblTheme.Mode = "Dark",
-                              gblTheme.Dark.Colors.PrimaryLight,
-                              gblTheme.Light.Colors.PrimaryLight
+                          =IfError(
+                              ColorValue(ThisItem.IconBg),
+                              If(
+                                  gblTheme.Mode = "Dark",
+                                  gblTheme.Dark.Colors.PrimaryLight,
+                                  gblTheme.Light.Colors.PrimaryLight
+                              )
                           )
                         Height: =40
                         RadiusBottomLeft: =gblTheme.Radius.Large
@@ -422,9 +428,22 @@ ComponentDefinitions:
                                 =With(
                                     {
                                         stroke: If(
-                                            gblTheme.Mode = "Dark",
-                                            "rgb(121,176,255)",
-                                            "rgb(27,86,229)"
+                                            IsBlank(ThisItem.IconColor),
+                                            If(
+                                                gblTheme.Mode = "Dark",
+                                                "rgb(121,176,255)",
+                                                "rgb(27,86,229)"
+                                            ),
+                                            ThisItem.IconColor
+                                        ),
+                                        bg: If(
+                                            IsBlank(ThisItem.IconBg),
+                                            If(
+                                                gblTheme.Mode = "Dark",
+                                                "rgb(23,32,48)",
+                                                "rgb(236,242,255)"
+                                            ),
+                                            ThisItem.IconBg
                                         ),
                                         body: Switch(
                                             ThisItem.Icon,
@@ -469,7 +488,7 @@ ComponentDefinitions:
                                     },
                                     "data:image/svg+xml;utf8," & EncodeUrl(
                                         Substitute(
-                                            "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='" & stroke & "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" & body & "</svg>",
+                                            "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='" & stroke & "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='24' height='24' fill='" & bg & "' stroke='none'/>" & body & "</svg>",
                                             "current",
                                             stroke
                                         )

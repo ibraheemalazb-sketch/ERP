@@ -34,7 +34,7 @@ ComponentDefinitions:
       Data:
         PropertyKind: Input
         DisplayName: Data
-        Description: In-memory KPI table. Pass an already-loaded table. This component does not query Dataverse or SharePoint.
+        Description: In-memory KPI table. IconColor is the icon line and IconBg is the icon tile. Pass an already-loaded table. This component does not query Dataverse or SharePoint.
         DataType: Table
         Default: |-
           =Table(
@@ -96,7 +96,7 @@ ComponentDefinitions:
       Icons:
         PropertyKind: Input
         DisplayName: Icons
-        Description: Kept so existing screens still bind. Cards draw fxSvg from Data.Icon and do not read this table.
+        Description: Kept so existing screens still bind. Set IconColor and IconBg on each Data row. Cards do not read this table.
         DataType: Table
         Default: |-
           =Table(
@@ -444,12 +444,27 @@ ComponentDefinitions:
                               BorderStyle: =BorderStyle.None
                               Height: =Min(cmpKPIwNav.IconsSize, Parent.Height - 8)
                               Image: |-
-                                =fxSvg(
-                                    Coalesce(ThisItem.Icon, "Info"),
-                                    If(
-                                        IsBlank(ThisItem.IconColor),
-                                        fxThemeInk("Primary"),
-                                        ThisItem.IconColor
+                                =With(
+                                    {
+                                        stroke: If(
+                                            IsBlank(ThisItem.IconColor),
+                                            fxThemeInk("Primary"),
+                                            ThisItem.IconColor
+                                        ),
+                                        bg: If(
+                                            IsBlank(ThisItem.IconBg),
+                                            If(
+                                                gblTheme.Mode = "Dark",
+                                                "rgb(23,32,48)",
+                                                "rgb(236,242,255)"
+                                            ),
+                                            ThisItem.IconBg
+                                        )
+                                    },
+                                    Substitute(
+                                        fxSvg(Coalesce(ThisItem.Icon, "Info"), stroke),
+                                        EncodeUrl("stroke-linejoin='round'>"),
+                                        EncodeUrl("stroke-linejoin='round'><rect width='24' height='24' fill='" & bg & "' stroke='none'/>")
                                     )
                                 )
                               Tooltip: =Coalesce(ThisItem.Label, "")
