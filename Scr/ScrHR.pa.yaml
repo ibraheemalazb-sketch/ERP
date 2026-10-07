@@ -838,166 +838,132 @@ Screens:
               =IfError(
                   With(
                       {
-                          since: DateAdd(Today(), -30, TimeUnit.Days),
-                          ar: gblLanguage = "Arabic",
-                          all: Coalesce(
-                              LookUp(
-                                  colUserPermissions,
-                                  Module.Value = "HR",
-                                  And(CanViewAll, Scope.Value = "All")
-                              ),
-                              false
-                          ),
-                          me: gblCurrentEmployee.ID
+                          pHR: LookUp(colUserPermissions, Module.Value = "HR"),
+                          me: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                          ar: gblLanguage = "Arabic"
                       },
                       If(
-                          all,
-                          ClearCollect(
-                              colActEmployees,
-                              ForAll(
+                          Not(Coalesce(pHR.CanRead, false)),
+                          Clear(colHRActivities),
+                          Refresh(HRActivityLog);
+                          Clear(colHRLogRaw);
+                          Switch(
+                              Coalesce(varHRScope, ""),
+                              "All",
+                              Collect(
+                                  colHRLogRaw,
                                   FirstN(
-                                      Sort(
-                                          Filter(Employees, Created >= since),
-                                          Created,
-                                          SortOrder.Descending
-                                      ),
-                                      10
-                                  ) As e,
-                                  {
-                                      ID: e.ID,
-                                      Module: "HR",
-                                      ActivityType: "Employee",
-                                      Action: "Created",
-                                      Title: Coalesce(e.FullName, e.DisplayName, e.Title, "") & " - " & If(ar, "تمت إضافة موظف جديد", "was added to system"),
-                                      Description: "",
-                                      ActorName: Coalesce(e.'Created By'.DisplayName, ""),
-                                      ActivityDate: e.Created,
-                                      RecordType: "Employee",
-                                      RecordID: e.ID,
-                                      Status: "Success",
-                                      Icon: "People"
-                                  }
-                              )
-                          ),
-                          Clear(colActEmployees)
-                      );
-                      ClearCollect(
-                          colActLeave,
-                          ForAll(
-                              FirstN(
-                                  Sort(
-                                      If(
-                                          all,
-                                          Filter(LeaveRequests, Created >= since),
-                                          Filter(LeaveRequests, Created >= since, EmployeeID = me)
-                                      ),
-                                      Created,
-                                      SortOrder.Descending
-                                  ),
-                                  10
-                              ) As l,
-                              {
-                                  ID: l.ID + 1000000,
-                                  Module: "HR",
-                                  ActivityType: "Leave",
-                                  Action: "Submitted",
-                                  Title: With(
-                                      {
-                                          nm: Coalesce(l.Employee.Value, ""),
-                                          tp: Coalesce(l.LeaveType.Value, ""),
-                                          d: l.Duration
-                                      },
-                                      If(
-                                          ar,
-                                          nm & " قدّم طلب إجازة " & tp & " جديد" & If(
-                                              IsBlank(d),
-                                              "",
-                                              " لمدة " & If(d = 1, "يوم", d = 2, "يومين", d <= 10, d & " أيام", d & " يومًا")
-                                          ),
-                                          nm & " submitted a new " & If(
-                                              IsBlank(tp),
-                                              "Leave",
-                                              If(EndsWith(Lower(tp), "leave"), tp, tp & " Leave")
-                                          ) & " request" & If(IsBlank(d), "", " for " & d & If(d = 1, " day", " days"))
+                                      SortByColumns(HRActivityLog, "ActionDate", SortOrder.Descending),
+                                      20
+                                  )
+                              ),
+                              "Project",
+                              If(
+                                  varUserHasAllProjects,
+                                  Collect(
+                                      colHRLogRaw,
+                                      FirstN(
+                                          SortByColumns(HRActivityLog, "ActionDate", SortOrder.Descending),
+                                          20
                                       )
                                   ),
-                                  Description: "",
-                                  ActorName: Coalesce(l.Employee.Value, ""),
-                                  ActivityDate: l.Created,
-                                  RecordType: "LeaveRequest",
-                                  RecordID: l.ID,
-                                  Status: "Approval",
-                                  Icon: "Calendar"
-                              }
-                          )
-                      );
-                      If(
-                          all,
-                          ClearCollect(
-                              colActApprovalSource,
-                              Filter(ApprovalHistory, Modified >= since)
-                          ),
-                          ClearCollect(
-                              colActApprovalSource,
-                              Filter(ApprovalHistory, ApproverID = me)
-                          );
-                          Collect(
-                              colActApprovalSource,
-                              Filter(ApprovalHistory, RequesterID = me, ApproverID <> me)
-                          )
-                      );
-                      ClearCollect(
-                          colActApprovals,
-                          ForAll(
-                              FirstN(
-                                  Sort(
-                                      Filter(
-                                          colActApprovalSource,
-                                          Module.Value = "HR",
-                                          Modified >= since
+                                  ForAll(
+                                      colUserAccessibleProjects As proj,
+                                      Collect(
+                                          colHRLogRaw,
+                                          FirstN(
+                                              SortByColumns(
+                                                  Filter(HRActivityLog, ProjectID = proj.ID),
+                                                  "ActionDate",
+                                                  SortOrder.Descending
+                                              ),
+                                              20
+                                          )
+                                      )
+                                  );
+                                  If(
+                                      And(IsEmpty(colHRLogRaw), !IsBlank(gblSProject.ID)),
+                                      Collect(
+                                          colHRLogRaw,
+                                          FirstN(
+                                              SortByColumns(
+                                                  Filter(HRActivityLog, ProjectID = gblSProject.ID),
+                                                  "ActionDate",
+                                                  SortOrder.Descending
+                                              ),
+                                              20
+                                          )
+                                      )
+                                  )
+                              ),
+                              "Own",
+                              Collect(
+                                  colHRLogRaw,
+                                  FirstN(
+                                      SortByColumns(
+                                          Filter(HRActivityLog, PerformedByID = me),
+                                          "ActionDate",
+                                          SortOrder.Descending
                                       ),
-                                      Modified,
-                                      SortOrder.Descending
-                                  ),
-                                  15
-                              ) As a,
-                              {
-                                  ID: a.ID + 2000000,
-                                  Module: "HR",
-                                  ActivityType: Coalesce(a.RequestType.Value, "Approval"),
-                                  Action: Coalesce(a.Action.Value, a.Decision.Value, ""),
-                                  Title: Switch(
-                                      a.Decision.Value,
-                                      "Approved",
-                                      If(ar, "تمت الموافقة على طلب " & Coalesce(a.Requester.Value, ""), Coalesce(a.Requester.Value, "") & "'s request was approved"),
-                                      "Rejected",
-                                      If(ar, "تم رفض طلب " & Coalesce(a.Requester.Value, ""), Coalesce(a.Requester.Value, "") & "'s request was rejected"),
-                                      If(ar, "طلب بانتظار الموافقة", "Approval requested")
-                                  ),
-                                  Description: "",
-                                  ActorName: Coalesce(a.Approver.Value, ""),
-                                  ActivityDate: Coalesce(a.DecisionDate, a.ActionDate, a.Modified),
-                                  RecordType: Switch(
-                                      a.RequestType.Value,
-                                      "Leave",
-                                      "LeaveRequest",
-                                      "Leave Request",
-                                      "LeaveRequest",
-                                      "Employee",
-                                      "Employee",
-                                      Coalesce(a.RequestType.Value, "")
-                                  ),
-                                  RecordID: IfError(Value(a.RequestItemID), 0),
-                                  Status: Switch(a.Decision.Value, "Approved", "Success", "Rejected", "Error", "Approval"),
-                                  Icon: Switch(a.Decision.Value, "Approved", "Check", "Rejected", "Warning", "Clock")
-                              }
-                          )
-                      );
-                      ClearCollect(colHRActivities, colActEmployees, colActLeave, colActApprovals);
-                      Clear(colActEmployees);
-                      Clear(colActLeave);
-                      Clear(colActApprovals);
-                      Clear(colActApprovalSource)
+                                      20
+                                  )
+                              )
+                          );
+                          ClearCollect(
+                              colHRActivities,
+                              ForAll(
+                                  FirstN(
+                                      SortByColumns(colHRLogRaw, "ActionDate", SortOrder.Descending),
+                                      20
+                                  ) As log,
+                                  {
+                                      ID: log.ID,
+                                      Module: "HR",
+                                      ActivityType: Coalesce(log.EntityType.Value, "HR"),
+                                      Action: Coalesce(log.ActionType.Value, ""),
+                                      Title: Coalesce(
+                                          log.Title,
+                                          Trim(
+                                              Coalesce(log.ActionType.Value, "") & " · " &
+                                              Coalesce(log.EntityType.Value, "") & " " &
+                                              Coalesce(log.EntityNumber, "")
+                                          )
+                                      ),
+                                      Description: If(
+                                          Coalesce(log.IsSensitive, false),
+                                          If(ar, "التفاصيل مخفية", "Details hidden"),
+                                          Coalesce(log.Details, log.ReasonComment, "")
+                                      ),
+                                      ActorName: Coalesce(log.PerformedByName, ""),
+                                      ActivityDate: Coalesce(log.ActionDate, log.Created),
+                                      RecordType: Coalesce(log.EntityType.Value, ""),
+                                      RecordID: Coalesce(log.EntityID, 0),
+                                      Status: Switch(
+                                          Coalesce(log.Severity.Value, "Info"),
+                                          "Critical", "Critical",
+                                          "Important", "Important",
+                                          "Info"
+                                      ),
+                                      Icon: Switch(
+                                          log.EntityType.Value,
+                                          "Employee", "Users",
+                                          "Leave", "Calendar",
+                                          "Leave Request", "Calendar",
+                                          "Attendance", "Clock",
+                                          "Document", "FileText",
+                                          "Performance", "Performance",
+                                          "Training Request", "Graduation",
+                                          "Training Course", "Graduation",
+                                          "Training Session", "Graduation",
+                                          "Training Certificate", "Graduation",
+                                          "Training Enrollment", "Graduation",
+                                          Coalesce(log.ActionType.Value, "Activity")
+                                      )
+                                  }
+                              )
+                          );
+                          Clear(colHRLogRaw)
+                      )
                   ),
                   Notify(
                       If(gblLanguage = "Arabic", "تعذر تحميل الأنشطة الحديثة", "Could not load recent activities"),
