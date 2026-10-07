@@ -2070,6 +2070,7 @@ Screens:
                                           Status: {Value: "Approved"},
                                           ApprovalDate: Now(),
                                           Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                          ApproverID: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
                                           ManagerComments: note
                                       }
                                   )
@@ -2089,32 +2090,29 @@ Screens:
                                       {
                                           step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
                                           approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
-                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                          approverName: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, ""),
+                                          requesterId: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0),
+                                          employee: LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID),
+                                          approver: LookUp(Employees, ID = Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0))
                                       },
-                                      If(
-                                          IsBlank(step),
-                                          Patch(
-                                              ApprovalHistory,
-                                              Defaults(ApprovalHistory),
-                                              {
-                                                  Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
-                                                  RequestItemID: Text(gblSelectedLeaveRequest.ID),
-                                                  RequestType: {Value: "Leave Request"},
-                                                  RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
-                                                  Decision: {Value: "Approved"},
-                                                  DecisionDate: Now(),
-                                                  Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
-                                                  ApproverID: approverId,
-                                                  Module: {Value: "HR"},
-                                                  Sequence: 1,
-                                                  EntityType: {Value: "LeaveRequest"},
-                                                  Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
-                                                  AssignedDate: Now(),
-                                                  ProjectID: If(projectId > 0, projectId, Blank()),
-                                                  Comments: note
-                                              }
-                                          ),
-                                          Patch(ApprovalHistory, step, {Decision: {Value: "Approved"}, DecisionDate: Now(), Comments: note})
+                                      Patch(
+                                          ApprovalHistory,
+                                          If(IsBlank(step), Defaults(ApprovalHistory), step),
+                                          fxLeaveApproval(
+                                              "Approved",
+                                              "Approved",
+                                              note,
+                                              gblSelectedLeaveRequest.ID,
+                                              requesterId,
+                                              Coalesce(gblSelectedLeaveRequest.Employee.Value, employee.FullName, ""),
+                                              approverId,
+                                              approverName,
+                                              Coalesce(approver.Email, gblCurrentEmployee.Email, gblUser.Email, ""),
+                                              Coalesce(approver.EmployeeNumber, gblCurrentEmployee.EmployeeNumber, ""),
+                                              Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"),
+                                              Coalesce(employee.ProjectID, employee.Project.Id, gblSelectedLeaveRequest.ProjectID, 0),
+                                              If(IsBlank(step), Blank(), step.AssignedDate)
+                                          )
                                       )
                                   );
                                   false,
@@ -2142,6 +2140,7 @@ Screens:
                                           Status: {Value: "Rejected"},
                                           ApprovalDate: Now(),
                                           Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                          ApproverID: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
                                           ManagerComments: note
                                       }
                                   )
@@ -2161,32 +2160,29 @@ Screens:
                                       {
                                           step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
                                           approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
-                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                          approverName: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, ""),
+                                          requesterId: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0),
+                                          employee: LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID),
+                                          approver: LookUp(Employees, ID = Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0))
                                       },
-                                      If(
-                                          IsBlank(step),
-                                          Patch(
-                                              ApprovalHistory,
-                                              Defaults(ApprovalHistory),
-                                              {
-                                                  Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
-                                                  RequestItemID: Text(gblSelectedLeaveRequest.ID),
-                                                  RequestType: {Value: "Leave Request"},
-                                                  RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
-                                                  Decision: {Value: "Rejected"},
-                                                  DecisionDate: Now(),
-                                                  Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
-                                                  ApproverID: approverId,
-                                                  Module: {Value: "HR"},
-                                                  Sequence: 1,
-                                                  EntityType: {Value: "LeaveRequest"},
-                                                  Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
-                                                  AssignedDate: Now(),
-                                                  ProjectID: If(projectId > 0, projectId, Blank()),
-                                                  Comments: note
-                                              }
-                                          ),
-                                          Patch(ApprovalHistory, step, {Decision: {Value: "Rejected"}, DecisionDate: Now(), Comments: note})
+                                      Patch(
+                                          ApprovalHistory,
+                                          If(IsBlank(step), Defaults(ApprovalHistory), step),
+                                          fxLeaveApproval(
+                                              "Rejected",
+                                              "Rejected",
+                                              note,
+                                              gblSelectedLeaveRequest.ID,
+                                              requesterId,
+                                              Coalesce(gblSelectedLeaveRequest.Employee.Value, employee.FullName, ""),
+                                              approverId,
+                                              approverName,
+                                              Coalesce(approver.Email, gblCurrentEmployee.Email, gblUser.Email, ""),
+                                              Coalesce(approver.EmployeeNumber, gblCurrentEmployee.EmployeeNumber, ""),
+                                              Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"),
+                                              Coalesce(employee.ProjectID, employee.Project.Id, gblSelectedLeaveRequest.ProjectID, 0),
+                                              If(IsBlank(step), Blank(), step.AssignedDate)
+                                          )
                                       )
                                   );
                                   false,
@@ -2247,6 +2243,7 @@ Screens:
                                                   StartDate: dteLeaveStart.SelectedDate,
                                                   EndDate: dteLeaveEnd.SelectedDate,
                                                   Substitute: cmbLeaveSubstitute.Selected,
+                                                  SubstituteID: If(IsBlank(cmbLeaveSubstitute.Selected.Id), Blank(), cmbLeaveSubstitute.Selected.Id),
                                                   Reason: txtLeaveReason.Text,
                                                   Duration: CountIf(
                                                       ForAll(Sequence(DateDiff(dteLeaveStart.SelectedDate, dteLeaveEnd.SelectedDate) + 1), DateAdd(dteLeaveStart.SelectedDate, Value - 1)),
@@ -2297,9 +2294,12 @@ Screens:
                                                       StartDate: startDate,
                                                       EndDate: endDate,
                                                       Substitute: cmbLeaveSubstitute.Selected,
+                                                      SubstituteID: If(IsBlank(cmbLeaveSubstitute.Selected.Id), Blank(), cmbLeaveSubstitute.Selected.Id),
                                                       Duration: workingDays,
                                                       Reason: txtLeaveReason.Text,
                                                       Approver: gblCurrentEmployee.Manager,
+                                                      ApproverID: If(Coalesce(gblCurrentEmployee.Manager.Id, 0) > 0, gblCurrentEmployee.Manager.Id, Blank()),
+                                                      ProjectID: If(Coalesce(gblCurrentEmployee.ProjectID, gblCurrentEmployee.Project.Id, gblUser.ProjectID, 0) > 0, Coalesce(gblCurrentEmployee.ProjectID, gblCurrentEmployee.Project.Id, gblUser.ProjectID), Blank()),
                                                       Status: {Value: "Pending"}
                                                   }
                                               )
@@ -2324,26 +2324,28 @@ Screens:
                                                   With(
                                                       {
                                                           approverId: Coalesce(gblSelectedLeaveRequest.Approver.Id, gblCurrentEmployee.Manager.Id, 0),
-                                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                                          approver: LookUp(Employees, ID = Coalesce(gblSelectedLeaveRequest.Approver.Id, gblCurrentEmployee.Manager.Id, 0)),
+                                                          employee: LookUp(Employees, ID = Coalesce(gblSelectedLeaveRequest.EmployeeID, gblUser.ID, 0)),
+                                                          projectId: Coalesce(gblSelectedLeaveRequest.ProjectID, gblCurrentEmployee.ProjectID, gblCurrentEmployee.Project.Id, gblUser.ProjectID, 0)
                                                       },
                                                       Patch(
                                                           ApprovalHistory,
                                                           Defaults(ApprovalHistory),
-                                                          {
-                                                              Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
-                                                              RequestItemID: Text(gblSelectedLeaveRequest.ID),
-                                                              RequestType: {Value: "Leave Request"},
-                                                              RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
-                                                              Decision: {Value: "Pending"},
-                                                              Approver: {Id: approverId, Value: Coalesce(gblSelectedLeaveRequest.Approver.Value, gblCurrentEmployee.Manager.Value, "")},
-                                                              ApproverID: approverId,
-                                                              Module: {Value: "HR"},
-                                                              Sequence: 1,
-                                                              EntityType: {Value: "LeaveRequest"},
-                                                              Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, gblUser.ID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, gblCurrentEmployee.FullName, "")},
-                                                              AssignedDate: Now(),
-                                                              ProjectID: If(projectId > 0, projectId, Blank())
-                                                          }
+                                                          fxLeaveApproval(
+                                                              "Pending",
+                                                              "Submitted",
+                                                              Coalesce(gblSelectedLeaveRequest.Reason, ""),
+                                                              gblSelectedLeaveRequest.ID,
+                                                              Coalesce(gblSelectedLeaveRequest.EmployeeID, gblUser.ID, 0),
+                                                              Coalesce(gblSelectedLeaveRequest.Employee.Value, gblCurrentEmployee.FullName, ""),
+                                                              approverId,
+                                                              Coalesce(gblSelectedLeaveRequest.Approver.Value, gblCurrentEmployee.Manager.Value, approver.FullName, ""),
+                                                              Coalesce(approver.Email, ""),
+                                                              Coalesce(approver.EmployeeNumber, ""),
+                                                              Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"),
+                                                              Coalesce(gblSelectedLeaveRequest.ProjectID, projectId, employee.ProjectID, employee.Project.Id, 0),
+                                                              Now()
+                                                          )
                                                       )
                                                   );
                                                   false,

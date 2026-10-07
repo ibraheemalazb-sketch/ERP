@@ -492,6 +492,44 @@ fnLogHR(
     )
 };
 
+// One ApprovalHistory row for a leave request. Choice labels match the list:
+// Action Submitted / Approved / Rejected, ApprovalLevel "Level 1",
+// ApprovalType "Manager", Priority "Normal".
+
+fxLeaveApproval(
+    pDecision: Text, pAction: Text, pComments: Text, pItemID: Number,
+    pRequesterID: Number, pRequesterName: Text,
+    pApproverID: Number, pApproverName: Text, pApproverEmail: Text, pApproverNo: Text,
+    pLeaveType: Text, pProjectID: Number, pAssigned: DateTime
+): Record = {
+    Title: Left(Coalesce(pRequesterName, "") & " - " & Coalesce(pLeaveType, "Leave"), 255),
+    RequestItemID: Text(pItemID),
+    RequestType: {Value: "Leave Request"},
+    Decision: {Value: pDecision},
+    Comments: pComments,
+    DecisionDate: If(pDecision = "Pending", Blank(), Now()),
+    Approver: {Id: pApproverID, Value: Coalesce(pApproverName, "")},
+    Requester: {Id: pRequesterID, Value: Coalesce(pRequesterName, "")},
+    ApprovalLevel: {Value: "Level 1"},
+    Sequence: 1,
+    AssignedDate: Coalesce(pAssigned, Now()),
+    RequestNumber: "LV-" & Text(pItemID, "000"),
+    ApprovalInstanceID: "LV-" & Text(pItemID, "000") & "-1",
+    Module: {Value: "HR"},
+    EntityType: {Value: "LeaveRequest"},
+    Action: {Value: pAction},
+    ApprovalType: {Value: "Manager"},
+    ActionDate: Now(),
+    ApproverEmail: pApproverEmail,
+    ApproverNo: pApproverNo,
+    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID, Blank()),
+    ApproverID: If(Coalesce(pApproverID, 0) > 0, pApproverID, Blank()),
+    RequesterID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID, Blank()),
+    Month: Text(Now(), "yyyy-MM"),
+    Priority: {Value: "Normal"},
+    RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID, Blank())
+};
+
 // In-app notification for someone other than the person who performed the HR action.
 
 fnHRNotify(

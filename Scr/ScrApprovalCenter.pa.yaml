@@ -2185,7 +2185,13 @@ Screens:
                                   {
                                       Decision: {Value: "Rejected"},
                                       DecisionDate: Now(),
-                                      Comments: note
+                                      Comments: note,
+                                      Action: {Value: "Rejected"},
+                                      ActionDate: Now(),
+                                      Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                      ApproverID: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                      ApproverEmail: Coalesce(gblCurrentEmployee.Email, gblUser.Email, ""),
+                                      ApproverNo: Coalesce(gblCurrentEmployee.EmployeeNumber, "")
                                   }
                               )
                           },
@@ -2205,7 +2211,7 @@ Screens:
                           If(
                               saved.EntityType.Value = "LeaveRequest",
                               With(
-                                  {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID))},
+                                  {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID)), employee: LookUp(Employees, ID = LookUp(LeaveRequests, ID = Value(saved.RequestItemID)).EmployeeID)},
                                   If(
                                       IsBlank(leave),
                                       Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر العثور على طلب الإجازة.", "The decision was saved. The leave request could not be found."), NotificationType.Warning),
@@ -2216,8 +2222,29 @@ Screens:
                                               {
                                                   Status: {Value: "Rejected"},
                                                   ApprovalDate: Now(),
+                                                  Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                  ApproverID: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
                                                   ManagerComments: note
                                               }
+                                          );
+                                          Patch(
+                                              ApprovalHistory,
+                                              saved,
+                                              fxLeaveApproval(
+                                                  "Rejected",
+                                                  "Rejected",
+                                                  note,
+                                                  leave.ID,
+                                                  Coalesce(leave.EmployeeID, saved.RequesterID, 0),
+                                                  Coalesce(leave.Employee.Value, ""),
+                                                  Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                  Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, ""),
+                                                  Coalesce(gblCurrentEmployee.Email, gblUser.Email, ""),
+                                                  Coalesce(gblCurrentEmployee.EmployeeNumber, ""),
+                                                  Coalesce(leave.LeaveType.Value, "Leave"),
+                                                  Coalesce(leave.ProjectID, employee.ProjectID, employee.Project.Id, saved.ProjectID, 0),
+                                                  saved.AssignedDate
+                                              )
                                           );
                                           fnLogHR("Leave Request", leave.ID, Text(leave.ID), "Rejected", "Important", Coalesce(LookUp(Employees, ID = leave.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Rejected", Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), note, false);
                                           fnHRNotify(Coalesce(leave.EmployeeID, 0), Coalesce(leave.Employee.Value, ""), If(gblLanguage = "Arabic", "تم رفض الإجازة", "Leave rejected"), Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, "") & If(IsBlank(note), "", " · " & note), "Leave Request", leave.ID, "Leave Request");
@@ -2238,7 +2265,13 @@ Screens:
                                   {
                                       Decision: {Value: "Approved"},
                                       DecisionDate: Now(),
-                                      Comments: note
+                                      Comments: note,
+                                      Action: {Value: "Approved"},
+                                      ActionDate: Now(),
+                                      Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                      ApproverID: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                      ApproverEmail: Coalesce(gblCurrentEmployee.Email, gblUser.Email, ""),
+                                      ApproverNo: Coalesce(gblCurrentEmployee.EmployeeNumber, "")
                                   }
                               )
                           },
@@ -2258,7 +2291,7 @@ Screens:
                           If(
                               saved.EntityType.Value = "LeaveRequest",
                               With(
-                                  {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID))},
+                                  {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID)), employee: LookUp(Employees, ID = LookUp(LeaveRequests, ID = Value(saved.RequestItemID)).EmployeeID)},
                                   If(
                                       IsBlank(leave),
                                       Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر العثور على طلب الإجازة.", "The decision was saved. The leave request could not be found."), NotificationType.Warning),
@@ -2269,8 +2302,29 @@ Screens:
                                               {
                                                   Status: {Value: "Approved"},
                                                   ApprovalDate: Now(),
+                                                  Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                  ApproverID: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
                                                   ManagerComments: note
                                               }
+                                          );
+                                          Patch(
+                                              ApprovalHistory,
+                                              saved,
+                                              fxLeaveApproval(
+                                                  "Approved",
+                                                  "Approved",
+                                                  note,
+                                                  leave.ID,
+                                                  Coalesce(leave.EmployeeID, saved.RequesterID, 0),
+                                                  Coalesce(leave.Employee.Value, ""),
+                                                  Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                  Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, ""),
+                                                  Coalesce(gblCurrentEmployee.Email, gblUser.Email, ""),
+                                                  Coalesce(gblCurrentEmployee.EmployeeNumber, ""),
+                                                  Coalesce(leave.LeaveType.Value, "Leave"),
+                                                  Coalesce(leave.ProjectID, employee.ProjectID, employee.Project.Id, saved.ProjectID, 0),
+                                                  saved.AssignedDate
+                                              )
                                           );
                                           fnLogHR("Leave Request", leave.ID, Text(leave.ID), "Approved", "Important", Coalesce(LookUp(Employees, ID = leave.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Approved", Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), note, false);
                                           fnHRNotify(Coalesce(leave.EmployeeID, 0), Coalesce(leave.Employee.Value, ""), If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة", "Leave approved"), Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, "") & If(IsBlank(note), "", " · " & note), "Leave Request", leave.ID, "Leave Request");
