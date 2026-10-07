@@ -152,7 +152,7 @@ ComponentDefinitions:
       SubTitleWidth:
         PropertyKind: Input
         DisplayName: SubTitleWidth
-        Description: Kept for existing screens. Crumbs share width instead of a fixed size.
+        Description: Kept for existing screens. The subtitle crumb sizes itself from the text.
         DataType: Number
         Default: =120
       Theme:
@@ -164,7 +164,7 @@ ComponentDefinitions:
       TitleWidth:
         PropertyKind: Input
         DisplayName: TitleWidth
-        Description: Kept for existing screens. Crumbs share width instead of a fixed size.
+        Description: Kept for existing screens. The screen crumb sizes itself from the text.
         DataType: Number
         Default: =160
     Properties:
@@ -202,6 +202,7 @@ ComponentDefinitions:
                   AlignInContainer: =AlignInContainer.Center
                   DropShadow: =DropShadow.None
                   Fill: =Color.Transparent
+                  FillPortions: =1
                   Height: =Parent.Height
                   LayoutAlignItems: =LayoutAlignItems.Center
                   LayoutDirection: =LayoutDirection.Horizontal
@@ -278,6 +279,32 @@ ComponentDefinitions:
                         RadiusBottomRight: =0
                         RadiusTopLeft: =0
                         RadiusTopRight: =0
+                        FillPortions: =0
+                        Width: |-
+                          =With(
+                              {
+                                  factor: If(gblLanguage = "Arabic", 0.85, 0.7),
+                                  gap: gblTheme.Spacing.XS,
+                                  showModule: !IsBlank(cmpTopBar.ModuleName),
+                                  showTitle: And(
+                                      !IsBlank(cmpTopBar.ScreenTitle),
+                                      cmpTopBar.ScreenTitle <> cmpTopBar.ModuleName
+                                  ),
+                                  showSub: And(
+                                      cmpTopBar.ShowBreadcrumb,
+                                      !IsBlank(cmpTopBar.ScreenSubtitle)
+                                  )
+                              },
+                              With(
+                                  {
+                                      moduleW: If(showModule, Len(cmpTopBar.ModuleName) * gblTheme.Typography.Navigation * factor + 4, 0),
+                                      titleW: If(showTitle, Len(cmpTopBar.ScreenTitle) * gblTheme.Typography.Navigation * factor + 22, 0),
+                                      subW: If(showSub, Len(cmpTopBar.ScreenSubtitle) * gblTheme.Typography.NavigationSmall * factor + 22, 0),
+                                      n: If(showModule, 1, 0) + If(Or(showTitle, showSub), 1, 0) + If(showTitle, 1, 0) + If(And(showTitle, showSub), 1, 0) + If(showSub, 1, 0)
+                                  },
+                                  moduleW + titleW + subW + If(Or(showTitle, showSub), 16, 0) + If(And(showTitle, showSub), 16, 0) + gap * Max(0, n - 1)
+                              )
+                          )
                       Children:
                         - conCrumbModule:
                             Control: GroupContainer@1.5.0
@@ -286,14 +313,16 @@ ComponentDefinitions:
                               AlignInContainer: =AlignInContainer.Center
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
+                              FillPortions: =0
                               Height: =32
                               LayoutMinHeight: =0
-                              LayoutMinWidth: =48
+                              LayoutMinWidth: =0
                               RadiusBottomLeft: =gblTheme.Radius.Medium
                               RadiusBottomRight: =gblTheme.Radius.Medium
                               RadiusTopLeft: =gblTheme.Radius.Medium
                               RadiusTopRight: =gblTheme.Radius.Medium
                               Visible: =!IsBlank(cmpTopBar.ModuleName)
+                              Width: =Len(Coalesce(cmpTopBar.ModuleName, "")) * gblTheme.Typography.Navigation * If(gblLanguage = "Arabic", 0.85, 0.7) + 4
                             Children:
                               - lblTopBarModule:
                                   Control: Label@2.5.1
@@ -389,10 +418,10 @@ ComponentDefinitions:
                               AlignInContainer: =AlignInContainer.Center
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
-                              FillPortions: =2
+                              FillPortions: =0
                               Height: =32
                               LayoutMinHeight: =0
-                              LayoutMinWidth: =48
+                              LayoutMinWidth: =0
                               RadiusBottomLeft: =gblTheme.Radius.Medium
                               RadiusBottomRight: =gblTheme.Radius.Medium
                               RadiusTopLeft: =gblTheme.Radius.Medium
@@ -402,6 +431,7 @@ ComponentDefinitions:
                                     !IsBlank(cmpTopBar.ScreenTitle),
                                     cmpTopBar.ScreenTitle <> cmpTopBar.ModuleName
                                 )
+                              Width: =Len(Coalesce(cmpTopBar.ScreenTitle, "")) * gblTheme.Typography.Navigation * If(gblLanguage = "Arabic", 0.85, 0.7) + 22
                             Children:
                               - imgCrumbTitle:
                                   Control: Image@2.2.3
@@ -498,10 +528,10 @@ ComponentDefinitions:
                               AlignInContainer: =AlignInContainer.Center
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
-                              FillPortions: =2
+                              FillPortions: =0
                               Height: =32
                               LayoutMinHeight: =0
-                              LayoutMinWidth: =48
+                              LayoutMinWidth: =0
                               RadiusBottomLeft: =gblTheme.Radius.Medium
                               RadiusBottomRight: =gblTheme.Radius.Medium
                               RadiusTopLeft: =gblTheme.Radius.Medium
@@ -511,6 +541,7 @@ ComponentDefinitions:
                                     cmpTopBar.ShowBreadcrumb,
                                     !IsBlank(cmpTopBar.ScreenSubtitle)
                                 )
+                              Width: =Len(Coalesce(cmpTopBar.ScreenSubtitle, "")) * gblTheme.Typography.NavigationSmall * If(gblLanguage = "Arabic", 0.85, 0.7) + 22
                             Children:
                               - imgCrumbSub:
                                   Control: Image@2.2.3
