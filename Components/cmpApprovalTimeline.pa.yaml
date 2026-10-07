@@ -1,0 +1,196 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpApprovalTimeline:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      RequestItemID:
+        PropertyKind: Input
+        Description: ID of the request; compared as text because RequestItemID is a text column
+        DataType: Number
+        Default: =0
+      RequestType:
+        PropertyKind: Input
+        Description: ApprovalHistory.RequestType choice text (Payment Request / Payroll Run / ...)
+        DataType: Text
+        Default: ="Payment Request"
+      StepCount:
+        PropertyKind: Output
+        Description: Number of approval rows
+        DataType: Number
+    Properties:
+      Height: =360
+      StepCount: =galApprTimeline.AllItemsCount
+      Width: =420
+    Children:
+      - conApprRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =sp1
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Width: =Parent.Width
+          Children:
+            - lblApprHeading:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =alignStart
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.Text
+                  Font: =fontBase
+                  FontWeight: =FontWeight.Semibold
+                  Height: =28
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Role: =TextRole.Heading3
+                  Size: =fsSection
+                  Text: =fnT("appr.title", "Approval history")
+                  Wrap: =false
+            - lblApprEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =alignStart
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.TextSecondary
+                  Font: =fontBase
+                  Height: =44
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =fsBody
+                  Text: =fnT("appr.empty", "No approval steps yet. Submit the request to start the approval chain.")
+                  Visible: =galApprTimeline.AllItemsCount = 0
+            - galApprTimeline:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =fnT("appr.title", "Approval history")
+                  ItemAccessibleLabel: =Coalesce(ThisItem.ApprovalLevel.Value, "") & ", " & ThisItem.Approver.Value & ", " & Coalesce(ThisItem.Decision.Value, apprPendingDecision) & ", " & Text(Coalesce(ThisItem.DecisionDate, ThisItem.AssignedDate), "dd mmm yyyy")
+                  Items: |-
+                    =Sort(
+                        Filter(
+                            ApprovalHistory,
+                            RequestType.Value = cmpApprovalTimeline.RequestType,
+                            RequestItemID = Text(cmpApprovalTimeline.RequestItemID)
+                        ),
+                        Sequence,
+                        SortOrder.Ascending
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  Selectable: =false
+                  TemplatePadding: =0
+                  TemplateSize: =92
+                Children:
+                  - rectApprLine:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =FinTheme.Border
+                        Height: =Parent.TemplateHeight - 32
+                        Width: =2
+                        X: =If(isRTL, Parent.TemplateWidth - 14 - 1, 14 - 1)
+                        Y: =32
+                  - conApprMarker:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fnToneBg(fnStatusTone("ApprovalDecision", Coalesce(ThisItem.Decision.Value, apprPendingDecision)))
+                        Height: =28
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        RadiusBottomLeft: =14
+                        RadiusBottomRight: =14
+                        RadiusTopLeft: =14
+                        RadiusTopRight: =14
+                        Width: =28
+                        X: =If(isRTL, Parent.TemplateWidth - 28, 0)
+                        Y: =2
+                      Children:
+                        - icoApprMarker:
+                            Control: Classic/Icon@2.5.0
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              Color: =fnToneFg(fnStatusTone("ApprovalDecision", Coalesce(ThisItem.Decision.Value, apprPendingDecision)))
+                              FocusedBorderColor: =FinTheme.Focus
+                              Height: =16
+                              Icon: =Coalesce(LookUp(tblStatusMap, Domain = "ApprovalDecision" && Status = Coalesce(ThisItem.Decision.Value, apprPendingDecision), Ico), LookUp(tblToneIcon, Tone = fnStatusTone("ApprovalDecision", Coalesce(ThisItem.Decision.Value, apprPendingDecision)), Ico))
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =16
+                  - lblApprWho:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =22
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =Coalesce(ThisItem.ApprovalLevel.Value, fnT("appr.level", "Level") & " " & ThisItem.Sequence) & "  |  " & ThisItem.Approver.Value
+                        Tooltip: =Self.Text
+                        Width: =Parent.TemplateWidth - 40
+                        Wrap: =false
+                        X: =If(isRTL, 0, 40)
+                  - lblApprDecision:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =fnToneText(fnStatusTone("ApprovalDecision", Coalesce(ThisItem.Decision.Value, apprPendingDecision)))
+                        Font: =fontBase
+                        Height: =18
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =fnT("status." & Coalesce(ThisItem.Decision.Value, apprPendingDecision), Coalesce(ThisItem.Decision.Value, apprPendingDecision)) & "  |  " & Text(Coalesce(ThisItem.DecisionDate, ThisItem.ActionDate, ThisItem.AssignedDate), "dd mmm yyyy hh:mm", appLocale)
+                        Width: =Parent.TemplateWidth - 40
+                        Wrap: =false
+                        X: =If(isRTL, 0, 40)
+                        Y: =22
+                  - lblApprComment:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =ThisItem.Comments
+                        Tooltip: =ThisItem.Comments
+                        VerticalAlign: =VerticalAlign.Top
+                        Visible: =!IsBlank(ThisItem.Comments)
+                        Width: =Parent.TemplateWidth - 40
+                        X: =If(isRTL, 0, 40)
+                        Y: =42

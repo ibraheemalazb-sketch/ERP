@@ -1,0 +1,330 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpFilterBar:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      ActiveCount:
+        PropertyKind: Output
+        Description: Number of active filters
+        DataType: Number
+      DesiredHeight:
+        PropertyKind: Output
+        Description: Set the instance Height to this
+        DataType: Number
+      OnChange:
+        PropertyKind: Event
+        Description: 'Any filter changed: host re-queries (delegable Filter on indexed columns)'
+        ReturnType: None
+        Default: =""
+      OnClear:
+        PropertyKind: Event
+        Description: Clear all selected (component already reset its controls)
+        ReturnType: None
+        Default: =""
+      OnToggleSheet:
+        PropertyKind: Event
+        Description: 'Mobile Filters button: host does UpdateContext({locFilterSheet: !locFilterSheet})'
+        ReturnType: None
+        Default: =""
+      PeriodOptions:
+        PropertyKind: Input
+        Description: '{Key: PeriodKey, Value: label}'
+        DataType: Table
+        Default: =tblPeriods
+      ProjectOptions:
+        PropertyKind: Input
+        Description: '{Key: ProjectID, Value: label}; pass colProjectOptions'
+        DataType: Table
+        Default: |-
+          =Table({Key: 0, Value: ""})
+      SearchHint:
+        PropertyKind: Input
+        Description: Hint text. Search must target ONE indexed text column (StartsWith)
+        DataType: Text
+        Default: ="Search by request number"
+      SearchText:
+        PropertyKind: Output
+        Description: Trimmed search text (debounced)
+        DataType: Text
+      SelectedPeriodKey:
+        PropertyKind: Output
+        Description: Selected PeriodKey or blank for all
+        DataType: Number
+      SelectedProjectKey:
+        PropertyKind: Output
+        Description: Selected ProjectID or blank for all
+        DataType: Number
+      SelectedStatus:
+        PropertyKind: Output
+        Description: Selected status or blank for all
+        DataType: Text
+      SheetOpen:
+        PropertyKind: Input
+        Description: 'Mobile only: filter sheet expanded (host toggles in OnToggleSheet)'
+        DataType: Boolean
+        Default: =false
+      ShowPeriod:
+        PropertyKind: Input
+        Description: Show period selector
+        DataType: Boolean
+        Default: =true
+      ShowProject:
+        PropertyKind: Input
+        Description: Show project selector
+        DataType: Boolean
+        Default: =true
+      ShowSearch:
+        PropertyKind: Input
+        Description: Show the search box
+        DataType: Boolean
+        Default: =true
+      ShowStatus:
+        PropertyKind: Input
+        Description: Show status selector
+        DataType: Boolean
+        Default: =true
+      StatusOptions:
+        PropertyKind: Input
+        Description: '{Value} rows. Pass the real choices, e.g. Choices([@PaymentRequests].RequestStatus); never hard-code them'
+        DataType: Table
+        Default: |-
+          =FirstN(Table({Value: ""}), 0)
+    Properties:
+      ActiveCount: =If(IsBlank(cmpFilterBar.SearchText), 0, 1) + If(IsBlank(cmpFilterBar.SelectedStatus), 0, 1) + If(IsBlank(cmpFilterBar.SelectedPeriodKey), 0, 1) + If(IsBlank(cmpFilterBar.SelectedProjectKey), 0, 1)
+      DesiredHeight: =If(isMobile, sp1 + touchMin + sp1 + touchMin + If(cmpFilterBar.SheetOpen, ((If(cmpFilterBar.ShowStatus, 1, 0) + If(cmpFilterBar.ShowPeriod, 1, 0) + If(cmpFilterBar.ShowProject, 1, 0)) + 1) * (touchMin + sp1), 0) + sp1, sp1 * 2 + touchMin)
+      Height: =cmpFilterBar.DesiredHeight
+      OnReset: =Reset(txtFltSearch); Reset(drpFltStatus); Reset(drpFltPeriod); Reset(drpFltProject)
+      SearchText: =Trim(txtFltSearch.Text)
+      SelectedPeriodKey: =If(Coalesce(drpFltPeriod.Selected.Key, 0) = 0, Blank(), drpFltPeriod.Selected.Key)
+      SelectedProjectKey: =If(Coalesce(drpFltProject.Selected.Key, 0) = 0, Blank(), drpFltProject.Selected.Key)
+      SelectedStatus: =If(drpFltStatus.Selected.Value = fnT("flt.allStatuses", "All statuses"), Blank(), drpFltStatus.Selected.Value)
+      Width: =960
+    Children:
+      - conFltRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Height: =Parent.Height
+            LayoutAlignItems: =If(isMobile, LayoutAlignItems.Stretch, LayoutAlignItems.Center)
+            LayoutDirection: =If(isMobile, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+            LayoutGap: =sp1
+            PaddingBottom: =8
+            PaddingTop: =8
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Width: =Parent.Width
+          Children:
+            - txtFltSearch:
+                Control: Classic/TextInput@2.3.2
+                Properties:
+                  AccessibleLabel: =cmpFilterBar.SearchHint
+                  Align: =alignStart
+                  AlignInContainer: =If(isMobile, AlignInContainer.Stretch, AlignInContainer.Center)
+                  BorderColor: =FinTheme.Border
+                  BorderThickness: =1
+                  Clear: =true
+                  Color: =FinTheme.Text
+                  Default: =""
+                  DelayOutput: =true
+                  Fill: =FinTheme.Surface
+                  FillPortions: =If(isMobile, 0, 1)
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HintText: =cmpFilterBar.SearchHint
+                  HoverBorderColor: =FinTheme.Primary
+                  HoverFill: =FinTheme.Surface
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnChange: =cmpFilterBar.OnChange()
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Size: =fsBody
+                  Visible: =cmpFilterBar.ShowSearch
+                  Width: =260
+            - btnFltToggle:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  AlignInContainer: =If(isMobile, AlignInContainer.Stretch, AlignInContainer.Center)
+                  BorderColor: =FinTheme.Border
+                  BorderThickness: =1
+                  Color: =FinTheme.Text
+                  DisabledBorderColor: =FinTheme.Border
+                  DisabledColor: =FinTheme.TextSecondary
+                  DisabledFill: =FinTheme.Border
+                  Fill: =FinTheme.Surface
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HoverBorderColor: =FinTheme.Primary
+                  HoverColor: =FinTheme.Text
+                  HoverFill: =FinTheme.RowHover
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =cmpFilterBar.OnToggleSheet()
+                  PaddingBottom: =0
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =0
+                  PressedBorderColor: =FinTheme.Primary
+                  PressedColor: =FinTheme.Text
+                  PressedFill: =FinTheme.RowSelected
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Size: =fsBody
+                  Text: =fnT("flt.filters", "Filters") & If(cmpFilterBar.ActiveCount > 0, " (" & cmpFilterBar.ActiveCount & ")", "") & " " & If(cmpFilterBar.SheetOpen, "-", "+")
+                  Tooltip: =If(cmpFilterBar.SheetOpen, fnT("flt.hide", "Hide filters"), fnT("flt.show", "Show filters"))
+                  Visible: =isMobile
+                  Width: =120
+            - drpFltStatus:
+                Control: Classic/DropDown@2.3.1
+                Properties:
+                  AccessibleLabel: =fnT("flt.status", "Status")
+                  AlignInContainer: =If(isMobile, AlignInContainer.Stretch, AlignInContainer.Center)
+                  BorderColor: =FinTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =FinTheme.Surface
+                  ChevronFill: =FinTheme.TextSecondary
+                  Color: =FinTheme.Text
+                  Fill: =FinTheme.Surface
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HoverBorderColor: =FinTheme.Primary
+                  HoverColor: =FinTheme.Text
+                  HoverFill: =FinTheme.RowHover
+                  Items: |-
+                    =Table({Value: fnT("flt.allStatuses", "All statuses")}, cmpFilterBar.StatusOptions)
+                  Items.Value: =Value
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnChange: =cmpFilterBar.OnChange()
+                  PaddingLeft: =8
+                  PressedColor: =FinTheme.Text
+                  PressedFill: =FinTheme.RowSelected
+                  SelectionColor: =FinTheme.OnPrimary
+                  SelectionFill: =FinTheme.Primary
+                  Size: =fsBody
+                  Visible: =cmpFilterBar.ShowStatus && (!isMobile || cmpFilterBar.SheetOpen)
+                  Width: =170
+            - drpFltPeriod:
+                Control: Classic/DropDown@2.3.1
+                Properties:
+                  AccessibleLabel: =fnT("flt.period", "Period")
+                  AlignInContainer: =If(isMobile, AlignInContainer.Stretch, AlignInContainer.Center)
+                  BorderColor: =FinTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =FinTheme.Surface
+                  ChevronFill: =FinTheme.TextSecondary
+                  Color: =FinTheme.Text
+                  Fill: =FinTheme.Surface
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HoverBorderColor: =FinTheme.Primary
+                  HoverColor: =FinTheme.Text
+                  HoverFill: =FinTheme.RowHover
+                  Items: |-
+                    =Table({Key: 0, Value: fnT("flt.allPeriods", "All periods")}, cmpFilterBar.PeriodOptions)
+                  Items.Value: =Value
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnChange: =cmpFilterBar.OnChange()
+                  PaddingLeft: =8
+                  PressedColor: =FinTheme.Text
+                  PressedFill: =FinTheme.RowSelected
+                  SelectionColor: =FinTheme.OnPrimary
+                  SelectionFill: =FinTheme.Primary
+                  Size: =fsBody
+                  Visible: =cmpFilterBar.ShowPeriod && (!isMobile || cmpFilterBar.SheetOpen)
+                  Width: =150
+            - drpFltProject:
+                Control: Classic/DropDown@2.3.1
+                Properties:
+                  AccessibleLabel: =fnT("flt.project", "Project")
+                  AlignInContainer: =If(isMobile, AlignInContainer.Stretch, AlignInContainer.Center)
+                  BorderColor: =FinTheme.Border
+                  BorderThickness: =1
+                  ChevronBackground: =FinTheme.Surface
+                  ChevronFill: =FinTheme.TextSecondary
+                  Color: =FinTheme.Text
+                  Fill: =FinTheme.Surface
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HoverBorderColor: =FinTheme.Primary
+                  HoverColor: =FinTheme.Text
+                  HoverFill: =FinTheme.RowHover
+                  Items: |-
+                    =Table({Key: 0, Value: fnT("flt.allProjects", "All projects")}, cmpFilterBar.ProjectOptions)
+                  Items.Value: =Value
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnChange: =cmpFilterBar.OnChange()
+                  PaddingLeft: =8
+                  PressedColor: =FinTheme.Text
+                  PressedFill: =FinTheme.RowSelected
+                  SelectionColor: =FinTheme.OnPrimary
+                  SelectionFill: =FinTheme.Primary
+                  Size: =fsBody
+                  Visible: =cmpFilterBar.ShowProject && (!isMobile || cmpFilterBar.SheetOpen)
+                  Width: =220
+            - btnFltClear:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  AlignInContainer: =If(isMobile, AlignInContainer.Stretch, AlignInContainer.Center)
+                  BorderColor: =RGBA(0, 0, 0, 0)
+                  BorderThickness: =0
+                  Color: =FinTheme.Primary
+                  DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                  DisabledColor: =FinTheme.TextSecondary
+                  DisabledFill: =RGBA(0, 0, 0, 0)
+                  Fill: =RGBA(0, 0, 0, 0)
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HoverBorderColor: =RGBA(0, 0, 0, 0)
+                  HoverColor: =FinTheme.Primary
+                  HoverFill: =FinTheme.RowHover
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =Reset(txtFltSearch); Reset(drpFltStatus); Reset(drpFltPeriod); Reset(drpFltProject); cmpFilterBar.OnClear()
+                  PaddingBottom: =0
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =0
+                  PressedBorderColor: =RGBA(0, 0, 0, 0)
+                  PressedColor: =FinTheme.Primary
+                  PressedFill: =FinTheme.RowSelected
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Size: =fsBody
+                  Text: =fnT("flt.clearAll", "Clear all")
+                  Tooltip: =fnT("flt.clearAll", "Clear all filters")
+                  Visible: =cmpFilterBar.ActiveCount > 0 && (!isMobile || cmpFilterBar.SheetOpen)
+                  Width: =110

@@ -1,0 +1,128 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpMoney:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      AlignToEnd:
+        PropertyKind: Input
+        Description: true = number alignment (right in LTR, left in RTL)
+        DataType: Boolean
+        Default: =true
+      Amount:
+        PropertyKind: Input
+        Description: Amount in its original currency
+        DataType: Number
+        Default: =1234.5
+      AmountUSD:
+        PropertyKind: Input
+        Description: Stored AmountUSD (written by flow). Leave blank to show an estimate from colFxRates
+        DataType: Number
+        Default: =Blank()
+      Bold:
+        PropertyKind: Input
+        Description: Bold main amount
+        DataType: Boolean
+        Default: =false
+      Currency:
+        PropertyKind: Input
+        Description: USD | YER | SAR (Currency.Value)
+        DataType: Text
+        Default: ="USD"
+      DesiredHeight:
+        PropertyKind: Output
+        Description: Height needed for 1 or 2 lines
+        DataType: Number
+      FontSize:
+        PropertyKind: Input
+        Description: Text size of the main amount
+        DataType: Number
+        Default: =fsBody
+      FormattedText:
+        PropertyKind: Output
+        Description: e.g. -1,234.50 YER
+        DataType: Text
+      FormattedUSD:
+        PropertyKind: Output
+        Description: USD line text
+        DataType: Text
+      ShowUSD:
+        PropertyKind: Input
+        Description: Show the USD line under the amount (use on mobile instead of hover)
+        DataType: Boolean
+        Default: =false
+      USDValue:
+        PropertyKind: Output
+        Description: Stored USD, or estimate when not stored
+        DataType: Number
+    Properties:
+      DesiredHeight: =If(cmpMoney.ShowUSD && cmpMoney.Currency <> "USD" && !IsBlank(cmpMoney.USDValue), cmpMoney.FontSize + 8 + 18, cmpMoney.FontSize + 10)
+      FormattedText: =fnMoney(cmpMoney.Amount, cmpMoney.Currency)
+      FormattedUSD: |-
+        =If(
+            IsBlank(cmpMoney.USDValue), "",
+            "~ " & fnMoney(cmpMoney.USDValue, "USD") & If(IsBlank(cmpMoney.AmountUSD), " (" & fnT("money.estimate", "est.") & ")", "")
+        )
+      Height: =cmpMoney.DesiredHeight
+      USDValue: =If(cmpMoney.Currency = "USD", cmpMoney.Amount, Coalesce(cmpMoney.AmountUSD, fnToUSD(cmpMoney.Amount, cmpMoney.Currency)))
+      Width: =180
+    Children:
+      - conMoney:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutJustifyContent: =LayoutJustifyContent.Center
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Width: =Parent.Width
+          Children:
+            - lblMoneyMain:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(cmpMoney.AlignToEnd, alignNumber, alignStart)
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =fnAmountColor(cmpMoney.Amount)
+                  Font: =fontBase
+                  FontWeight: =If(cmpMoney.Bold, FontWeight.Bold, FontWeight.Normal)
+                  Height: =cmpMoney.FontSize + 10
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =cmpMoney.FontSize
+                  Text: =cmpMoney.FormattedText
+                  Tooltip: =If(cmpMoney.Currency <> "USD" && !IsBlank(cmpMoney.USDValue), cmpMoney.FormattedUSD, "")
+                  Wrap: =false
+            - lblMoneyUSD:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(cmpMoney.AlignToEnd, alignNumber, alignStart)
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.TextSecondary
+                  Font: =fontBase
+                  Height: =18
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =fsCaption
+                  Text: =cmpMoney.FormattedUSD
+                  Visible: =cmpMoney.ShowUSD && cmpMoney.Currency <> "USD" && !IsBlank(cmpMoney.USDValue)
+                  Wrap: =false

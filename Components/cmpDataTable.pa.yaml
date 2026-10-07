@@ -1,0 +1,912 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpDataTable:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      ClickedSortKey:
+        PropertyKind: Output
+        Description: Column key of the header the user just selected (read in OnSortChange)
+        DataType: Text
+      ColumnConfig:
+        PropertyKind: Input
+        Description: 'Visible columns {Key: Primary|C1|C2|C3|C4|Util|Amount|Status, Header, Portion, ShowOnTablet, Sortable}'
+        DataType: Table
+        Default: |-
+          =Table(
+              {Key: "Primary", Header: "Request", Portion: 2, ShowOnTablet: true, Sortable: true},
+              {Key: "C1", Header: "Project", Portion: 1.5, ShowOnTablet: true, Sortable: false},
+              {Key: "C2", Header: "Date", Portion: 1.2, ShowOnTablet: false, Sortable: true},
+              {Key: "Util", Header: "Utilization", Portion: 1.6, ShowOnTablet: false, Sortable: false},
+              {Key: "Amount", Header: "Amount", Portion: 1.5, ShowOnTablet: true, Sortable: true},
+              {Key: "Status", Header: "Status", Portion: 1.4, ShowOnTablet: true, Sortable: false}
+          )
+      EmptyText:
+        PropertyKind: Input
+        Description: Shown when there are no rows
+        DataType: Text
+        Default: ="No records for the current filters."
+      HasMore:
+        PropertyKind: Input
+        Description: 'Another page exists (host: CountRows(page) = page size)'
+        DataType: Boolean
+        Default: =false
+      Loading:
+        PropertyKind: Input
+        Description: Host is loading
+        DataType: Boolean
+        Default: =false
+      OnNextPage:
+        PropertyKind: Event
+        Description: Next page
+        ReturnType: None
+        Default: =""
+      OnPrevPage:
+        PropertyKind: Event
+        Description: Previous page
+        ReturnType: None
+        Default: =""
+      OnRowSelect:
+        PropertyKind: Event
+        Description: 'Row/card selected: host opens detail (side pane on desktop, screen on mobile)'
+        ReturnType: None
+        Default: =""
+      OnSortChange:
+        PropertyKind: Event
+        Description: 'Sortable header selected: host updates SortColumn/SortDescending and re-sorts'
+        ReturnType: None
+        Default: =""
+      PageNumber:
+        PropertyKind: Input
+        Description: Current page (host state)
+        DataType: Number
+        Default: =1
+      RowItems:
+        PropertyKind: Input
+        Description: Rows in the fixed schema {RowID, Primary, Secondary, C1..C4, Util, Amount, Currency, AmountUSD, Status, StatusDomain}. Build it from an already-paged collection (never a raw SharePoint list)
+        DataType: Table
+        Default: |-
+          =Table(
+              {RowID: 1, Primary: "PRN-2026-0001", Secondary: "Office rent", C1: "PRJ-001", C2: "04 Oct 2026", C3: "", C4: "",
+               Util: 0.82, Amount: 1250.5, Currency: "USD", AmountUSD: 1250.5, Status: "Pending", StatusDomain: "PaymentRequest"},
+              {RowID: 2, Primary: "PRN-2026-0002", Secondary: "Fuel", C1: "PRJ-002", C2: "03 Oct 2026", C3: "", C4: "",
+               Util: 1.04, Amount: -320, Currency: "YER", AmountUSD: Blank(), Status: "Paid", StatusDomain: "PaymentRequest"}
+          )
+      SelectedRow:
+        PropertyKind: Output
+        Description: Row the user selected (table or card)
+        DataType: Record
+      SortColumn:
+        PropertyKind: Input
+        Description: Key currently sorted (host state)
+        DataType: Text
+        Default: =""
+      SortDescending:
+        PropertyKind: Input
+        Description: Sort direction (host state)
+        DataType: Boolean
+        Default: =false
+      TotalPortion:
+        PropertyKind: Output
+        Description: Sum of visible column portions
+        DataType: Number
+    Properties:
+      ClickedSortKey: =gFinTableSortKey
+      Height: =520
+      SelectedRow: =If(isMobile, galTblCards.Selected, galTblRows.Selected)
+      TotalPortion: =Max(1, Sum(Filter(cmpDataTable.ColumnConfig, isDesktop || ShowOnTablet), Portion))
+      Width: =960
+    Children:
+      - conTblRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            BorderColor: =FinTheme.Border
+            BorderThickness: =If(isMobile, 0, 1)
+            DropShadow: =DropShadow.None
+            Fill: =If(isMobile, RGBA(0, 0, 0, 0), FinTheme.Surface)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            RadiusBottomLeft: =radiusCard
+            RadiusBottomRight: =radiusCard
+            RadiusTopLeft: =radiusCard
+            RadiusTopRight: =radiusCard
+            Width: =Parent.Width
+          Children:
+            - conTblHeader:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =FinTheme.Background
+                  FillPortions: =0
+                  Height: =40
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  Visible: =!isMobile
+                Children:
+                  - lblTblHPrimary:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Sortable, Set(gFinTableSortKey, "Primary"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Header & If(cmpDataTable.SortColumn = "Primary", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "Primary").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "Primary").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, Parent.Width - 16 - Self.Width, 16)
+                  - lblTblHC1:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C1").Sortable, Set(gFinTableSortKey, "C1"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C1").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "C1").Header & If(cmpDataTable.SortColumn = "C1", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C1").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "C1").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "C1").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "C1").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "C1").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHPrimary.X - Self.Width, lblTblHPrimary.X + lblTblHPrimary.Width)
+                  - lblTblHC2:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C2").Sortable, Set(gFinTableSortKey, "C2"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C2").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "C2").Header & If(cmpDataTable.SortColumn = "C2", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C2").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "C2").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "C2").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "C2").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "C2").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHC1.X - Self.Width, lblTblHC1.X + lblTblHC1.Width)
+                  - lblTblHC3:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C3").Sortable, Set(gFinTableSortKey, "C3"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C3").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "C3").Header & If(cmpDataTable.SortColumn = "C3", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C3").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "C3").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "C3").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "C3").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "C3").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHC2.X - Self.Width, lblTblHC2.X + lblTblHC2.Width)
+                  - lblTblHC4:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C4").Sortable, Set(gFinTableSortKey, "C4"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C4").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "C4").Header & If(cmpDataTable.SortColumn = "C4", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "C4").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "C4").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "C4").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "C4").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "C4").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHC3.X - Self.Width, lblTblHC3.X + lblTblHC3.Width)
+                  - lblTblHUtil:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Util").Sortable, Set(gFinTableSortKey, "Util"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Util").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "Util").Header & If(cmpDataTable.SortColumn = "Util", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Util").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "Util").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "Util").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "Util").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "Util").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHC4.X - Self.Width, lblTblHC4.X + lblTblHC4.Width)
+                  - lblTblHAmount:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignNumber
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Sortable, Set(gFinTableSortKey, "Amount"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Header & If(cmpDataTable.SortColumn = "Amount", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "Amount").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "Amount").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHUtil.X - Self.Width, lblTblHUtil.X + lblTblHUtil.Width)
+                  - lblTblHStatus:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.Height
+                        OnSelect: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Status").Sortable, Set(gFinTableSortKey, "Status"); cmpDataTable.OnSortChange())
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        TabIndex: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Status").Sortable, 0, -1)
+                        Text: =LookUp(cmpDataTable.ColumnConfig, Key = "Status").Header & If(cmpDataTable.SortColumn = "Status", If(cmpDataTable.SortDescending, " ↓", " ↑"), "")
+                        Tooltip: =If(LookUp(cmpDataTable.ColumnConfig, Key = "Status").Sortable, fnT("tbl.sortBy", "Sort by") & " " & LookUp(cmpDataTable.ColumnConfig, Key = "Status").Header, "")
+                        Visible: =!IsBlank(LookUp(cmpDataTable.ColumnConfig, Key = "Status").Header) && (isDesktop || LookUp(cmpDataTable.ColumnConfig, Key = "Status").ShowOnTablet)
+                        Width: =If(Self.Visible, (Parent.Width - 32) * LookUp(cmpDataTable.ColumnConfig, Key = "Status").Portion / cmpDataTable.TotalPortion, 0)
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHAmount.X - Self.Width, lblTblHAmount.X + lblTblHAmount.Width)
+            - lblTblEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.TextSecondary
+                  FillPortions: =1
+                  Font: =fontBase
+                  Height: =20
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Live: =Live.Polite
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =fsBody
+                  Text: =If(cmpDataTable.Loading, fnT("loading", "Loading") & "...", cmpDataTable.EmptyText)
+                  Visible: =!(CountRows(cmpDataTable.RowItems) > 0 && !cmpDataTable.Loading)
+            - galTblRows:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =fnT("tbl.rows", "Results")
+                  ItemAccessibleLabel: =ThisItem.Primary & ", " & ThisItem.Status
+                  Items: =cmpDataTable.RowItems
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  OnSelect: =cmpDataTable.OnRowSelect()
+                  TemplateFill: =If(ThisItem.IsSelected, FinTheme.RowSelected, FinTheme.Surface)
+                  TemplatePadding: =0
+                  TemplateSize: =52
+                  Visible: =!isMobile && CountRows(cmpDataTable.RowItems) > 0 && !cmpDataTable.Loading
+                Children:
+                  - lblCellPrimary:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =If(IsBlank(ThisItem.Secondary), Parent.TemplateHeight, 22)
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =ThisItem.Primary
+                        Tooltip: =ThisItem.Primary
+                        Visible: =lblTblHPrimary.Visible
+                        Width: =lblTblHPrimary.Width
+                        Wrap: =false
+                        X: =lblTblHPrimary.X
+                        Y: =If(IsBlank(ThisItem.Secondary), 0, 6)
+                  - lblCellSecondary:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        Height: =18
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =ThisItem.Secondary
+                        Tooltip: =ThisItem.Secondary
+                        Visible: =lblTblHPrimary.Visible && !IsBlank(ThisItem.Secondary)
+                        Width: =lblTblHPrimary.Width
+                        Wrap: =false
+                        X: =lblTblHPrimary.X
+                        Y: =28
+                  - lblCellC1:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =ThisItem.C1
+                        Tooltip: =ThisItem.C1
+                        Visible: =lblTblHC1.Visible
+                        Width: =lblTblHC1.Width
+                        Wrap: =false
+                        X: =lblTblHC1.X
+                  - lblCellC2:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =ThisItem.C2
+                        Tooltip: =ThisItem.C2
+                        Visible: =lblTblHC2.Visible
+                        Width: =lblTblHC2.Width
+                        Wrap: =false
+                        X: =lblTblHC2.X
+                  - lblCellC3:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =ThisItem.C3
+                        Tooltip: =ThisItem.C3
+                        Visible: =lblTblHC3.Visible
+                        Width: =lblTblHC3.Width
+                        Wrap: =false
+                        X: =lblTblHC3.X
+                  - lblCellC4:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =ThisItem.C4
+                        Tooltip: =ThisItem.C4
+                        Visible: =lblTblHC4.Visible
+                        Width: =lblTblHC4.Width
+                        Wrap: =false
+                        X: =lblTblHC4.X
+                  - rectCellUtilTrack:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =FinTheme.Background
+                        Height: =6
+                        Visible: =lblTblHUtil.Visible
+                        Width: =Max(0, lblTblHUtil.Width - 72)
+                        X: =If(isRTL, lblTblHUtil.X + lblTblHUtil.Width - 4 - Self.Width, lblTblHUtil.X + 4)
+                        Y: =(Parent.TemplateHeight - Self.Height) / 2
+                  - rectCellUtilFill:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =fnToneAccent(fnUtilTone(ThisItem.Util))
+                        Height: =6
+                        Visible: =lblTblHUtil.Visible && !IsBlank(ThisItem.Util)
+                        Width: =rectCellUtilTrack.Width * Min(Max(Coalesce(ThisItem.Util, 0), 0), 1)
+                        X: =If(isRTL, rectCellUtilTrack.X + rectCellUtilTrack.Width - Self.Width, rectCellUtilTrack.X)
+                        Y: =rectCellUtilTrack.Y
+                  - icoCellUtil:
+                      Control: Classic/Icon@2.5.0
+                      Properties:
+                        Color: =fnToneText(fnUtilTone(ThisItem.Util))
+                        FocusedBorderColor: =FinTheme.Focus
+                        Height: =14
+                        Icon: =Coalesce(LookUp(tblStatusMap, Domain = "Utilization" && Status = fnUtilTone(ThisItem.Util), Ico), Icon.HorizontalLine)
+                        Visible: =lblTblHUtil.Visible && !IsBlank(ThisItem.Util)
+                        Width: =14
+                        X: =If(isRTL, lblTblHUtil.X + 52, lblTblHUtil.X + lblTblHUtil.Width - 66)
+                        Y: =(Parent.TemplateHeight - Self.Height) / 2
+                  - lblCellUtil:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignNumber
+                        Color: =fnToneText(fnUtilTone(ThisItem.Util))
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =Parent.TemplateHeight
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =fnPct(ThisItem.Util)
+                        Visible: =lblTblHUtil.Visible
+                        Width: =50
+                        Wrap: =false
+                        X: =If(isRTL, lblTblHUtil.X, lblTblHUtil.X + lblTblHUtil.Width - 50)
+                  - lblCellAmount:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignNumber
+                        Color: =fnAmountColor(ThisItem.Amount)
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight
+                        PaddingBottom: =0
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =fnMoney(ThisItem.Amount, ThisItem.Currency)
+                        Tooltip: =If(ThisItem.Currency <> "USD" && !IsBlank(ThisItem.AmountUSD), "~ " & fnMoney(ThisItem.AmountUSD, "USD"), "")
+                        Visible: =lblTblHAmount.Visible
+                        Width: =lblTblHAmount.Width
+                        Wrap: =false
+                        X: =lblTblHAmount.X
+                  - conCellBadge:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fnToneBg(fnStatusTone(ThisItem.StatusDomain, ThisItem.Status))
+                        Height: =24
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =4
+                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        RadiusBottomLeft: =12
+                        RadiusBottomRight: =12
+                        RadiusTopLeft: =12
+                        RadiusTopRight: =12
+                        Visible: =lblTblHStatus.Visible && !IsBlank(ThisItem.Status)
+                        Width: =Min(lblTblHStatus.Width - 8, 8 + 14 + 4 + Len(ThisItem.Status) * 7 + 12)
+                        X: =If(isRTL, lblTblHStatus.X + lblTblHStatus.Width - 4 - Self.Width, lblTblHStatus.X + 4)
+                        Y: =(Parent.TemplateHeight - Self.Height) / 2
+                      Children:
+                        - icoCellBadge:
+                            Control: Classic/Icon@2.5.0
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              Color: =fnToneFg(fnStatusTone(ThisItem.StatusDomain, ThisItem.Status))
+                              FocusedBorderColor: =FinTheme.Focus
+                              Height: =14
+                              Icon: =Coalesce(LookUp(tblStatusMap, Domain = ThisItem.StatusDomain && Status = ThisItem.Status, Ico), LookUp(tblToneIcon, Tone = fnStatusTone(ThisItem.StatusDomain, ThisItem.Status), Ico))
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =14
+                        - lblCellBadge:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Color: =fnToneFg(fnStatusTone(ThisItem.StatusDomain, ThisItem.Status))
+                              FillPortions: =1
+                              Font: =fontBase
+                              FontWeight: =FontWeight.Semibold
+                              Height: =20
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsCaption
+                              Text: =fnT("status." & ThisItem.Status, ThisItem.Status)
+                              Wrap: =false
+                  - rectRowDivider:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =FinTheme.Border
+                        Height: =1
+                        Width: =Parent.TemplateWidth
+                        Y: =Parent.TemplateHeight - 1
+                  - btnRowHit:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        BorderColor: =RGBA(0, 0, 0, 0)
+                        BorderThickness: =0
+                        Color: =RGBA(0, 0, 0, 0)
+                        DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                        DisabledColor: =FinTheme.TextSecondary
+                        DisabledFill: =RGBA(0, 0, 0, 0)
+                        Fill: =RGBA(0, 0, 0, 0)
+                        FocusedBorderColor: =FinTheme.Focus
+                        FocusedBorderThickness: =2
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight - 1
+                        HoverBorderColor: =RGBA(0, 0, 0, 0)
+                        HoverColor: =RGBA(0, 0, 0, 0)
+                        HoverFill: =FinTheme.RowHover
+                        OnSelect: =Select(Parent)
+                        PaddingBottom: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =0
+                        PressedBorderColor: =RGBA(0, 0, 0, 0)
+                        PressedColor: =RGBA(0, 0, 0, 0)
+                        PressedFill: =FinTheme.RowSelected
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Size: =fsBody
+                        Text: =""
+                        Tooltip: =ThisItem.Primary & ", " & ThisItem.Status & ", " & fnMoney(ThisItem.Amount, ThisItem.Currency)
+                        Width: =Parent.TemplateWidth
+            - galTblCards:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =fnT("tbl.rows", "Results")
+                  ItemAccessibleLabel: =ThisItem.Primary & ", " & ThisItem.Status
+                  Items: =cmpDataTable.RowItems
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  OnSelect: =cmpDataTable.OnRowSelect()
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =104
+                  Visible: =isMobile && CountRows(cmpDataTable.RowItems) > 0 && !cmpDataTable.Loading
+                Children:
+                  - conCard:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        BorderColor: =FinTheme.Border
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =If(ThisItem.IsSelected, FinTheme.RowSelected, FinTheme.Surface)
+                        Height: =Parent.TemplateHeight - 8
+                        RadiusBottomLeft: =radiusCard
+                        RadiusBottomRight: =radiusCard
+                        RadiusTopLeft: =radiusCard
+                        RadiusTopRight: =radiusCard
+                        Width: =Parent.TemplateWidth
+                        Y: =4
+                      Children:
+                        - lblCardPrimary:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              Color: =FinTheme.Text
+                              Font: =fontBase
+                              FontWeight: =FontWeight.Semibold
+                              Height: =22
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsBody
+                              Text: =ThisItem.Primary
+                              Width: =Parent.Width - 24 - Min(160, 8 + 14 + 4 + Len(ThisItem.Status) * 7 + 12) - 8
+                              Wrap: =false
+                              X: =If(isRTL, Min(160, 8 + 14 + 4 + Len(ThisItem.Status) * 7 + 12) + 20, 12)
+                              Y: =10
+                        - conCardBadge:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fnToneBg(fnStatusTone(ThisItem.StatusDomain, ThisItem.Status))
+                              Height: =24
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =4
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              RadiusBottomLeft: =12
+                              RadiusBottomRight: =12
+                              RadiusTopLeft: =12
+                              RadiusTopRight: =12
+                              Visible: =!IsBlank(ThisItem.Status)
+                              Width: =Min(160, 8 + 14 + 4 + Len(ThisItem.Status) * 7 + 12)
+                              X: =If(isRTL, 12, Parent.Width - 12 - Self.Width)
+                              Y: =9
+                            Children:
+                              - icoCardBadge:
+                                  Control: Classic/Icon@2.5.0
+                                  Properties:
+                                    AlignInContainer: =AlignInContainer.Center
+                                    Color: =fnToneFg(fnStatusTone(ThisItem.StatusDomain, ThisItem.Status))
+                                    FocusedBorderColor: =FinTheme.Focus
+                                    Height: =14
+                                    Icon: =Coalesce(LookUp(tblStatusMap, Domain = ThisItem.StatusDomain && Status = ThisItem.Status, Ico), LookUp(tblToneIcon, Tone = fnStatusTone(ThisItem.StatusDomain, ThisItem.Status), Ico))
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =14
+                              - lblCardBadge:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =alignStart
+                                    AlignInContainer: =AlignInContainer.Stretch
+                                    Color: =fnToneFg(fnStatusTone(ThisItem.StatusDomain, ThisItem.Status))
+                                    FillPortions: =1
+                                    Font: =fontBase
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =20
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =fsCaption
+                                    Text: =fnT("status." & ThisItem.Status, ThisItem.Status)
+                                    Wrap: =false
+                        - lblCardSecondary:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              Color: =FinTheme.TextSecondary
+                              Font: =fontBase
+                              Height: =18
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsCaption
+                              Text: =ThisItem.Secondary
+                              Width: =Parent.Width - 24
+                              Wrap: =false
+                              X: =12
+                              Y: =34
+                        - lblCardMeta:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              Color: =FinTheme.TextSecondary
+                              Font: =fontBase
+                              Height: =36
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsCaption
+                              Text: =Concat(Filter([ThisItem.C1, ThisItem.C2], !IsBlank(Value)), Value, "  |  ")
+                              Width: =Parent.Width * 0.5
+                              X: =If(isRTL, Parent.Width - 12 - Self.Width, 12)
+                              Y: =56
+                        - lblCardAmount:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignNumber
+                              Color: =fnAmountColor(ThisItem.Amount)
+                              Font: =fontBase
+                              FontWeight: =FontWeight.Bold
+                              Height: =28
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsSection
+                              Text: =fnMoney(ThisItem.Amount, ThisItem.Currency)
+                              Width: =Parent.Width * 0.5 - 12
+                              Wrap: =false
+                              X: =If(isRTL, 12, Parent.Width - 12 - Self.Width)
+                              Y: =60
+                  - btnCardHit:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        BorderColor: =RGBA(0, 0, 0, 0)
+                        BorderThickness: =0
+                        Color: =RGBA(0, 0, 0, 0)
+                        DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                        DisabledColor: =FinTheme.TextSecondary
+                        DisabledFill: =RGBA(0, 0, 0, 0)
+                        Fill: =RGBA(0, 0, 0, 0)
+                        FocusedBorderColor: =FinTheme.Focus
+                        FocusedBorderThickness: =2
+                        Font: =fontBase
+                        Height: =Parent.TemplateHeight - 8
+                        HoverBorderColor: =RGBA(0, 0, 0, 0)
+                        HoverColor: =RGBA(0, 0, 0, 0)
+                        HoverFill: =FinTheme.RowHover
+                        OnSelect: =Select(Parent)
+                        PaddingBottom: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =0
+                        PressedBorderColor: =RGBA(0, 0, 0, 0)
+                        PressedColor: =RGBA(0, 0, 0, 0)
+                        PressedFill: =FinTheme.RowSelected
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                        Size: =fsBody
+                        Text: =""
+                        Tooltip: =ThisItem.Primary & ", " & ThisItem.Status & ", " & fnMoney(ThisItem.Amount, ThisItem.Currency)
+                        Width: =Parent.TemplateWidth
+                        Y: =4
+            - conTblFooter:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  FillPortions: =0
+                  Height: =touchMin + sp2
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =sp1
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =8
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =8
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  Visible: =cmpDataTable.PageNumber > 1 || cmpDataTable.HasMore
+                Children:
+                  - lblTblPage:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        AlignInContainer: =AlignInContainer.Stretch
+                        Color: =FinTheme.TextSecondary
+                        FillPortions: =1
+                        Font: =fontBase
+                        Height: =20
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Live: =Live.Polite
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =fnT("tbl.page", "Page") & " " & cmpDataTable.PageNumber
+                        Wrap: =false
+                  - btnTblPrev:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderColor: =FinTheme.Border
+                        BorderThickness: =1
+                        Color: =FinTheme.Text
+                        DisabledBorderColor: =FinTheme.Border
+                        DisabledColor: =FinTheme.TextSecondary
+                        DisabledFill: =FinTheme.Border
+                        Fill: =FinTheme.Surface
+                        FocusedBorderColor: =FinTheme.Focus
+                        FocusedBorderThickness: =2
+                        Font: =fontBase
+                        Height: =touchMin
+                        HoverBorderColor: =FinTheme.Primary
+                        HoverColor: =FinTheme.Text
+                        HoverFill: =FinTheme.RowHover
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =cmpDataTable.OnPrevPage()
+                        PaddingBottom: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =0
+                        PressedBorderColor: =FinTheme.Primary
+                        PressedColor: =FinTheme.Text
+                        PressedFill: =FinTheme.RowSelected
+                        RadiusBottomLeft: =6
+                        RadiusBottomRight: =6
+                        RadiusTopLeft: =6
+                        RadiusTopRight: =6
+                        Size: =fsBody
+                        Text: =fnT("tbl.prev", "Previous")
+                        Tooltip: =fnT("tbl.prev", "Previous page")
+                        Visible: =cmpDataTable.PageNumber > 1
+                        Width: =110
+                  - btnTblNext:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderColor: =FinTheme.Border
+                        BorderThickness: =1
+                        Color: =FinTheme.Text
+                        DisabledBorderColor: =FinTheme.Border
+                        DisabledColor: =FinTheme.TextSecondary
+                        DisabledFill: =FinTheme.Border
+                        Fill: =FinTheme.Surface
+                        FocusedBorderColor: =FinTheme.Focus
+                        FocusedBorderThickness: =2
+                        Font: =fontBase
+                        Height: =touchMin
+                        HoverBorderColor: =FinTheme.Primary
+                        HoverColor: =FinTheme.Text
+                        HoverFill: =FinTheme.RowHover
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =cmpDataTable.OnNextPage()
+                        PaddingBottom: =0
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =0
+                        PressedBorderColor: =FinTheme.Primary
+                        PressedColor: =FinTheme.Text
+                        PressedFill: =FinTheme.RowSelected
+                        RadiusBottomLeft: =6
+                        RadiusBottomRight: =6
+                        RadiusTopLeft: =6
+                        RadiusTopRight: =6
+                        Size: =fsBody
+                        Text: =fnT("tbl.next", "Next")
+                        Tooltip: =fnT("tbl.next", "Next page")
+                        Visible: =cmpDataTable.HasMore
+                        Width: =110

@@ -1,0 +1,302 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpKPICard:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      Currency:
+        PropertyKind: Input
+        Description: Currency code when ValueFormat = money
+        DataType: Text
+        Default: ="USD"
+      FormattedValue:
+        PropertyKind: Output
+        Description: Value as displayed
+        DataType: Text
+      KPIValue:
+        PropertyKind: Input
+        Description: Value to display (read from stored totals, never a ledger sum)
+        DataType: Number
+        Default: =0
+      Label:
+        PropertyKind: Input
+        Description: Card caption
+        DataType: Text
+        Default: ="Total budget"
+      Loading:
+        PropertyKind: Input
+        Description: Show skeleton instead of the value
+        DataType: Boolean
+        Default: =false
+      OnCardSelect:
+        PropertyKind: Event
+        Description: Raised when the user selects the card (only when Selectable)
+        ReturnType: None
+        Default: =""
+      Selectable:
+        PropertyKind: Input
+        Description: Card is clickable (drill-down)
+        DataType: Boolean
+        Default: =false
+      Subtext:
+        PropertyKind: Input
+        Description: Small text under the value
+        DataType: Text
+        Default: =""
+      Tone:
+        PropertyKind: Input
+        Description: Optional status tone (success/warning/danger/info/dangerStrong); adds icon + colour
+        DataType: Text
+        Default: =""
+      TrendPercent:
+        PropertyKind: Input
+        Description: Change vs previous period as ratio (0.042 = +4.2%). Blank hides the trend
+        DataType: Number
+        Default: =Blank()
+      TrendUpIsGood:
+        PropertyKind: Input
+        Description: false for spend-type KPIs where up is bad
+        DataType: Boolean
+        Default: =true
+      ValueFormat:
+        PropertyKind: Input
+        Description: money | percent (ratio 0.85) | count
+        DataType: Text
+        Default: ="money"
+    Properties:
+      FormattedValue: |-
+        =Switch(
+            cmpKPICard.ValueFormat,
+            "percent", fnPct(cmpKPICard.KPIValue),
+            "count", fnCount(cmpKPICard.KPIValue),
+            fnMoney(cmpKPICard.KPIValue, cmpKPICard.Currency)
+        )
+      Height: =128
+      Width: =280
+    Children:
+      - conKPIRoot:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            BorderColor: =FinTheme.Border
+            BorderThickness: =borderWidth
+            DropShadow: =DropShadow.None
+            Fill: =FinTheme.Surface
+            Height: =Parent.Height
+            RadiusBottomLeft: =radiusCard
+            RadiusBottomRight: =radiusCard
+            RadiusTopLeft: =radiusCard
+            RadiusTopRight: =radiusCard
+            Width: =Parent.Width
+          Children:
+            - conKPIBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Height: =Parent.Height
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =4
+                  PaddingBottom: =sp2
+                  PaddingLeft: =sp2
+                  PaddingRight: =sp2
+                  PaddingTop: =sp2
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  Width: =Parent.Width
+                Children:
+                  - conKPITop:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =20
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                      Children:
+                        - lblKPILabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Color: =FinTheme.TextSecondary
+                              FillPortions: =1
+                              Font: =fontBase
+                              FontWeight: =FontWeight.Semibold
+                              Height: =20
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsCaption
+                              Text: =cmpKPICard.Label
+                              Wrap: =false
+                        - icoKPITone:
+                            Control: Classic/Icon@2.5.0
+                            Properties:
+                              AccessibleLabel: =fnT("tone." & cmpKPICard.Tone, cmpKPICard.Tone)
+                              AlignInContainer: =AlignInContainer.Center
+                              Color: =fnToneText(cmpKPICard.Tone)
+                              FocusedBorderColor: =FinTheme.Focus
+                              Height: =18
+                              Icon: =Switch(cmpKPICard.Tone, "success", Icon.Check, "warning", Icon.Information, "danger", Icon.Flag, "dangerStrong", Icon.Warning, "info", Icon.Information, Icon.HorizontalLine)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =!IsBlank(cmpKPICard.Tone)
+                              Width: =18
+                  - lblKPIValue:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        AlignInContainer: =AlignInContainer.Stretch
+                        Color: =If(!IsBlank(cmpKPICard.Tone), fnToneText(cmpKPICard.Tone), cmpKPICard.ValueFormat = "money" && cmpKPICard.KPIValue < 0, FinTheme.DangerText, FinTheme.Text)
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Bold
+                        Height: =If(isMobile, 32, 40)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Live: =Live.Polite
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =If(isMobile, 22, fsKPI)
+                        Text: =cmpKPICard.FormattedValue
+                        Visible: =!cmpKPICard.Loading
+                        Wrap: =false
+                  - conKPISkeleton:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Start
+                        DropShadow: =DropShadow.None
+                        Fill: =FinTheme.Skeleton
+                        FillPortions: =0
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =cmpKPICard.Loading
+                        Width: =Parent.Width * 0.6
+                  - conKPIFoot:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =18
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =4
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        RadiusBottomLeft: =0
+                        RadiusBottomRight: =0
+                        RadiusTopLeft: =0
+                        RadiusTopRight: =0
+                      Children:
+                        - icoKPITrend:
+                            Control: Classic/Icon@2.5.0
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              Color: =If(((cmpKPICard.TrendPercent >= 0) = cmpKPICard.TrendUpIsGood), FinTheme.SuccessText, FinTheme.DangerText)
+                              FocusedBorderColor: =FinTheme.Focus
+                              Height: =14
+                              Icon: =If(cmpKPICard.TrendPercent >= 0, Icon.ArrowUp, Icon.ArrowDown)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =!IsBlank(cmpKPICard.TrendPercent) && !cmpKPICard.Loading
+                              Width: =14
+                        - lblKPITrend:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Color: =If(((cmpKPICard.TrendPercent >= 0) = cmpKPICard.TrendUpIsGood), FinTheme.SuccessText, FinTheme.DangerText)
+                              Font: =fontBase
+                              FontWeight: =FontWeight.Semibold
+                              Height: =20
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsCaption
+                              Text: =If(cmpKPICard.TrendPercent >= 0, "+", "") & fnPct(cmpKPICard.TrendPercent)
+                              Visible: =!IsBlank(cmpKPICard.TrendPercent) && !cmpKPICard.Loading
+                              Width: =60
+                              Wrap: =false
+                        - lblKPISub:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =alignStart
+                              AlignInContainer: =AlignInContainer.Stretch
+                              Color: =FinTheme.TextSecondary
+                              FillPortions: =1
+                              Font: =fontBase
+                              Height: =20
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =fsCaption
+                              Text: =cmpKPICard.Subtext
+                              Tooltip: =cmpKPICard.Subtext
+                              Wrap: =false
+            - btnKPIHit:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =RGBA(0, 0, 0, 0)
+                  BorderThickness: =0
+                  Color: =RGBA(0, 0, 0, 0)
+                  DisabledBorderColor: =RGBA(0, 0, 0, 0)
+                  DisabledColor: =FinTheme.TextSecondary
+                  DisabledFill: =RGBA(0, 0, 0, 0)
+                  Fill: =RGBA(0, 0, 0, 0)
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =Parent.Height
+                  HoverBorderColor: =RGBA(0, 0, 0, 0)
+                  HoverColor: =RGBA(0, 0, 0, 0)
+                  HoverFill: =FinTheme.RowHover
+                  OnSelect: =cmpKPICard.OnCardSelect()
+                  PaddingBottom: =0
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =0
+                  PressedBorderColor: =RGBA(0, 0, 0, 0)
+                  PressedColor: =RGBA(0, 0, 0, 0)
+                  PressedFill: =FinTheme.RowSelected
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                  Size: =fsBody
+                  Text: =""
+                  Tooltip: |-
+                    =cmpKPICard.Label & ": " & cmpKPICard.FormattedValue
+                  Visible: =cmpKPICard.Selectable
+                  Width: =Parent.Width

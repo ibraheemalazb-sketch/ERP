@@ -1,0 +1,325 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpHistoryTimeline:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      EntityID:
+        PropertyKind: Input
+        Description: Record ID
+        DataType: Number
+        Default: =0
+      EntityType:
+        PropertyKind: Input
+        Description: FinanceActivityLog.EntityType choice text
+        DataType: Text
+        Default: ="Payment Request"
+      FilterMode:
+        PropertyKind: Input
+        Description: entity = EntityType + EntityID; project = every row of ProjectID (EntityType has no 'Project' value)
+        DataType: Text
+        Default: ="entity"
+      HasMore:
+        PropertyKind: Output
+        Description: true when TopN rows were returned
+        DataType: Boolean
+      LogList:
+        PropertyKind: Input
+        Description: Finance or Procurement. Finance is the default and keeps the finance filters.
+        DataType: Text
+        Default: ="Finance"
+      OnLoadMore:
+        PropertyKind: Event
+        Description: 'Load more selected: host does UpdateContext({locHistTop: locHistTop + 50})'
+        ReturnType: None
+        Default: =""
+      ProjectID:
+        PropertyKind: Input
+        Description: Used when FilterMode = project (FinanceActivityLog.ProjectID is Indexed)
+        DataType: Number
+        Default: =0
+      ShowSensitive:
+        PropertyKind: Input
+        Description: Show Old/New values of IsSensitive rows (pass canViewPayroll)
+        DataType: Boolean
+        Default: =false
+      TopN:
+        PropertyKind: Input
+        Description: Rows to show; host adds 50 in OnLoadMore (max = data row limit, 2000)
+        DataType: Number
+        Default: =50
+    Properties:
+      HasMore: =galHistory.AllItemsCount >= cmpHistoryTimeline.TopN
+      Height: =420
+      Width: =420
+    Children:
+      - conHistRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =sp1
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Width: =Parent.Width
+          Children:
+            - lblHistHeading:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =alignStart
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.Text
+                  Font: =fontBase
+                  FontWeight: =FontWeight.Semibold
+                  Height: =28
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Role: =TextRole.Heading3
+                  Size: =fsSection
+                  Text: =fnT("hist.title", "History")
+                  Wrap: =false
+            - lblHistEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =alignStart
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.TextSecondary
+                  Font: =fontBase
+                  Height: =24
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =fsBody
+                  Text: =fnT("hist.empty", "No activity recorded yet.")
+                  Visible: =galHistory.AllItemsCount = 0
+                  Wrap: =false
+            - galHistory:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =fnT("hist.title", "History")
+                  ItemAccessibleLabel: =ThisItem.HAction & ", " & ThisItem.HActor & ", " & Text(ThisItem.HDate, "dd mmm yyyy hh:mm")
+                  Items: |-
+                    =If(
+                        cmpHistoryTimeline.LogList = "Procurement",
+                        ForAll(
+                            FirstN(
+                                Sort(
+                                    Filter(
+                                        ProcurementActivityLog,
+                                        EntityType.Value = cmpHistoryTimeline.EntityType,
+                                        EntityID = cmpHistoryTimeline.EntityID
+                                    ),
+                                    ActionDate,
+                                    SortOrder.Descending
+                                ),
+                                cmpHistoryTimeline.TopN
+                            ) As row,
+                            {
+                                HAction: Coalesce(row.ActionType.Value, ""),
+                                HActor: Coalesce(row.PerformedByName, ""),
+                                HSeverity: Coalesce(row.Severity.Value, "Info"),
+                                HDate: row.ActionDate,
+                                HRole: Coalesce(row.PerformedByRole, ""),
+                                HSensitive: row.IsSensitive = true,
+                                HDetails: Coalesce(row.Details, ""),
+                                HField: Coalesce(row.FieldChanged, ""),
+                                HOld: Coalesce(row.OldValue, ""),
+                                HNew: Coalesce(row.NewValue, ""),
+                                HReason: Coalesce(row.ReasonComment, "")
+                            }
+                        ),
+                        ForAll(
+                            FirstN(
+                                Sort(
+                                    If(
+                                        cmpHistoryTimeline.FilterMode = "project",
+                                        Filter(FinanceActivityLog, ProjectID = cmpHistoryTimeline.ProjectID),
+                                        Filter(FinanceActivityLog, EntityType.Value = cmpHistoryTimeline.EntityType, EntityID = cmpHistoryTimeline.EntityID)
+                                    ),
+                                    ActionDate,
+                                    SortOrder.Descending
+                                ),
+                                cmpHistoryTimeline.TopN
+                            ) As row,
+                            {
+                                HAction: Coalesce(row.ActionType.Value, ""),
+                                HActor: Coalesce(row.PerformedByName, ""),
+                                HSeverity: Coalesce(row.Severity.Value, "Info"),
+                                HDate: row.ActionDate,
+                                HRole: Coalesce(row.PerformedByRole, ""),
+                                HSensitive: row.IsSensitive = true,
+                                HDetails: Coalesce(row.Details, ""),
+                                HField: Coalesce(row.FieldChanged, ""),
+                                HOld: Coalesce(row.OldValue, ""),
+                                HNew: Coalesce(row.NewValue, ""),
+                                HReason: Coalesce(row.ReasonComment, "")
+                            }
+                        )
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  Selectable: =false
+                  TemplatePadding: =0
+                  TemplateSize: =84
+                Children:
+                  - conHistMarker:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fnToneBg(Switch(ThisItem.HSeverity, "Critical", "danger", "Important", "warning", "neutral"))
+                        Height: =28
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        RadiusBottomLeft: =14
+                        RadiusBottomRight: =14
+                        RadiusTopLeft: =14
+                        RadiusTopRight: =14
+                        Width: =28
+                        X: =If(isRTL, Parent.TemplateWidth - 28, 0)
+                        Y: =2
+                      Children:
+                        - icoHistMarker:
+                            Control: Classic/Icon@2.5.0
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              Color: =fnToneFg(Switch(ThisItem.HSeverity, "Critical", "danger", "Important", "warning", "neutral"))
+                              FocusedBorderColor: =FinTheme.Focus
+                              Height: =16
+                              Icon: |-
+                                =Switch(ThisItem.HAction,
+                                    "Created", Icon.Add, "Updated", Icon.Edit, "Submitted", Icon.Send, "Approved", Icon.CheckBadge,
+                                    "Rejected", Icon.CancelBadge, "Returned", Icon.Undo, "Cancelled", Icon.Blocked, "Deleted", Icon.Trash,
+                                    "Status Changed", Icon.Sync, "Posted", Icon.Journal, "Reversed", Icon.Reset, "Attached", Icon.PaperClip,
+                                    "Commented", Icon.Message, "Exported", Icon.Export, "Viewed", Icon.View,
+                                    Icon.History)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =16
+                  - lblHistTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =If(ThisItem.HSeverity = "Critical", FinTheme.DangerText, FinTheme.Text)
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =22
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsBody
+                        Text: =ThisItem.HAction & "  |  " & ThisItem.HActor & If(IsBlank(ThisItem.HSeverity) || ThisItem.HSeverity = "Info", "", "  |  " & ThisItem.HSeverity)
+                        Tooltip: =Self.Text
+                        Width: =Parent.TemplateWidth - 40
+                        Wrap: =false
+                        X: =If(isRTL, 0, 40)
+                  - lblHistDate:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.TextSecondary
+                        Font: =fontBase
+                        Height: =18
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =Text(ThisItem.HDate, "dd mmm yyyy hh:mm", appLocale) & If(IsBlank(ThisItem.HRole), "", "  |  " & ThisItem.HRole)
+                        Width: =Parent.TemplateWidth - 40
+                        Wrap: =false
+                        X: =If(isRTL, 0, 40)
+                        Y: =22
+                  - lblHistDetail:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignStart
+                        Color: =FinTheme.Text
+                        Font: =fontBase
+                        Height: =36
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: |-
+                          =If(
+                              ThisItem.HSensitive && !cmpHistoryTimeline.ShowSensitive,
+                              fnT("hist.hidden", "Details hidden (sensitive)"),
+                              Coalesce(
+                                  ThisItem.HDetails,
+                                  If(!IsBlank(ThisItem.HField), ThisItem.HField & ": " & ThisItem.HOld & " -> " & ThisItem.HNew, "")
+                              ) & If(!IsBlank(ThisItem.HReason), "  |  " & fnT("hist.reason", "Reason") & ": " & ThisItem.HReason, "")
+                          )
+                        Tooltip: =Self.Text
+                        VerticalAlign: =VerticalAlign.Top
+                        Width: =Parent.TemplateWidth - 40
+                        X: =If(isRTL, 0, 40)
+                        Y: =42
+                  - rectHistDivider:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        Fill: =FinTheme.Border
+                        Height: =1
+                        Width: =Parent.TemplateWidth
+                        Y: =Parent.TemplateHeight - 1
+            - btnHistMore:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  AlignInContainer: =AlignInContainer.Center
+                  BorderColor: =FinTheme.Border
+                  BorderThickness: =1
+                  Color: =FinTheme.Text
+                  DisabledBorderColor: =FinTheme.Border
+                  DisabledColor: =FinTheme.TextSecondary
+                  DisabledFill: =FinTheme.Border
+                  Fill: =FinTheme.Surface
+                  FocusedBorderColor: =FinTheme.Focus
+                  FocusedBorderThickness: =2
+                  Font: =fontBase
+                  Height: =touchMin
+                  HoverBorderColor: =FinTheme.Primary
+                  HoverColor: =FinTheme.Text
+                  HoverFill: =FinTheme.RowHover
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =cmpHistoryTimeline.OnLoadMore()
+                  PaddingBottom: =0
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =0
+                  PressedBorderColor: =FinTheme.Primary
+                  PressedColor: =FinTheme.Text
+                  PressedFill: =FinTheme.RowSelected
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Size: =fsBody
+                  Text: =fnT("hist.loadMore", "Load more")
+                  Tooltip: =fnT("hist.loadMore", "Load more history")
+                  Visible: =cmpHistoryTimeline.HasMore
+                  Width: =140
