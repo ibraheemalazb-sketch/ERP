@@ -30,6 +30,7 @@ Screens:
             Set(gblLeaveRequestMode, "New");
             Set(VarShowLeave, false);
             Set(gblCanEditLeave, true),
+            IsBlank(varCurrentLeave),
             Set(VarNewLeave, false);
             Set(VarShowLeave, false);
             Set(gblSelectedLeaveRequest, Blank());
@@ -76,7 +77,17 @@ Screens:
             )
         );
         Reset(cmpLeaveMine);
-        Reset(cmpLeaveAll)
+        Reset(cmpLeaveAll);
+        If(
+            !IsBlank(varCurrentLeave),
+            Set(gblSelectedLeaveRequest, If(IsBlank(LookUp(LeaveRequests, ID = varCurrentLeave.ID)), varCurrentLeave, LookUp(LeaveRequests, ID = varCurrentLeave.ID)));
+            Set(gblLeaveRequestMode, "View");
+            Set(VarShowLeave, true);
+            Set(VarNewLeave, false);
+            Set(gblCanEditLeave, false);
+            Set(VarLeavesTab, If(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0) = Coalesce(gblUser.ID, 0), "userleaves", "AllLeaves"));
+            Set(varCurrentLeave, Blank())
+        )
     Children:
       - conLeaveNav:
           Control: GroupContainer@1.5.0
@@ -997,7 +1008,9 @@ Screens:
                           =Table(
                               {ItemKey: "view", ItemDisplayName: If(gblLanguage = "Arabic", "عرض", "View"), ItemVisible: true},
                               {ItemKey: "edit", ItemDisplayName: If(gblLanguage = "Arabic", "تعديل", "Edit"), ItemVisible: true},
-                              {ItemKey: "delete", ItemDisplayName: If(gblLanguage = "Arabic", "حذف", "Delete"), ItemVisible: true}
+                              {ItemKey: "delete", ItemDisplayName: If(gblLanguage = "Arabic", "حذف", "Delete"), ItemVisible: true},
+                              {ItemKey: "approve", ItemDisplayName: If(gblLanguage = "Arabic", "موافقة", "Approve"), ItemVisible: CountRows(Filter(colUserLeaveRequests, And(Status.Value = "Pending", Or(Approver.Id = Coalesce(gblCurrentEmployee.ID, 0), Approver.Id = Coalesce(gblUser.ID, 0))))) > 0},
+                              {ItemKey: "reject", ItemDisplayName: If(gblLanguage = "Arabic", "رفض", "Reject"), ItemVisible: CountRows(Filter(colUserLeaveRequests, And(Status.Value = "Pending", Or(Approver.Id = Coalesce(gblCurrentEmployee.ID, 0), Approver.Id = Coalesce(gblUser.ID, 0))))) > 0}
                           )
                         EmptySubtitle: =If(gblLanguage = "Arabic", "الطلبات الجديدة تظهر هنا.", "New requests show up here.")
                         EmptyTitle: =If(gblLanguage = "Arabic", "لا توجد طلبات إجازة", "No leave requests yet")
@@ -1071,6 +1084,152 @@ Screens:
                                           Set(gblSelectedLeaveRequest, row);
                                           Set(gblLeaveConfirmAction, "Delete");
                                           Set(gblShowLeaveConfirm, true)
+                                      ),
+                                      "approve",
+                                      If(
+                                          Or(
+                                              Coalesce(row.Status.Value, "") <> "Pending",
+                                              And(
+                                                  row.Approver.Id <> Coalesce(gblCurrentEmployee.ID, 0),
+                                                  row.Approver.Id <> Coalesce(gblUser.ID, 0)
+                                              )
+                                          ),
+                                          Notify(If(gblLanguage = "Arabic", "يمكن للمعتمد فقط الموافقة على الطلب المعلّق.", "Only the assigned approver can approve a pending request."), NotificationType.Warning),
+                                          IfError(
+                                              Set(
+                                                  gblSelectedLeaveRequest,
+                                                  Patch(
+                                                      LeaveRequests,
+                                                      LookUp(LeaveRequests, ID = row.ID),
+                                                      {
+                                                          Status: {Value: "Approved"},
+                                                          ApprovalDate: Now(),
+                                                          Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")}
+                                                      }
+                                                  )
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colUserLeaveRequests, gblSelectedLeaveRequest)
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colLeaveAll, gblSelectedLeaveRequest)
+                                              );
+                                              IfError(
+                                                  With(
+                                                      {
+                                                          step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
+                                                          approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                                      },
+                                                      If(
+                                                          IsBlank(step),
+                                                          Patch(
+                                                              ApprovalHistory,
+                                                              Defaults(ApprovalHistory),
+                                                              {
+                                                                  Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                                  RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                                  RequestType: {Value: "Leave Request"},
+                                                                  RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                                  Decision: {Value: "Approved"},
+                                                                  DecisionDate: Now(),
+                                                                  Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                                  ApproverID: approverId,
+                                                                  Module: {Value: "HR"},
+                                                                  Sequence: 1,
+                                                                  EntityType: {Value: "LeaveRequest"},
+                                                                  Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
+                                                                  AssignedDate: Now(),
+                                                                  ProjectID: If(projectId > 0, projectId, Blank())
+                                                              }
+                                                          ),
+                                                          Patch(ApprovalHistory, step, {Decision: {Value: "Approved"}, DecisionDate: Now()})
+                                                      )
+                                                  ),
+                                                  Notify(If(gblLanguage = "Arabic", "تم اعتماد الإجازة. تعذر تحديث سجل الاعتماد.", "Leave approved. The approval history could not be updated."), NotificationType.Warning)
+                                              );
+                                              fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Approved", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Approved", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
+                                              fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة", "Leave approved"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
+                                              Notify(If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة.", "Leave approved."), NotificationType.Success),
+                                              Notify(If(gblLanguage = "Arabic", "تعذرت الموافقة.", "Approve failed."), NotificationType.Error)
+                                          )
+                                      ),
+                                      "reject",
+                                      If(
+                                          Or(
+                                              Coalesce(row.Status.Value, "") <> "Pending",
+                                              And(
+                                                  row.Approver.Id <> Coalesce(gblCurrentEmployee.ID, 0),
+                                                  row.Approver.Id <> Coalesce(gblUser.ID, 0)
+                                              )
+                                          ),
+                                          Notify(If(gblLanguage = "Arabic", "يمكن للمعتمد فقط رفض الطلب المعلّق.", "Only the assigned approver can reject a pending request."), NotificationType.Warning),
+                                          IfError(
+                                              Set(
+                                                  gblSelectedLeaveRequest,
+                                                  Patch(
+                                                      LeaveRequests,
+                                                      LookUp(LeaveRequests, ID = row.ID),
+                                                      {
+                                                          Status: {Value: "Rejected"},
+                                                          ApprovalDate: Now(),
+                                                          Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")}
+                                                      }
+                                                  )
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colUserLeaveRequests, gblSelectedLeaveRequest)
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colLeaveAll, gblSelectedLeaveRequest)
+                                              );
+                                              IfError(
+                                                  With(
+                                                      {
+                                                          step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
+                                                          approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                                      },
+                                                      If(
+                                                          IsBlank(step),
+                                                          Patch(
+                                                              ApprovalHistory,
+                                                              Defaults(ApprovalHistory),
+                                                              {
+                                                                  Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                                  RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                                  RequestType: {Value: "Leave Request"},
+                                                                  RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                                  Decision: {Value: "Rejected"},
+                                                                  DecisionDate: Now(),
+                                                                  Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                                  ApproverID: approverId,
+                                                                  Module: {Value: "HR"},
+                                                                  Sequence: 1,
+                                                                  EntityType: {Value: "LeaveRequest"},
+                                                                  Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
+                                                                  AssignedDate: Now(),
+                                                                  ProjectID: If(projectId > 0, projectId, Blank())
+                                                              }
+                                                          ),
+                                                          Patch(ApprovalHistory, step, {Decision: {Value: "Rejected"}, DecisionDate: Now()})
+                                                      )
+                                                  ),
+                                                  Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة. تعذر تحديث سجل الاعتماد.", "Leave rejected. The approval history could not be updated."), NotificationType.Warning)
+                                              );
+                                              fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Rejected", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Rejected", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
+                                              fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "تم رفض الإجازة", "Leave rejected"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
+                                              Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة.", "Leave rejected."), NotificationType.Success),
+                                              Notify(If(gblLanguage = "Arabic", "تعذر الرفض.", "Reject failed."), NotificationType.Error)
+                                          )
                                       )
                                   )
                               )
@@ -1349,7 +1508,9 @@ Screens:
                           =Table(
                               {ItemKey: "view", ItemDisplayName: If(gblLanguage = "Arabic", "عرض", "View"), ItemVisible: true},
                               {ItemKey: "edit", ItemDisplayName: If(gblLanguage = "Arabic", "تعديل", "Edit"), ItemVisible: true},
-                              {ItemKey: "delete", ItemDisplayName: If(gblLanguage = "Arabic", "حذف", "Delete"), ItemVisible: true}
+                              {ItemKey: "delete", ItemDisplayName: If(gblLanguage = "Arabic", "حذف", "Delete"), ItemVisible: true},
+                              {ItemKey: "approve", ItemDisplayName: If(gblLanguage = "Arabic", "موافقة", "Approve"), ItemVisible: CountRows(Filter(colLeaveAll, And(Status.Value = "Pending", Or(Approver.Id = Coalesce(gblCurrentEmployee.ID, 0), Approver.Id = Coalesce(gblUser.ID, 0))))) > 0},
+                              {ItemKey: "reject", ItemDisplayName: If(gblLanguage = "Arabic", "رفض", "Reject"), ItemVisible: CountRows(Filter(colLeaveAll, And(Status.Value = "Pending", Or(Approver.Id = Coalesce(gblCurrentEmployee.ID, 0), Approver.Id = Coalesce(gblUser.ID, 0))))) > 0}
                           )
                         EmptySubtitle: =If(gblLanguage = "Arabic", "جرّب تصفية أو موظفاً مختلفاً.", "Try a different filter or employee.")
                         EmptyTitle: =If(gblLanguage = "Arabic", "لا توجد طلبات إجازة", "No leave requests yet")
@@ -1438,6 +1599,152 @@ Screens:
                                           Set(gblSelectedLeaveRequest, row);
                                           Set(gblLeaveConfirmAction, "Delete");
                                           Set(gblShowLeaveConfirm, true)
+                                      ),
+                                      "approve",
+                                      If(
+                                          Or(
+                                              Coalesce(row.Status.Value, "") <> "Pending",
+                                              And(
+                                                  row.Approver.Id <> Coalesce(gblCurrentEmployee.ID, 0),
+                                                  row.Approver.Id <> Coalesce(gblUser.ID, 0)
+                                              )
+                                          ),
+                                          Notify(If(gblLanguage = "Arabic", "يمكن للمعتمد فقط الموافقة على الطلب المعلّق.", "Only the assigned approver can approve a pending request."), NotificationType.Warning),
+                                          IfError(
+                                              Set(
+                                                  gblSelectedLeaveRequest,
+                                                  Patch(
+                                                      LeaveRequests,
+                                                      LookUp(LeaveRequests, ID = row.ID),
+                                                      {
+                                                          Status: {Value: "Approved"},
+                                                          ApprovalDate: Now(),
+                                                          Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")}
+                                                      }
+                                                  )
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colUserLeaveRequests, gblSelectedLeaveRequest)
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colLeaveAll, gblSelectedLeaveRequest)
+                                              );
+                                              IfError(
+                                                  With(
+                                                      {
+                                                          step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
+                                                          approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                                      },
+                                                      If(
+                                                          IsBlank(step),
+                                                          Patch(
+                                                              ApprovalHistory,
+                                                              Defaults(ApprovalHistory),
+                                                              {
+                                                                  Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                                  RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                                  RequestType: {Value: "Leave Request"},
+                                                                  RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                                  Decision: {Value: "Approved"},
+                                                                  DecisionDate: Now(),
+                                                                  Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                                  ApproverID: approverId,
+                                                                  Module: {Value: "HR"},
+                                                                  Sequence: 1,
+                                                                  EntityType: {Value: "LeaveRequest"},
+                                                                  Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
+                                                                  AssignedDate: Now(),
+                                                                  ProjectID: If(projectId > 0, projectId, Blank())
+                                                              }
+                                                          ),
+                                                          Patch(ApprovalHistory, step, {Decision: {Value: "Approved"}, DecisionDate: Now()})
+                                                      )
+                                                  ),
+                                                  Notify(If(gblLanguage = "Arabic", "تم اعتماد الإجازة. تعذر تحديث سجل الاعتماد.", "Leave approved. The approval history could not be updated."), NotificationType.Warning)
+                                              );
+                                              fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Approved", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Approved", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
+                                              fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة", "Leave approved"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
+                                              Notify(If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة.", "Leave approved."), NotificationType.Success),
+                                              Notify(If(gblLanguage = "Arabic", "تعذرت الموافقة.", "Approve failed."), NotificationType.Error)
+                                          )
+                                      ),
+                                      "reject",
+                                      If(
+                                          Or(
+                                              Coalesce(row.Status.Value, "") <> "Pending",
+                                              And(
+                                                  row.Approver.Id <> Coalesce(gblCurrentEmployee.ID, 0),
+                                                  row.Approver.Id <> Coalesce(gblUser.ID, 0)
+                                              )
+                                          ),
+                                          Notify(If(gblLanguage = "Arabic", "يمكن للمعتمد فقط رفض الطلب المعلّق.", "Only the assigned approver can reject a pending request."), NotificationType.Warning),
+                                          IfError(
+                                              Set(
+                                                  gblSelectedLeaveRequest,
+                                                  Patch(
+                                                      LeaveRequests,
+                                                      LookUp(LeaveRequests, ID = row.ID),
+                                                      {
+                                                          Status: {Value: "Rejected"},
+                                                          ApprovalDate: Now(),
+                                                          Approver: {Id: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0), Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")}
+                                                      }
+                                                  )
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colUserLeaveRequests, gblSelectedLeaveRequest)
+                                              );
+                                              If(
+                                                  !IsBlank(LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID)),
+                                                  Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                                  Collect(colLeaveAll, gblSelectedLeaveRequest)
+                                              );
+                                              IfError(
+                                                  With(
+                                                      {
+                                                          step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
+                                                          approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                          projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                                      },
+                                                      If(
+                                                          IsBlank(step),
+                                                          Patch(
+                                                              ApprovalHistory,
+                                                              Defaults(ApprovalHistory),
+                                                              {
+                                                                  Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                                  RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                                  RequestType: {Value: "Leave Request"},
+                                                                  RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                                  Decision: {Value: "Rejected"},
+                                                                  DecisionDate: Now(),
+                                                                  Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                                  ApproverID: approverId,
+                                                                  Module: {Value: "HR"},
+                                                                  Sequence: 1,
+                                                                  EntityType: {Value: "LeaveRequest"},
+                                                                  Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
+                                                                  AssignedDate: Now(),
+                                                                  ProjectID: If(projectId > 0, projectId, Blank())
+                                                              }
+                                                          ),
+                                                          Patch(ApprovalHistory, step, {Decision: {Value: "Rejected"}, DecisionDate: Now()})
+                                                      )
+                                                  ),
+                                                  Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة. تعذر تحديث سجل الاعتماد.", "Leave rejected. The approval history could not be updated."), NotificationType.Warning)
+                                              );
+                                              fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Rejected", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Rejected", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
+                                              fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "تم رفض الإجازة", "Leave rejected"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
+                                              Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة.", "Leave rejected."), NotificationType.Success),
+                                              Notify(If(gblLanguage = "Arabic", "تعذر الرفض.", "Reject failed."), NotificationType.Error)
+                                          )
                                       )
                                   )
                               )
@@ -1653,6 +1960,13 @@ Screens:
                                             Refresh(LeaveRequests);
                                             Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
                                             Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                            IfError(
+                                                With(
+                                                    {step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending"))},
+                                                    If(!IsBlank(step), Remove(ApprovalHistory, step))
+                                                ),
+                                                Notify(If(gblLanguage = "Arabic", "حُذف الطلب. تعذر إغلاق سجل الاعتماد.", "The request was deleted. The approval history row could not be closed."), NotificationType.Warning)
+                                            );
                                             fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Deleted", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", Coalesce(gblSelectedLeaveRequest.Status.Value, ""), "", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
                                             fnHRNotify(Coalesce(gblSelectedLeaveRequest.Approver.Id, 0), Coalesce(gblSelectedLeaveRequest.Approver.Value, ""), If(gblLanguage = "Arabic", "حذف طلب إجازة", "Leave request deleted"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
                                             If(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0) <> Coalesce(gblSelectedLeaveRequest.Approver.Id, 0), fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "حذف طلب إجازة", "Leave request deleted"), Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request"));
@@ -1753,6 +2067,37 @@ Screens:
                                                     Reset(dteLeaveEnd);
                                                     Reset(cmbLeaveSubstitute);
                                                     Reset(txtLeaveReason);
+                                                    If(
+                                                        Coalesce(gblSelectedLeaveRequest.Approver.Id, gblCurrentEmployee.Manager.Id, 0) > 0,
+                                                        IfError(
+                                                            With(
+                                                                {
+                                                                    approverId: Coalesce(gblSelectedLeaveRequest.Approver.Id, gblCurrentEmployee.Manager.Id, 0),
+                                                                    projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                                                },
+                                                                Patch(
+                                                                    ApprovalHistory,
+                                                                    Defaults(ApprovalHistory),
+                                                                    {
+                                                                        Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                                        RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                                        RequestType: {Value: "Leave Request"},
+                                                                        RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                                        Decision: {Value: "Pending"},
+                                                                        Approver: {Id: approverId, Value: Coalesce(gblSelectedLeaveRequest.Approver.Value, gblCurrentEmployee.Manager.Value, "")},
+                                                                        ApproverID: approverId,
+                                                                        Module: {Value: "HR"},
+                                                                        Sequence: 1,
+                                                                        EntityType: {Value: "LeaveRequest"},
+                                                                        Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, gblUser.ID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, gblCurrentEmployee.FullName, "")},
+                                                                        AssignedDate: Now(),
+                                                                        ProjectID: If(projectId > 0, projectId, Blank())
+                                                                    }
+                                                                )
+                                                            ),
+                                                            Notify(If(gblLanguage = "Arabic", "أُرسل الطلب. تعذر إنشاء سجل الاعتماد.", "The request was submitted. The approval history row could not be created."), NotificationType.Warning)
+                                                        )
+                                                    );
                                                     fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Created", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "", "Pending", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), Coalesce(gblSelectedLeaveRequest.Reason, ""), false);
                                                     fnHRNotify(Coalesce(gblSelectedLeaveRequest.Approver.Id, gblCurrentEmployee.Manager.Id, 0), Coalesce(gblSelectedLeaveRequest.Approver.Value, gblCurrentEmployee.Manager.Value, ""), If(gblLanguage = "Arabic", "طلب إجازة جديد", "New leave request"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
                                                     Notify(If(gblLanguage = "Arabic", "تم إرسال طلب الإجازة.", "Leave request submitted."), NotificationType.Success),
@@ -2004,12 +2349,13 @@ Screens:
                         DropShadow: =DropShadow.None
                         Fill: =Color.Transparent
                         FillPortions: =0
-                        Height: =44
+                        Height: =If(App.Width < 700, 88, 44)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
                         LayoutGap: =8
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
+                        LayoutWrap: =true
                         Width: =Parent.Width
                       Children:
                         - btnLeaveDetailsEdit:
@@ -2051,17 +2397,57 @@ Screens:
                                             }
                                         )
                                     );
-                                    Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
-                                    Collect(colUserLeaveRequests, gblSelectedLeaveRequest);
-                                    Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
-                                    Collect(colLeaveAll, gblSelectedLeaveRequest);
+                                    If(
+                                        !IsBlank(LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID)),
+                                        Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                        Collect(colUserLeaveRequests, gblSelectedLeaveRequest)
+                                    );
+                                    If(
+                                        !IsBlank(LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID)),
+                                        Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                        Collect(colLeaveAll, gblSelectedLeaveRequest)
+                                    );
+                                    IfError(
+                                        With(
+                                            {
+                                                step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
+                                                approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                            },
+                                            If(
+                                                IsBlank(step),
+                                                Patch(
+                                                    ApprovalHistory,
+                                                    Defaults(ApprovalHistory),
+                                                    {
+                                                        Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                        RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                        RequestType: {Value: "Leave Request"},
+                                                        RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                        Decision: {Value: "Approved"},
+                                                        DecisionDate: Now(),
+                                                        Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                        ApproverID: approverId,
+                                                        Module: {Value: "HR"},
+                                                        Sequence: 1,
+                                                        EntityType: {Value: "LeaveRequest"},
+                                                        Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
+                                                        AssignedDate: Now(),
+                                                        ProjectID: If(projectId > 0, projectId, Blank())
+                                                    }
+                                                ),
+                                                Patch(ApprovalHistory, step, {Decision: {Value: "Approved"}, DecisionDate: Now()})
+                                            )
+                                        ),
+                                        Notify(If(gblLanguage = "Arabic", "تم اعتماد الإجازة. تعذر تحديث سجل الاعتماد.", "Leave approved. The approval history could not be updated."), NotificationType.Warning)
+                                    );
                                     fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Approved", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Approved", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
                                     fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة", "Leave approved"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
                                     Notify(If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة.", "Leave approved."), NotificationType.Success),
                                     Notify(If(gblLanguage = "Arabic", "تعذرت الموافقة.", "Approve failed."), NotificationType.Error)
                                 )
                               Text: =If(gblLanguage = "Arabic", "موافقة", "Approve")
-                              Visible: =And(gblSelectedLeaveRequest.Status.Value = "Pending", gblSelectedLeaveRequest.Approver.Id = gblCurrentEmployee.ID)
+                              Visible: =And(gblSelectedLeaveRequest.Status.Value = "Pending", Or(gblSelectedLeaveRequest.Approver.Id = Coalesce(gblCurrentEmployee.ID, 0), gblSelectedLeaveRequest.Approver.Id = Coalesce(gblUser.ID, 0)))
                               Width: =110
                         - btnLeaveDetailsReject:
                             Control: ModernButton@1.0.0
@@ -2085,17 +2471,57 @@ Screens:
                                             }
                                         )
                                     );
-                                    Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
-                                    Collect(colUserLeaveRequests, gblSelectedLeaveRequest);
-                                    Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
-                                    Collect(colLeaveAll, gblSelectedLeaveRequest);
+                                    If(
+                                        !IsBlank(LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID)),
+                                        Remove(colUserLeaveRequests, LookUp(colUserLeaveRequests, ID = gblSelectedLeaveRequest.ID));
+                                        Collect(colUserLeaveRequests, gblSelectedLeaveRequest)
+                                    );
+                                    If(
+                                        !IsBlank(LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID)),
+                                        Remove(colLeaveAll, LookUp(colLeaveAll, ID = gblSelectedLeaveRequest.ID));
+                                        Collect(colLeaveAll, gblSelectedLeaveRequest)
+                                    );
+                                    IfError(
+                                        With(
+                                            {
+                                                step: LookUp(ApprovalHistory, And(RequestItemID = Text(gblSelectedLeaveRequest.ID), EntityType.Value = "LeaveRequest", Decision.Value = "Pending")),
+                                                approverId: Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0),
+                                                projectId: Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0)
+                                            },
+                                            If(
+                                                IsBlank(step),
+                                                Patch(
+                                                    ApprovalHistory,
+                                                    Defaults(ApprovalHistory),
+                                                    {
+                                                        Title: Left(Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " - " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, "Leave"), 255),
+                                                        RequestItemID: Text(gblSelectedLeaveRequest.ID),
+                                                        RequestType: {Value: "Leave Request"},
+                                                        RequestNumber: "LV-" & Text(gblSelectedLeaveRequest.ID, "000"),
+                                                        Decision: {Value: "Rejected"},
+                                                        DecisionDate: Now(),
+                                                        Approver: {Id: approverId, Value: Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "")},
+                                                        ApproverID: approverId,
+                                                        Module: {Value: "HR"},
+                                                        Sequence: 1,
+                                                        EntityType: {Value: "LeaveRequest"},
+                                                        Requester: {Id: Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Value: Coalesce(gblSelectedLeaveRequest.Employee.Value, "")},
+                                                        AssignedDate: Now(),
+                                                        ProjectID: If(projectId > 0, projectId, Blank())
+                                                    }
+                                                ),
+                                                Patch(ApprovalHistory, step, {Decision: {Value: "Rejected"}, DecisionDate: Now()})
+                                            )
+                                        ),
+                                        Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة. تعذر تحديث سجل الاعتماد.", "Leave rejected. The approval history could not be updated."), NotificationType.Warning)
+                                    );
                                     fnLogHR("Leave Request", gblSelectedLeaveRequest.ID, Text(gblSelectedLeaveRequest.ID), "Rejected", "Important", Coalesce(LookUp(Employees, ID = gblSelectedLeaveRequest.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Rejected", Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "", false);
                                     fnHRNotify(Coalesce(gblSelectedLeaveRequest.EmployeeID, 0), Coalesce(gblSelectedLeaveRequest.Employee.Value, ""), If(gblLanguage = "Arabic", "تم رفض الإجازة", "Leave rejected"), Coalesce(gblSelectedLeaveRequest.Employee.Value, "") & " · " & Coalesce(gblSelectedLeaveRequest.LeaveType.Value, ""), "Leave Request", gblSelectedLeaveRequest.ID, "Leave Request");
                                     Notify(If(gblLanguage = "Arabic", "تم رفض الإجازة.", "Leave rejected."), NotificationType.Success),
                                     Notify(If(gblLanguage = "Arabic", "تعذر الرفض.", "Reject failed."), NotificationType.Error)
                                 )
                               Text: =If(gblLanguage = "Arabic", "رفض", "Reject")
-                              Visible: =And(gblSelectedLeaveRequest.Status.Value = "Pending", gblSelectedLeaveRequest.Approver.Id = gblCurrentEmployee.ID)
+                              Visible: =And(gblSelectedLeaveRequest.Status.Value = "Pending", Or(gblSelectedLeaveRequest.Approver.Id = Coalesce(gblCurrentEmployee.ID, 0), gblSelectedLeaveRequest.Approver.Id = Coalesce(gblUser.ID, 0)))
                               Width: =100
       - cmpLeaveTopBar:
           Control: CanvasComponent
