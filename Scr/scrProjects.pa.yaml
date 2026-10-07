@@ -16,41 +16,24 @@ Screens:
         Set(gblSelectedModule, "Programs");
         Set(varCurrentScreen, "Programs");
         Set(VarProgrammodule, "PHome");
+        Set(varNavSelectedID, 21);
         Set(VSc, "VarProgrammodule");
-        Set(varSelectedProject, Blank());
         Set(varEditorEntity, "");
         Set(varEditorMode, "");
         Set(varReturnTab, "General");
-        Set(varProjectTab, "General");
         Set(varEditingProject, Blank());
         Set(varEditingMember, Blank());
         Set(varEditingActivity, Blank());
         Set(varEditingTask, Blank());
         Set(varEditingRisk, Blank());
-        ClearCollect(
-            colWeightOptions,
-            {Label: "Low", WeightValue: 1},
-            {Label: "Medium", WeightValue: 3},
-            {Label: "High", WeightValue: 5},
-            {Label: "Critical", WeightValue: 8}
-        );
-        Set(
-            varUserHasAllProjects,
-            !IsEmpty(Filter(colUserProjectAccess, AllProjects = true))
-        );
+        Set(varUserHasAllProjects, CountIf(colUserProjectAccess, AllProjects = true) > 0);
         ClearCollect(
             colUserProjectIDs,
-            ForAll(
-                Filter(
-                    colUserProjectAccess,
-                    And(
-                        EmployeeID = gblCurrentEmployee.ID,
-                        IsActive = true,
-                        AllProjects = false
-                    )
-                ),
-                {Value: ProjectID}
-            )
+            Filter(colUserProjectAccess, AllProjects = false).ProjectID
+        );
+        If(
+            CountRows(colProjects) = 0,
+            ClearCollect(colProjects, FirstN(SortByColumns(Projects, "StartDate", SortOrder.Descending), 500))
         );
         Clear(colProjectScope);
         If(
@@ -66,53 +49,6 @@ Screens:
         Set(varOnTrackProjects, CountIf(colProjectScope, HealthStatus.Value = "On Track"));
         Set(varDelayedProjects, CountIf(colProjectScope, HealthStatus.Value = "Delayed"));
         Set(varPlanedProjects, CountIf(colProjectScope, Status.Value = "Planed"));
-        Set(
-            varProjectSummary,
-            Table(
-                {
-                    Label: If(gblLanguage = "Arabic", "كل المشاريع", "All Projects"),
-                    Value: varAllprojects,
-                    Subtitle: If(gblLanguage = "Arabic", "إجمالي المشاريع", "Total Projects"),
-                    isHidden: false
-                },
-                {
-                    Label: If(gblLanguage = "Arabic", "المشاريع النشطة", "Active Projects"),
-                    Value: varActiveProjects,
-                    Subtitle: If(gblLanguage = "Arabic", "قيد التنفيذ", "Currently active"),
-                    isHidden: false
-                },
-                {
-                    Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk Projects"),
-                    Value: varAtRiskProjects,
-                    Subtitle: If(gblLanguage = "Arabic", "تحتاج متابعة", "Projects at risk"),
-                    isHidden: false
-                },
-                {
-                    Label: If(gblLanguage = "Arabic", "مكتملة", "Completed Projects"),
-                    Value: varCompletedProjects,
-                    Subtitle: If(gblLanguage = "Arabic", "أُنجزت", "Successfully completed"),
-                    isHidden: false
-                },
-                {
-                    Label: If(gblLanguage = "Arabic", "على المسار", "On Track Projects"),
-                    Value: varOnTrackProjects,
-                    Subtitle: If(gblLanguage = "Arabic", "ضمن الخطة", "Projects on track"),
-                    isHidden: false
-                },
-                {
-                    Label: If(gblLanguage = "Arabic", "متأخرة", "Delayed Projects"),
-                    Value: varDelayedProjects,
-                    Subtitle: If(gblLanguage = "Arabic", "تجاوزت الخطة", "Projects delayed"),
-                    isHidden: false
-                },
-                {
-                    Label: If(gblLanguage = "Arabic", "مخططة", "Planned Projects"),
-                    Value: varPlanedProjects,
-                    Subtitle: If(gblLanguage = "Arabic", "لم تبدأ بعد", "Projects in planning"),
-                    isHidden: false
-                }
-            )
-        );
         Clear(colProjectActivityRaw);
         If(
             varUserHasAllProjects,
@@ -127,7 +63,7 @@ Screens:
                 colUserProjectIDs As access,
                 Collect(
                     colProjectActivityRaw,
-                    Filter(ProjectActivityLog, Project.Id = access.Value)
+                    Filter(ProjectActivityLog, Project.Id = access.ProjectID)
                 )
             )
         );
@@ -210,7 +146,7 @@ Screens:
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varActiveProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
                             IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconColor: fxStatusInk("Approval"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -222,7 +158,7 @@ Screens:
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varOnTrackProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
                             IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconColor: fxStatusInk("Success"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -234,7 +170,7 @@ Screens:
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varAtRiskProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
                             IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconColor: fxStatusInk("Warning"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -246,7 +182,7 @@ Screens:
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varCompletedProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
                             IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconColor: fxStatusInk("Reminder"),
                             SparklineData: "",
                             isHidden: false
                         }
@@ -578,7 +514,7 @@ Screens:
                               ),
                               ForAll(
                                   colUserProjectIDs As access,
-                                  Collect(colProjectActivityRaw, Filter(ProjectActivityLog, Project.Id = access.Value))
+                                  Collect(colProjectActivityRaw, Filter(ProjectActivityLog, Project.Id = access.ProjectID))
                               )
                           );
                           Clear(colProjectActivityFeed);
@@ -709,7 +645,8 @@ Screens:
                         "Dashboard",
                         Notify(If(gblLanguage = "Arabic", "لوحة المشاريع قيد التطوير", "Projects Dashboard is coming soon"), NotificationType.Information),
                         "Reports",
-                        Notify(If(gblLanguage = "Arabic", "التقارير قيد التطوير", "Reports are coming soon"), NotificationType.Information),
+                        Set(VarMEALmodule, "Reports");
+                        Navigate(scrReporting, ScreenTransition.Cover),
                         "Issues",
                         Set(varRkScope, "my");
                         Navigate(scrRisks, ScreenTransition.Cover),
@@ -1073,7 +1010,7 @@ Screens:
                   "Finance", Navigate(scrFinance, ScreenTransition.None),
                   "Settings", Navigate(ScrSettings, ScreenTransition.None)
               )
-            SelectedID: =
+            SelectedID: =20
             Visible: =App.Width < 700
             Width: =Parent.Width
             Y: =Parent.Height - Self.Height
