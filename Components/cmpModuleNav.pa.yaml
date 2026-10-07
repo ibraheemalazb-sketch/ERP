@@ -113,7 +113,7 @@ ComponentDefinitions:
       Icons:
         PropertyKind: Input
         DisplayName: Icons
-        Description: Kept so existing screens still bind. Set IconColor and IconBg on each Data row. Cards do not read this table.
+        Description: Icon drawings. Use COLOR where the line color goes. Each card replaces COLOR with that row's IconColor and paints IconBg on the tile.
         DataType: Table
         Default: |-
           =Table(
@@ -445,6 +445,7 @@ ComponentDefinitions:
                                             ),
                                             ThisItem.IconBg
                                         ),
+                                        listed: LookUp(cmpModuleNav.Icons, Name = ThisItem.Icon).SVG,
                                         body: Switch(
                                             ThisItem.Icon,
                                             "Users",
@@ -486,11 +487,20 @@ ComponentDefinitions:
                                             "<rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/>"
                                         )
                                     },
-                                    "data:image/svg+xml;utf8," & EncodeUrl(
-                                        Substitute(
-                                            "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='" & stroke & "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='24' height='24' fill='" & bg & "' stroke='none'/>" & body & "</svg>",
-                                            "current",
-                                            stroke
+                                    With(
+                                        {
+                                            markup: If(
+                                                Len(Trim(Coalesce(listed, ""))) > 0,
+                                                Substitute(listed, "COLOR", stroke),
+                                                "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='" & stroke & "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" & Substitute(body, "current", stroke) & "</svg>"
+                                            )
+                                        },
+                                        "data:image/svg+xml;utf8," & EncodeUrl(
+                                            Substitute(
+                                                markup,
+                                                "stroke-linejoin='round'>",
+                                                "stroke-linejoin='round'><rect width='24' height='24' fill='" & bg & "' stroke='none'/>"
+                                            )
                                         )
                                     )
                                 )
@@ -503,10 +513,13 @@ ComponentDefinitions:
                         AccessibleLabel: =Self.Text
                         Align: =If(gblLanguage = "Arabic", Align.Left, Align.Right)
                         Color: |-
-                          =If(
-                              gblTheme.Mode = "Dark",
-                              gblTheme.Dark.Colors.TextPrimary,
-                              gblTheme.Light.Colors.TextPrimary
+                          =IfError(
+                              ColorValue(ThisItem.IconColor),
+                              If(
+                                  gblTheme.Mode = "Dark",
+                                  gblTheme.Dark.Colors.TextPrimary,
+                                  gblTheme.Light.Colors.TextPrimary
+                              )
                           )
                         Font: =gblTheme.Typography.FontFamily
                         FontWeight: =gblTheme.FontWeights.Bold
