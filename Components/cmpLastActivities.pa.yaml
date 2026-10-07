@@ -1,0 +1,805 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpLastActivities:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      Items:
+        PropertyKind: Input
+        DisplayName: Items
+        Description: Activity rows for every module. Pass ID, Title, Action, EntityType, EntityNumber, ProjectCode, ActorName, ActivityDate, Severity, Icon, Details, Amount, Currency, RecordID, RecordType, ProjectId, and IsSensitive.
+        DataType: Table
+        Default: |-
+          =Filter(
+              Table(
+                  {
+                      ID: 0,
+                      Title: "",
+                      Action: "",
+                      EntityType: "",
+                      EntityNumber: "",
+                      ProjectCode: "",
+                      ActorName: "",
+                      ActivityDate: Now(),
+                      Severity: "Info",
+                      Icon: "Activity",
+                      Details: "",
+                      Amount: 0,
+                      Currency: "",
+                      RecordID: 0,
+                      RecordType: "",
+                      ProjectId: 0,
+                      IsSensitive: false
+                  }
+              ),
+              false
+          )
+      Layout:
+        PropertyKind: Input
+        DisplayName: Layout
+        Description: Auto uses a table when the card is at least 720 wide, otherwise a list. List or Table forces that format.
+        DataType: Text
+        Default: ="Auto"
+      MaxItems:
+        PropertyKind: Input
+        DisplayName: MaxItems
+        Description: How many activities to show, newest first.
+        DataType: Number
+        Default: =8
+      OnSelect:
+        PropertyKind: Event
+        DisplayName: OnSelect
+        Description: Fires after the clicked row is stored in SelectedActivity.
+        ReturnType: None
+        Default: =false
+      OnViewAll:
+        PropertyKind: Event
+        DisplayName: OnViewAll
+        Description: Fires when View all is pressed.
+        ReturnType: None
+        Default: =false
+      Refresh:
+        PropertyKind: Event
+        DisplayName: Refresh
+        Description: Fires when refresh is pressed.
+        ReturnType: None
+        Default: =false
+      Rows:
+        PropertyKind: Output
+        DisplayName: Rows
+        Description: Items trimmed to MaxItems, newest first.
+        DataType: Table
+      SelectedActivity:
+        PropertyKind: Output
+        DisplayName: SelectedActivity
+        Description: Last clicked activity. Read it in OnSelect.
+        DataType: Record
+      ShowAsTable:
+        PropertyKind: Output
+        DisplayName: ShowAsTable
+        Description: True when the table layout is showing.
+        DataType: Boolean
+      ShowSummary:
+        PropertyKind: Input
+        DisplayName: ShowSummary
+        Description: Shows the today and 7-day counts.
+        DataType: Boolean
+        Default: =true
+      ShowViewAll:
+        PropertyKind: Input
+        DisplayName: ShowViewAll
+        Description: Shows View all.
+        DataType: Boolean
+        Default: =true
+      Title:
+        PropertyKind: Input
+        DisplayName: Title
+        Description: Card heading.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "آخر الأنشطة", "Last activities")
+    Properties:
+      Fill: =Color.Transparent
+      Height: =420
+      OnReset: =Set(_lastSel, Blank())
+      Rows: |-
+        =FirstN(
+            SortByColumns(
+                cmpLastActivities.Items,
+                "ActivityDate",
+                SortOrder.Descending
+            ),
+            Max(1, Coalesce(cmpLastActivities.MaxItems, 8))
+        )
+      SelectedActivity: =_lastSel
+      ShowAsTable: |-
+        =If(
+            cmpLastActivities.Layout = "Table",
+            true,
+            If(
+                cmpLastActivities.Layout = "List",
+                false,
+                And(cmpLastActivities.Width >= 720, App.Width >= 700)
+            )
+        )
+      Width: =360
+    Children:
+      - conLastCard:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            BorderColor: =fxThemeColor("Border")
+            BorderThickness: =1
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Surface")
+            Height: =cmpLastActivities.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =4
+            PaddingBottom: =8
+            PaddingLeft: =12
+            PaddingRight: =12
+            PaddingTop: =10
+            RadiusBottomLeft: =gblTheme.Radius.XL
+            RadiusBottomRight: =gblTheme.Radius.XL
+            RadiusTopLeft: =gblTheme.Radius.XL
+            RadiusTopRight: =gblTheme.Radius.XL
+            Width: =cmpLastActivities.Width
+          Children:
+            - conLastHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =32
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =32
+                  LayoutMinWidth: =0
+                Children:
+                  - imgLastHead:
+                      Control: Image@2.2.3
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: =fxSvg("Activity", fxThemeInk("Primary"))
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        Width: =16
+                  - lblLastTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =24
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Body
+                        Text: =Coalesce(cmpLastActivities.Title, "")
+                        Tooltip: =Self.Text
+                        Wrap: =false
+                  - lblLastCount:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("Primary")
+                        Fill: =fxThemeColor("PrimaryLight")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =22
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        PaddingTop: =0
+                        RadiusBottomLeft: =11
+                        RadiusBottomRight: =11
+                        RadiusTopLeft: =11
+                        RadiusTopRight: =11
+                        Size: =gblTheme.Typography.Caption
+                        Text: =Text(CountRows(cmpLastActivities.Rows))
+                        Visible: =CountRows(cmpLastActivities.Rows) > 0
+                        Width: =36
+                  - imgLastRefresh:
+                      Control: Image@2.2.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: =fxSvg("Refresh", fxThemeInk("Muted"))
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        OnSelect: =cmpLastActivities.Refresh()
+                        Tooltip: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        Width: =16
+                  - btnLastAll:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "عرض الكل", "View all")
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =ButtonAppearance.Transparent
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =28
+                        LayoutMinHeight: =28
+                        LayoutMinWidth: =0
+                        OnSelect: =cmpLastActivities.OnViewAll()
+                        Text: =If(gblLanguage = "Arabic", "عرض الكل", "View all")
+                        Visible: =cmpLastActivities.ShowViewAll
+                        Width: =88
+            - lblLastSummary:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(gblIsRTL, Align.Right, Align.Left)
+                  BorderStyle: =BorderStyle.None
+                  Color: =fxThemeColor("TextMuted")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =18
+                  LayoutMinHeight: =18
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =gblTheme.Typography.Caption
+                  Text: |-
+                    =With(
+                        {
+                            todayCount: CountRows(Filter(cmpLastActivities.Rows, ActivityDate >= Today())),
+                            weekCount: CountRows(Filter(cmpLastActivities.Rows, ActivityDate >= DateAdd(Today(), -7, TimeUnit.Days)))
+                        },
+                        If(
+                            gblLanguage = "Arabic",
+                            todayCount & " اليوم  ·  " & weekCount & " خلال 7 أيام",
+                            todayCount & " today  ·  " & weekCount & " in 7 days"
+                        )
+                    )
+                  Visible: =And(cmpLastActivities.ShowSummary, CountRows(cmpLastActivities.Rows) > 0)
+                  Wrap: =false
+            - conLastEmpty:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutJustifyContent: =LayoutJustifyContent.Center
+                  Visible: =CountRows(cmpLastActivities.Rows) = 0
+                Children:
+                  - imgLastEmpty:
+                      Control: Image@2.2.3
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =28
+                        Image: =fxSvg("Clock", fxThemeInk("Muted"))
+                        Width: =28
+                  - lblLastEmpty:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextSecondary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =22
+                        Size: =gblTheme.Typography.BodySmall
+                        Text: =If(gblLanguage = "Arabic", "لا توجد أنشطة حديثة", "No recent activity")
+                        Width: =240
+                  - lblLastEmptyHint:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =32
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "ستظهر الأنشطة الجديدة هنا.", "New activity will appear here.")
+                        Width: =240
+            - conLastTableHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =28
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  Visible: =And(cmpLastActivities.ShowAsTable, CountRows(cmpLastActivities.Rows) > 0)
+                Children:
+                  - lblLastHeadWhat:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =36
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "النشاط", "ACTIVITY")
+                        Wrap: =false
+                  - lblLastHeadProject:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "المشروع", "PROJECT")
+                        Width: =88
+                        Wrap: =false
+                  - lblLastHeadActor:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "بواسطة", "BY")
+                        Width: =120
+                        Wrap: =false
+                  - lblLastHeadWhen:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "الوقت", "WHEN")
+                        Width: =108
+                        Wrap: =false
+                  - lblLastHeadSeverity:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "الأهمية", "LEVEL")
+                        Width: =84
+                        Wrap: =false
+            - galLastTable:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "جدول الأنشطة", "Activity table")
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Items: =cmpLastActivities.Rows
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =48
+                  Visible: =And(cmpLastActivities.ShowAsTable, CountRows(cmpLastActivities.Rows) > 0)
+                Children:
+                  - conLastTableRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("BorderLight")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =galLastTable.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        Width: =galLastTable.TemplateWidth
+                      Children:
+                        - conLastTableIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", fxThemeColor("DangerLight"),
+                                    "Important", fxThemeColor("WarningLight"),
+                                    "Success", fxThemeColor("SuccessLight"),
+                                    fxThemeColor("PrimaryLight")
+                                )
+                              Height: =28
+                              RadiusBottomLeft: =8
+                              RadiusBottomRight: =8
+                              RadiusTopLeft: =8
+                              RadiusTopRight: =8
+                              Width: =28
+                            Children:
+                              - imgLastTableIcon:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: |-
+                                      =fxSvg(
+                                          fxActivityIcon(Coalesce(ThisItem.Icon, ThisItem.EntityType, ThisItem.Action, "Activity")),
+                                          fxStatusInk(ThisItem.Severity)
+                                      )
+                                    Width: =16
+                                    X: =6
+                                    Y: =6
+                        - lblLastTableTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =Coalesce(ThisItem.Title, ThisItem.Action, "-")
+                              Tooltip: |-
+                                =If(
+                                    ThisItem.IsSensitive,
+                                    If(gblLanguage = "Arabic", "التفاصيل مخفية", "Details hidden"),
+                                    Coalesce(ThisItem.Details, ThisItem.Title, "")
+                                )
+                              Wrap: =false
+                        - lblLastTableProject:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(IsBlank(ThisItem.ProjectCode), "-", ThisItem.ProjectCode)
+                              Width: =88
+                              Wrap: =false
+                        - lblLastTableActor:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(IsBlank(ThisItem.ActorName), "-", ThisItem.ActorName)
+                              Tooltip: =Self.Text
+                              Width: =120
+                              Wrap: =false
+                        - lblLastTableWhen:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: |-
+                                =If(
+                                    IsBlank(ThisItem.ActivityDate),
+                                    "-",
+                                    Text(ThisItem.ActivityDate, "dd mmm HH:mm")
+                                )
+                              Width: =108
+                              Wrap: =false
+                        - lblLastTableLevel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              Color: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", fxThemeColor("Danger"),
+                                    "Important", fxThemeColor("Warning"),
+                                    "Success", fxThemeColor("Success"),
+                                    fxThemeColor("Primary")
+                                )
+                              Fill: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", fxThemeColor("DangerLight"),
+                                    "Important", fxThemeColor("WarningLight"),
+                                    "Success", fxThemeColor("SuccessLight"),
+                                    fxThemeColor("PrimaryLight")
+                                )
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =22
+                              PaddingBottom: =0
+                              PaddingLeft: =6
+                              PaddingRight: =6
+                              PaddingTop: =0
+                              RadiusBottomLeft: =11
+                              RadiusBottomRight: =11
+                              RadiusTopLeft: =11
+                              RadiusTopRight: =11
+                              Size: =gblTheme.Typography.Caption
+                              Text: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", If(gblLanguage = "Arabic", "حرج", "Critical"),
+                                    "Important", If(gblLanguage = "Arabic", "مهم", "Important"),
+                                    "Success", If(gblLanguage = "Arabic", "نجاح", "Success"),
+                                    If(gblLanguage = "Arabic", "معلومة", "Info")
+                                )
+                              Width: =84
+                              Wrap: =false
+                  - btnLastTableOpen:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =galLastTable.TemplateHeight
+                        OnSelect: |-
+                          =Set(_lastSel, ThisItem);
+                          cmpLastActivities.OnSelect()
+                        Text: =""
+                        Tooltip: =Coalesce(ThisItem.Title, "")
+                        Width: =galLastTable.TemplateWidth
+            - galLastList:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "قائمة الأنشطة", "Activity list")
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Items: =cmpLastActivities.Rows
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =72
+                  Visible: =And(Not(cmpLastActivities.ShowAsTable), CountRows(cmpLastActivities.Rows) > 0)
+                Children:
+                  - conLastListRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =galLastList.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        Width: =galLastList.TemplateWidth
+                      Children:
+                        - conLastListIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", fxThemeColor("DangerLight"),
+                                    "Important", fxThemeColor("WarningLight"),
+                                    "Success", fxThemeColor("SuccessLight"),
+                                    fxThemeColor("PrimaryLight")
+                                )
+                              Height: =36
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              Width: =36
+                            Children:
+                              - imgLastListIcon:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =18
+                                    Image: |-
+                                      =fxSvg(
+                                          fxActivityIcon(Coalesce(ThisItem.Icon, ThisItem.EntityType, ThisItem.Action, "Activity")),
+                                          fxStatusInk(ThisItem.Severity)
+                                      )
+                                    Width: =18
+                                    X: =9
+                                    Y: =9
+                        - conLastListText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              FillPortions: =1
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblLastListTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: =Coalesce(ThisItem.Title, ThisItem.Action, "-")
+                                    Tooltip: |-
+                                      =If(
+                                          ThisItem.IsSensitive,
+                                          If(gblLanguage = "Arabic", "التفاصيل مخفية", "Details hidden"),
+                                          Coalesce(ThisItem.Details, ThisItem.Title, "")
+                                      )
+                                    Wrap: =false
+                              - lblLastListMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =With(
+                                          {
+                                              action: Coalesce(ThisItem.Action, ""),
+                                              entity: Trim(Coalesce(ThisItem.EntityType, "") & " " & Coalesce(ThisItem.EntityNumber, "")),
+                                              project: Coalesce(ThisItem.ProjectCode, "")
+                                          },
+                                          action &
+                                          If(And(Len(action) > 0, Len(entity) > 0), " · ", "") &
+                                          entity &
+                                          If(And(Len(project) > 0, Or(Len(action) > 0, Len(entity) > 0)), " · ", "") &
+                                          project
+                                      )
+                                    Wrap: =false
+                              - lblLastListWhen:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =With(
+                                          {
+                                              mins: DateDiff(ThisItem.ActivityDate, Now(), TimeUnit.Minutes),
+                                              actor: Coalesce(ThisItem.ActorName, "")
+                                          },
+                                          actor & If(!IsBlank(actor) && !IsBlank(ThisItem.ActivityDate), "  ·  ", "") &
+                                          If(
+                                              IsBlank(ThisItem.ActivityDate),
+                                              "",
+                                              If(
+                                                  mins < 1,
+                                                  If(gblLanguage = "Arabic", "الآن", "Just now"),
+                                                  mins < 60,
+                                                  If(gblLanguage = "Arabic", "منذ " & mins & " د", mins & " min"),
+                                                  mins < 1440,
+                                                  If(
+                                                      gblLanguage = "Arabic",
+                                                      "منذ " & RoundDown(mins / 60, 0) & " س",
+                                                      RoundDown(mins / 60, 0) & " hr"
+                                                  ),
+                                                  Text(ThisItem.ActivityDate, "dd mmm")
+                                              )
+                                          )
+                                      )
+                                    Wrap: =false
+                        - lblLastListLevel:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              AlignInContainer: =AlignInContainer.Center
+                              Color: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", fxThemeColor("Danger"),
+                                    "Important", fxThemeColor("Warning"),
+                                    "Success", fxThemeColor("Success"),
+                                    fxThemeColor("Primary")
+                                )
+                              Fill: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", fxThemeColor("DangerLight"),
+                                    "Important", fxThemeColor("WarningLight"),
+                                    "Success", fxThemeColor("SuccessLight"),
+                                    fxThemeColor("PrimaryLight")
+                                )
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =22
+                              PaddingBottom: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =0
+                              RadiusBottomLeft: =11
+                              RadiusBottomRight: =11
+                              RadiusTopLeft: =11
+                              RadiusTopRight: =11
+                              Size: =gblTheme.Typography.Caption
+                              Text: |-
+                                =Switch(
+                                    ThisItem.Severity,
+                                    "Critical", If(gblLanguage = "Arabic", "حرج", "Critical"),
+                                    "Important", If(gblLanguage = "Arabic", "مهم", "Important"),
+                                    "Success", If(gblLanguage = "Arabic", "نجاح", "Success"),
+                                    If(gblLanguage = "Arabic", "معلومة", "Info")
+                                )
+                              Width: =72
+                              Wrap: =false
+                  - btnLastListOpen:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =galLastList.TemplateHeight
+                        OnSelect: |-
+                          =Set(_lastSel, ThisItem);
+                          cmpLastActivities.OnSelect()
+                        Text: =""
+                        Tooltip: =Coalesce(ThisItem.Title, "")
+                        Width: =galLastList.TemplateWidth

@@ -406,7 +406,7 @@ Screens:
                 Children:
                   - cmpFinActivity:
                       Control: CanvasComponent
-                      ComponentName: cmpRecentActivities
+                      ComponentName: cmpLastActivities
                       Properties:
                         FillPortions: =1
                         Height: =420
@@ -421,7 +421,19 @@ Screens:
                                   Module: "Finance",
                                   ActivityType: Coalesce(log.EntityType.Value, "Finance"),
                                   Action: Coalesce(log.ActionType.Value, ""),
-                                  Title: Coalesce(log.ActionType.Value, "") & " · " & Coalesce(log.EntityType.Value, ""),
+                                  Title: Coalesce(log.Title, Coalesce(log.ActionType.Value, "") & " · " & Coalesce(log.EntityType.Value, "")),
+                                  EntityType: Coalesce(log.EntityType.Value, ""),
+                                  EntityNumber: Coalesce(log.EntityNumber, ""),
+                                  ProjectCode: Coalesce(log.ProjectCode, ""),
+                                  ProjectId: Coalesce(log.ProjectID, 0),
+                                  Amount: Coalesce(log.Amount, 0),
+                                  Currency: Coalesce(log.Currency.Value, ""),
+                                  IsSensitive: Coalesce(log.IsSensitive, false) && !canViewPayroll,
+                                  Details: If(
+                                      log.IsSensitive && !canViewPayroll,
+                                      If(gblLanguage = "Arabic", "التفاصيل مخفية", "Details hidden (sensitive)"),
+                                      Coalesce(log.Details, "")
+                                  ),
                                   Description: If(
                                       log.IsSensitive && !canViewPayroll,
                                       If(gblLanguage = "Arabic", "التفاصيل مخفية", "Details hidden (sensitive)"),
@@ -431,6 +443,12 @@ Screens:
                                   ActivityDate: log.ActionDate,
                                   RecordType: Coalesce(log.EntityType.Value, ""),
                                   RecordID: Coalesce(log.EntityID, 0),
+                                  Severity: Switch(
+                                      Coalesce(log.Severity.Value, "Info"),
+                                      "Critical", "Critical",
+                                      "Important", "Important",
+                                      "Info"
+                                  ),
                                   Status: Switch(
                                       Coalesce(log.Severity.Value, "Info"),
                                       "Critical", "Critical",
