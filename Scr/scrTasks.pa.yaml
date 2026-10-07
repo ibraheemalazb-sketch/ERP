@@ -1,3 +1,11 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
 Screens:
   scrTasks:
     Properties:
@@ -5,99 +13,132 @@ Screens:
       LoadingSpinnerColor: =fxThemeColor("Primary")
       OnVisible: |-
         =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
-        Set(gblSelectedModule, "Tasks");
-        Set(varCurrentScreen, "Tasks");
+        Set(gblSelectedModule, "Programs");
+        Set(varCurrentScreen, "Programs");
         Set(VarProgrammodule, "PTasks");
-        Set(varMeID, gblUser.ID);
-        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, LookUp(Employees, ID = gblUser.ID).FullName));
-        Set(varTkUserID, Coalesce(varTasksAssignedToID, gblUser.ID));
-        Set(varTasksAssignedToID, gblUser.ID);
-        If(IsBlank(varTkScope), Set(varTkScope, "my"));
-        If(And(varTkScope = "project", IsBlank(varSelectedProject)), Set(varTkScope, "my"));
-        If(IsBlank(varTkQuick), Set(varTkQuick, "all"));
-        If(IsBlank(varTkForm), Set(varTkForm, ""));
-        If(
-            Coalesce(gblSelectedTaskID, 0) > 0,
-            Set(varTask, LookUp(ProjectsTasks, ID = gblSelectedTaskID));
-            Set(gblSelectedTaskID, 0),
-            If(
-                Not(IsBlank(varCurrentTask)),
-                Set(varTask, LookUp(ProjectsTasks, ID = varCurrentTask.ID));
-                Set(varCurrentTask, Blank())
-            )
-        );
-        ClearCollect(
-            colTkPriority,
-            {Value: "All", Label: If(gblLanguage = "Arabic", "الكل", "All")},
-            {Value: "Low", Label: "Low"},
-            {Value: "Medium", Label: "Medium"},
-            {Value: "High", Label: "High"},
-            {Value: "Critical", Label: "Critical"}
-        );
-        Select(btnTkReload);
-        If(
-            Not(IsBlank(Coalesce(varTask.ProjectID, varSelectedProject.ID))),
-            ClearCollect(colTkActRaw, Filter(ProjectsActivities, Project.Id = Coalesce(varTask.ProjectID, varSelectedProject.ID)));
-            ClearCollect(colTkActivities, Filter(colTkActRaw, ActivityType.Value = "SubActivity"))
-        )
+        Set(varNavSelectedID, 29);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, ""));
+        If(IsBlank(varTkQuick), Set(varTkQuick, "open"));
+        If(IsBlank(varTkShowArchived), Set(varTkShowArchived, false));
+        If(IsBlank(varTkPane), Set(varTkPane, "Details"));
+        Set(varAllTkError, false);
+        Select(btnAllTkReload)
     Children:
-      - conTkNav:
+      - conAllTkNav:
           Control: GroupContainer@1.5.0
           Variant: ManualLayout
           Properties:
             Fill: =fxThemeColor("Surface")
             Height: =Parent.Height
             Visible: =App.Width >= 700
-            Width: =If(gblMenuExpanded, 240, 68)
-            X: =0
-            Y: =0
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
           Children:
-            - cmpTkNav:
+            - cmpAllTkNav:
                 Control: CanvasComponent
                 ComponentName: cmpNavigationModern
                 Properties:
+                  AccentColor: =
                   AppLogo: =hdp
                   Expanded: =gblMenuExpanded
                   Height: =Parent.Height
+                  HoverBackground: =
                   Icons: |-
                     =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
                   OnToggle: |-
                     =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
                     If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
                   Theme: =gblTheme.Mode
                   Width: =Parent.Width
-                  X: =0
-                  Y: =0
-      - cmpTkTopBar:
+      - cmpAllTkTop:
           Control: CanvasComponent
           ComponentName: cmpTopBar
           Properties:
             ActionsVisible: =true
+            BadgeColor: =
             BadgeCount: |-
-              =CountRows(
-                  Filter(
-                      colNotifications,
-                      With(
-                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
-                          And(flag <> "yes", flag <> "true", flag <> "1")
-                      )
-                  )
-              )
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
             HasNotifications: |-
-              =CountRows(
-                  Filter(
-                      colNotifications,
-                      With(
-                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
-                          And(flag <> "yes", flag <> "true", flag <> "1")
-                      )
-                  )
-              ) > 0
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
             Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
             ModuleIcon: ="Grid"
             ModuleName: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
             OnSelectTitle: =Navigate(scrProjects, ScreenTransition.None)
-            ScreenSubtitle: =If(gblLanguage = "Arabic", "المهام", "Tasks")
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "كل المهام", "All tasks")
             ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
             ShowBreadcrumb: =true
             ShowLanguage: =true
@@ -105,14 +146,17 @@ Screens:
             ShowSearch: =true
             ShowTheme: =true
             ShowUser: =true
+            Size: =
+            SubTitleWidth: =
             Theme: =gblTheme.Mode
-            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
-            X: =If(App.Width < 700, 0, If(gblMenuExpanded, 240, 68))
-            Y: =0
-      - cmpTkPhoneNav:
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpAllTkPhone:
           Control: CanvasComponent
           ComponentName: cmpBTNav
           Properties:
+            AccentColor: =
             Height: =52
             IconsBtn: |-
               =Table({Name: "Home", SVG: ""})
@@ -120,144 +164,206 @@ Screens:
               =Table(
                   {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
                   {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
-                  {ID: 24, Module: "Tasks", Title: If(gblLanguage = "Arabic", "المهام", "Tasks"), Icon: "Grid", Visible: true},
+                  {ID: 24, Module: "Tasks", Title: If(gblLanguage = "Arabic", "مهامي", "My tasks"), Icon: "Grid", Visible: true},
                   {ID: 22, Module: "Projects", Title: If(gblLanguage = "Arabic", "المشاريع", "Projects"), Icon: "Box", Visible: true},
                   {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
                   {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
               )
+            ModuleBtnNav: =
             OnNavigateBtn: |-
               =Switch(
                   gblSelectedModule,
                   "Home", Navigate(ScrHome, ScreenTransition.None),
                   "HR", Navigate(ScrHR, ScreenTransition.None),
-                  "Tasks", Navigate(scrTasks, ScreenTransition.None),
+                  "Tasks", Navigate(scrMyTasks, ScreenTransition.None),
                   "Projects", Navigate(ScrAllProjects, ScreenTransition.None),
                   "Programs", Navigate(scrProjects, ScreenTransition.None),
                   "Settings", Navigate(ScrSettings, ScreenTransition.None)
               )
+            SelectedID: =
             Visible: =App.Width < 700
             Width: =Parent.Width
-            X: =0
             Y: =Parent.Height - Self.Height
-      - conTkSvc:
+      - conAllTkSvc:
           Control: GroupContainer@1.5.0
           Variant: ManualLayout
           Properties:
             Fill: =Color.Transparent
             Height: =1
             Width: =1
-            X: =0
-            Y: =0
           Children:
-            - lblTkRole:
-                Control: Label@2.5.1
-                Properties:
-                  Height: =1
-                  Text: =If(Or(IsBlank(varTask.AssignedByID), varTask.AssignedByID = 0, varTask.AssignedByID = varTask.AssignedToID), "D", If(varTask.AssignedToID = varMeID, "M", If(varTask.AssignedByID = varMeID, "B", "")))
-                  Width: =1
-                  X: =0
-                  Y: =0
-            - btnTkReload:
+            - btnAllTkReload:
                 Control: ModernButton@1.0.0
                 Properties:
                   Height: =1
                   OnSelect: |-
-                    =Set(varTkOp, "reload");
-                    Select(btnTkSvc)
-                  Text: ="Reload"
-                  Visible: =true
-                  Width: =1
-                  X: =0
-                  Y: =0
-            - btnTkSvc:
-                Control: ModernButton@1.0.0
-                Properties:
-                  Height: =1
-                  OnSelect: |-
-                    =If(
-                        varTkOp = "log",
-                        If(
-                            varTkKind = "approve",
-                            Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Completed"}, Progress: 100, CompletedDate: Today()});
-                            Set(varTask, LookUp(ProjectsTasks, ID = varTask.ID))
-                        );
-                        If(
-                            varTkKind = "return",
-                            Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "In Progress"}});
-                            Set(varTask, LookUp(ProjectsTasks, ID = varTask.ID))
-                        );
-                        If(
-                            varTkKind = "submit",
-                            Patch(
-                                ProjectsTasks,
-                                LookUp(ProjectsTasks, ID = varTask.ID),
-                                {
-                                    Status: {Value: If(lblTkRole.Text = "D", "Completed", "Pending Approval")},
-                                    Progress: If(lblTkRole.Text = "D", 100, varTask.Progress),
-                                    CompletedDate: If(lblTkRole.Text = "D", Today(), Blank())
-                                }
-                            );
-                            Set(varTask, LookUp(ProjectsTasks, ID = varTask.ID))
-                        );
-                        Patch(
-                            ApprovalHistory,
-                            Defaults(ApprovalHistory),
-                            {
-                                Title: varTask.Title,
-                                RequestType: {Value: "Task"},
-                                RequestItemID: Text(varTask.ID),
-                                Action: {Value: varTkKind},
-                                Comments: varTkNote,
-                                PerformedBy: {Id: varMeID, Value: varMeName}
-                            }
-                        );
-                        Patch(
-                            Notifications,
-                            Defaults(Notifications),
-                            {
-                                Title: varTask.Title,
-                                Body: varTkNote,
-                                RecipientID: If(lblTkRole.Text = "M", varTask.AssignedByID, varTask.AssignedToID),
-                                RecordType: "Task",
-                                IsRead: "false"
-                            }
-                        )
-                    );
-                    Clear(colTkRaw);
+                    =Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+                    Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, ""));
+                    Set(varAllTkError, false);
+                    Clear(colAllTkRaw);
                     If(
-                        varTkScope = "project",
-                        If(
-                            Not(IsBlank(varSelectedProject)),
-                            ClearCollect(colTkRaw, FirstN(SortByColumns(Filter(ProjectsTasks, ProjectID = varSelectedProject.ID), "DueDate", SortOrder.Ascending), 500))
+                        And(varTkScope = "project", Coalesce(varSelectedProject.ID, 0) > 0),
+                        IfError(
+                            Collect(colAllTkRaw, Filter(ProjectsTasks, ProjectID = varSelectedProject.ID)),
+                            Set(varAllTkError, true)
                         ),
                         If(
-                            Or(varTkScope = "byme", varTkScope = "approve"),
-                            ClearCollect(colTkRaw, FirstN(SortByColumns(Filter(ProjectsTasks, AssignedByID = varMeID), "DueDate", SortOrder.Ascending), 500)),
-                            ClearCollect(colTkRaw, FirstN(SortByColumns(Filter(ProjectsTasks, AssignedToID = varTkUserID), "DueDate", SortOrder.Ascending), 500))
-                        )
-                    );
-                    ClearCollect(
-                        colTkScope,
-                        AddColumns(
-                            colTkRaw,
-                            IsOpen, And(Status.Value <> "Completed", Status.Value <> "Cancelled"),
-                            IsOver, And(Not(IsBlank(DueDate)), DueDate < Today(), Status.Value <> "Completed", Status.Value <> "Cancelled"),
-                            st, Coalesce(Status.Value, ""),
-                            pr, Coalesce(Progress, 0),
-                            Rank, If(And(Not(IsBlank(DueDate)), DueDate < Today(), Status.Value <> "Completed", Status.Value <> "Cancelled"), 1, If(Status.Value = "Pending Approval", 2, If(Status.Value = "In Progress", 3, If(Status.Value = "Not Started", 4, 5)))),
-                            SortKey, Coalesce(DueDate, Date(2099, 12, 31))
+                            varUserHasAllProjects,
+                            IfError(
+                                Collect(colAllTkRaw, FirstN(SortByColumns(ProjectsTasks, "ID", SortOrder.Descending), 500)),
+                                Set(varAllTkError, true)
+                            ),
+                            ForAll(
+                                Filter(colUserProjectAccess, And(AllProjects = false, IsActive = true)) As access,
+                                IfError(
+                                    Collect(colAllTkRaw, Filter(ProjectsTasks, ProjectID = access.ProjectID)),
+                                    Set(varAllTkError, true)
+                                )
+                            )
                         )
                     );
                     If(
-                        Not(IsBlank(varTask)),
-                        ClearCollect(colTkHistory, Filter(ApprovalHistory, RequestItemID = Text(varTask.ID)))
+                        varAllTkError,
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل بعض المهام.", "Some tasks could not be loaded."), NotificationType.Warning)
+                    );
+                    Clear(colAllTk);
+                    ForAll(
+                        Distinct(colAllTkRaw, ID) As row,
+                        Collect(colAllTk, LookUp(colAllTkRaw, ID = row.Value))
+                    );
+                    If(
+                        Coalesce(gblSelectedTaskID, 0) > 0,
+                        Set(varTask, LookUp(ProjectsTasks, ID = gblSelectedTaskID));
+                        Set(gblSelectedTaskID, 0),
+                        If(
+                            Not(IsBlank(varCurrentTask)),
+                            Set(varTask, LookUp(ProjectsTasks, ID = varCurrentTask.ID));
+                            Set(varCurrentTask, Blank()),
+                            If(
+                                Coalesce(varTask.ID, 0) > 0,
+                                Set(varTask, LookUp(ProjectsTasks, ID = varTask.ID))
+                            )
+                        )
+                    );
+                    If(
+                        Coalesce(varTask.ID, 0) > 0,
+                        ClearCollect(colTkHistory, Filter(ApprovalHistory, RequestItemID = Text(varTask.ID)));
+                        Clear(colTkPeople);
+                        With({p: LookUp(Employees, ID = varTask.AssignedToID)}, If(Coalesce(p.ID, 0) > 0, Collect(colTkPeople, p)));
+                        With({p: LookUp(Employees, ID = varTask.AssignedByID)}, If(Coalesce(p.ID, 0) > 0, Collect(colTkPeople, p)));
+                        With({p: LookUp(Employees, ID = varTask.ReviewerID)}, If(Coalesce(p.ID, 0) > 0, Collect(colTkPeople, p)))
                     )
-                  Text: ="Service"
-                  Visible: =true
+                  Text: ="Reload"
+                  Visible: =false
                   Width: =1
-                  X: =0
-                  Y: =0
-      - conTkPage:
+            - btnAllTkAct:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =IfError(
+                        If(
+                            varTkOp = "start",
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "In Progress"}, ActualStart: If(IsBlank(varTask.ActualStart), Now(), varTask.ActualStart)}))
+                        );
+                        If(
+                            And(varTkOp = "submit", Or(Coalesce(varTask.AssignedByID, 0) = 0, varTask.AssignedByID = varTask.AssignedToID)),
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Completed"}, Progress: 100, CompletedDate: Now(), SubmittedDate: Now(), ApprovedDate: Now(), ActualStart: If(IsBlank(varTask.ActualStart), Now(), varTask.ActualStart)}))
+                        );
+                        If(
+                            And(varTkOp = "submit", Coalesce(varTask.AssignedByID, 0) > 0, varTask.AssignedByID <> varTask.AssignedToID),
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Pending Approval"}, SubmittedDate: Now(), ReviewerID: varTask.AssignedByID, ActualStart: If(IsBlank(varTask.ActualStart), Now(), varTask.ActualStart)}))
+                        );
+                        If(
+                            varTkOp = "approve",
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Completed"}, Progress: 100, CompletedDate: Now(), ApprovedDate: Now()}))
+                        );
+                        If(
+                            varTkOp = "return",
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Reopened"}, ReturnCount: Coalesce(varTask.ReturnCount, 0) + 1}))
+                        );
+                        If(
+                            varTkOp = "cancel",
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Cancelled"}}))
+                        );
+                        If(
+                            varTkOp = "reopen",
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "Reopened"}, CompletedDate: Blank(), Progress: If(Coalesce(varTask.Progress, 0) >= 100, 90, Coalesce(varTask.Progress, 0))}))
+                        );
+                        If(
+                            varTkOp = "progress",
+                            Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Progress: Min(100, Max(0, Coalesce(varTkNum, 0))), Status: {Value: If(And(varTask.Status.Value = "Not Started", Coalesce(varTkNum, 0) > 0), "In Progress", varTask.Status.Value)}, ActualStart: If(And(Coalesce(varTkNum, 0) > 0, IsBlank(varTask.ActualStart)), Now(), varTask.ActualStart)}))
+                        );
+                        If(
+                            And(varTkOp <> "start", varTkOp <> "progress"),
+                            IfError(
+                                Patch(
+                                    ApprovalHistory,
+                                    Defaults(ApprovalHistory),
+                                    {
+                                        Title: varTask.Title,
+                                        RequestType: {Value: "Task"},
+                                        RequestItemID: Text(varTask.ID),
+                                        Action: {Value: Switch(varTkOp, "submit", "Submitted", "approve", "Approved", "return", "Returned", "cancel", "Cancelled", "reopen", "Reopened", "Submitted")},
+                                        Decision: {Value: Switch(varTkOp, "approve", "Approved", "return", "Returned", "cancel", "Cancelled", "submit", If(Or(Coalesce(varTask.AssignedByID, 0) = 0, varTask.AssignedByID = varTask.AssignedToID), "Approved", "Pending"), "Pending")},
+                                        Comments: Left(Coalesce(varTkNote, ""), 255),
+                                        PerformedBy: {Id: varMeID, Value: varMeName},
+                                        RequesterID: varTask.AssignedToID,
+                                        RequestorID: varTask.AssignedToID,
+                                        DecisionDate: Now()
+                                    }
+                                ),
+                                Notify(If(gblLanguage = "Arabic", "حُفظت المهمة. تعذر كتابة سجل الاعتماد.", "The task was saved. The approval row could not be written."), NotificationType.Warning)
+                            );
+                            With(
+                                {
+                                    who: If(
+                                        varTkOp = "submit",
+                                        If(Or(Coalesce(varTask.AssignedByID, 0) = 0, varTask.AssignedByID = varTask.AssignedToID), 0, varTask.AssignedByID),
+                                        If(varTask.AssignedToID = varMeID, 0, varTask.AssignedToID)
+                                    )
+                                },
+                                If(
+                                    who > 0,
+                                    fnProjNotify(
+                                        who,
+                                        Coalesce(LookUp(colTkPeople, ID = who).FullName, ""),
+                                        varTask.Title,
+                                        Coalesce(varTkNote, varTask.Status.Value),
+                                        "Task",
+                                        varTask.ID,
+                                        "Task"
+                                    )
+                                )
+                            )
+                        );
+                        fnProjLog(
+                            "Task: " & varTask.Title,
+                            Coalesce(varTask.ProjectID, 0),
+                            Coalesce(varTask.Project.Value, ""),
+                            "Task",
+                            varTask.ID,
+                            Switch(
+                                varTkOp,
+                                "start", "Started",
+                                "submit", "Submitted",
+                                "approve", "Approved",
+                                "return", "Returned",
+                                "cancel", "Cancelled",
+                                "reopen", "Reopened",
+                                "progress", "Progress Updated",
+                                "Updated"
+                            ),
+                            Coalesce(varTkNote, Text(Coalesce(varTask.Progress, 0)) & "%")
+                        );
+                        Select(btnAllTkReload);
+                        Notify(If(gblLanguage = "Arabic", "تم تحديث المهمة.", "Task updated."), NotificationType.Success),
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحديث المهمة.", "The task could not be updated."), NotificationType.Error)
+                    )
+                  Text: ="Act"
+                  Visible: =false
+                  Width: =1
+      - conAllTkPage:
           Control: GroupContainer@1.5.0
           Variant: AutoLayout
           Properties:
@@ -267,18 +373,13 @@ Screens:
             LayoutAlignItems: =LayoutAlignItems.Stretch
             LayoutDirection: =LayoutDirection.Vertical
             LayoutGap: =8
-            LayoutMinHeight: =0
-            LayoutMinWidth: =0
-            LayoutOverflowY: =LayoutOverflow.Scroll
-            PaddingBottom: =If(App.Width < 700, cmpTkPhoneNav.Height + 8, 12)
-            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, 240, 68) + 12)
+            PaddingBottom: =If(App.Width < 700, cmpAllTkPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
             PaddingRight: =12
-            PaddingTop: =cmpTkTopBar.Height + 8
+            PaddingTop: =cmpAllTkTop.Height + 8
             Width: =Parent.Width
-            X: =0
-            Y: =0
           Children:
-            - conTkHeader:
+            - conAllTkHeader:
                 Control: GroupContainer@1.5.0
                 Variant: AutoLayout
                 Properties:
@@ -291,257 +392,200 @@ Screens:
                   LayoutGap: =8
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
-                  Width: =Parent.Width
                 Children:
-                  - lblTkTitle:
-                      Control: ModernText@1.0.0
+                  - lblAllTkTitle:
+                      Control: Label@2.5.1
                       Properties:
                         Color: =fxThemeColor("TextPrimary")
                         FillPortions: =1
                         Font: =gblTheme.Typography.FontFamily
                         FontWeight: =gblTheme.FontWeights.Bold
-                        Height: =28
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
                         Size: =18
-                        Text: =If(gblLanguage = "Arabic", "مهام المشاريع", "Project tasks")
+                        Text: =If(gblLanguage = "Arabic", "كل المهام", "All tasks")
                         Width: =160
-                  - btnTkProject:
+                        Wrap: =false
+                  - btnAllTkAll:
                       Control: ModernButton@1.0.0
                       Properties:
                         Appearance: =ButtonAppearance.Subtle
                         Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
                         OnSelect: |-
-                          =If(
-                              Not(IsBlank(varTask)),
-                              Set(varSelectedProject, LookUp(colProjects, ID = varTask.ProjectID));
-                              Set(varProjectTab, "Tasks");
-                              Navigate(ScrAllProjects, ScreenTransition.Cover, {varShowDetails: true}),
-                              If(Not(IsBlank(varSelectedProject)), Navigate(ScrAllProjects, ScreenTransition.Cover, {varShowDetails: true}))
-                          )
-                        Text: =If(gblLanguage = "Arabic", "المشروع", "Project")
-                        Visible: =Or(Not(IsBlank(varSelectedProject)), Not(IsBlank(varTask)))
-                        Width: =100
-                  - btnTkNew:
+                          =Set(varTkScope, "my");
+                          Set(varTask, Blank());
+                          Navigate(scrMyTasks, ScreenTransition.None)
+                        Text: =If(gblLanguage = "Arabic", "مهامي", "My tasks")
+                        Width: =110
+                  - btnAllTkNew:
                       Control: ModernButton@1.0.0
                       Properties:
-                        Appearance: =ButtonAppearance.Primary
                         Height: =36
                         Icon: ="Add"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
                         OnSelect: |-
-                          =Set(varTkForm, "new");
+                          =Set(varTaskForm, "new");
+                          Set(varTaskReturn, "all");
+                          Set(varTkPresetActivityID, 0);
                           Set(varTask, Blank());
-                          If(
-                              Not(IsBlank(varSelectedProject)),
-                              ClearCollect(colTkActRaw, Filter(ProjectsActivities, Project.Id = varSelectedProject.ID));
-                              ClearCollect(colTkActivities, Filter(colTkActRaw, ActivityType.Value = "SubActivity"))
-                          )
+                          Navigate(scrTaskEditor, ScreenTransition.Cover)
                         Text: =If(gblLanguage = "Arabic", "مهمة", "Task")
                         Width: =100
-            - conTkSplit:
+            - conAllTkTools:
                 Control: GroupContainer@1.5.0
                 Variant: AutoLayout
                 Properties:
                   DropShadow: =DropShadow.None
                   Fill: =Color.Transparent
-                  FillPortions: =1
-                  Height: =Max(240, Parent.Height - cmpTkTopBar.Height - 8 - If(App.Width < 700, cmpTkPhoneNav.Height + 8, 12) - 52)
-                  LayoutAlignItems: =LayoutAlignItems.Stretch
-                  LayoutDirection: =If(App.Width >= 1100, LayoutDirection.Horizontal, LayoutDirection.Vertical)
-                  LayoutGap: =12
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 100, 40)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =5
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
-                  Width: =Parent.Width
+                  LayoutWrap: =App.Width < 700
                 Children:
-                  - conTkList:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
+                  - txtAllTkSearch:
+                      Control: ModernTextInput@1.1.2
                       Properties:
-                        BorderColor: =fxThemeColor("Border")
-                        BorderThickness: =1
-                        DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("Surface")
-                        Height: =Parent.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =8
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "بحث في كل المهام", "Search all tasks")
+                        Height: =36
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
-                        PaddingBottom: =8
-                        PaddingLeft: =8
-                        PaddingRight: =8
-                        PaddingTop: =8
-                        RadiusBottomLeft: =gblTheme.Radius.XL
-                        RadiusBottomRight: =gblTheme.Radius.XL
-                        RadiusTopLeft: =gblTheme.Radius.XL
-                        RadiusTopRight: =gblTheme.Radius.XL
-                        Visible: =And(varTkForm = "", Or(App.Width >= 1100, IsBlank(varTask)))
-                        Width: =If(And(App.Width >= 1100, Not(IsBlank(varTask))), 380, Parent.Width)
+                        Placeholder: =If(gblLanguage = "Arabic", "ابحث بالعنوان أو المشروع", "Search title or project")
+                        Width: =If(App.Width < 700, Parent.Width, 220)
+                  - galAllTkChips:
+                      Control: Gallery@2.15.0
+                      Variant: Horizontal
+                      Properties:
+                        Height: =36
+                        Items: |-
+                          =Table(
+                              {Key: "open", Label: If(gblLanguage = "Arabic", "المفتوحة", "Open")},
+                              {Key: "review", Label: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "To approve")},
+                              {Key: "overdue", Label: If(gblLanguage = "Arabic", "المتأخرة", "Overdue")},
+                              {Key: "done", Label: If(gblLanguage = "Arabic", "المكتملة", "Done")},
+                              {Key: "all", Label: If(gblLanguage = "Arabic", "الكل", "All")}
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =120
+                        Width: =If(App.Width < 700, Parent.Width, 400)
                       Children:
-                        - galTkScopes:
-                            Control: Gallery@2.15.0
-                            Variant: Horizontal
+                        - btnAllTkChip:
+                            Control: ModernButton@1.0.0
                             Properties:
-                              Height: =40
-                              Items: |-
-                                =Filter(
-                                    Table(
-                                        {ID: "my", Label: If(gblLanguage = "Arabic", "مهامي", "Mine")},
-                                        {ID: "project", Label: If(gblLanguage = "Arabic", "المشروع", "Project")},
-                                        {ID: "byme", Label: If(gblLanguage = "Arabic", "كلّفتها", "Assigned by me")},
-                                        {ID: "approve", Label: If(gblLanguage = "Arabic", "اعتماد", "To approve")}
-                                    ),
-                                    Or(ID <> "project", Not(IsBlank(varSelectedProject)))
-                                )
-                              TemplateSize: =120
-                              Width: =Parent.Width
-                            Children:
-                              - btnTkScope:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =If(varTkScope = ThisItem.ID, ButtonAppearance.Primary, ButtonAppearance.Subtle)
-                                    Height: =32
-                                    OnSelect: |-
-                                      =Set(varTkScope, ThisItem.ID);
-                                      Select(btnTkReload)
-                                    Text: =ThisItem.Label
-                                    Width: =Parent.TemplateWidth
-                        - galTkKpi:
-                            Control: Gallery@2.15.0
-                            Variant: Horizontal
+                              Appearance: =If(varTkQuick = ThisItem.Key, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              Height: =30
+                              OnSelect: =Set(varTkQuick, ThisItem.Key)
+                              Text: =ThisItem.Label
+                              Width: =110
+                  - btnAllTkArchived:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(varTkShowArchived, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varTkShowArchived, Not(varTkShowArchived))
+                        Text: =If(gblLanguage = "Arabic", "المؤرشفة", "Archived")
+                        Width: =110
+            - lblAllTkError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varAllTkError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل المهام.", "Tasks could not be loaded.")
+                  Visible: =varAllTkError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conAllTkBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 140
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - galAllTk:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =If(App.Width < 700, 1, 0)
+                        Height: =Parent.Height
+                        Items: |-
+                          =SortByColumns(
+                              Filter(
+                                  colAllTk,
+                                  And(
+                                      Or(varTkShowArchived, Not(Coalesce(IsArchived, false))),
+                                      Or(
+                                          varTkQuick = "all",
+                                          And(varTkQuick = "open", Status.Value <> "Completed", Status.Value <> "Cancelled"),
+                                          And(varTkQuick = "review", Or(Status.Value = "Pending Approval", Status.Value = "In Review")),
+                                          And(varTkQuick = "overdue", Not(IsBlank(DueDate)), DueDate < Today(), Status.Value <> "Completed", Status.Value <> "Cancelled"),
+                                          And(varTkQuick = "done", Status.Value = "Completed")
+                                      ),
+                                      Or(
+                                          IsBlank(Trim(txtAllTkSearch.Text)),
+                                          Trim(txtAllTkSearch.Text) in Coalesce(Title, ""),
+                                          Trim(txtAllTkSearch.Text) in Coalesce(Project.Value, ""),
+                                          Trim(txtAllTkSearch.Text) in Coalesce(AssignedTo.Value, "")
+                                      )
+                                  )
+                              ),
+                              "DueDate",
+                              SortOrder.Ascending
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =72
+                        Visible: =Or(App.Width >= 700, IsBlank(varTask))
+                        Width: =If(App.Width < 700, Parent.Width, 360)
+                      Children:
+                        - btnAllTkRow:
+                            Control: ModernButton@1.0.0
                             Properties:
+                              Align: =Align.Left
+                              Appearance: =If(ThisItem.ID = varTask.ID, ButtonAppearance.Primary, ButtonAppearance.Transparent)
                               Height: =64
-                              Items: |-
-                                =Table(
-                                    {Label: If(gblLanguage = "Arabic", "مفتوحة", "Open"), Value: CountIf(colTkScope, IsOpen)},
-                                    {Label: If(gblLanguage = "Arabic", "متأخرة", "Overdue"), Value: CountIf(colTkScope, IsOver)},
-                                    {Label: If(gblLanguage = "Arabic", "هذا الأسبوع", "This week"), Value: CountIf(colTkScope, And(Not(IsBlank(DueDate)), DueDate >= Today(), DueDate <= DateAdd(Today(), 7, TimeUnit.Days)))},
-                                    {Label: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "In review"), Value: CountIf(colTkScope, st = "Pending Approval")}
+                              OnSelect: |-
+                                =Set(varTask, ThisItem);
+                                Set(varTkPane, "Details");
+                                ClearCollect(colTkHistory, Filter(ApprovalHistory, RequestItemID = Text(ThisItem.ID)));
+                                Clear(colTkPeople);
+                                With({p: LookUp(Employees, ID = ThisItem.AssignedToID)}, If(Coalesce(p.ID, 0) > 0, Collect(colTkPeople, p)));
+                                With({p: LookUp(Employees, ID = ThisItem.AssignedByID)}, If(Coalesce(p.ID, 0) > 0, Collect(colTkPeople, p)));
+                                With({p: LookUp(Employees, ID = ThisItem.ReviewerID)}, If(Coalesce(p.ID, 0) > 0, Collect(colTkPeople, p)))
+                              Text: |-
+                                =Concatenate(
+                                    Coalesce(ThisItem.Title, ""),
+                                    Char(10),
+                                    Coalesce(ThisItem.Status.Value, ""),
+                                    " · ",
+                                    Coalesce(ThisItem.Project.Value, ""),
+                                    If(IsBlank(ThisItem.DueDate), "", " · " & Text(ThisItem.DueDate, "yyyy-mm-dd"))
                                 )
-                              TemplateSize: =110
-                              Width: =Parent.Width
-                            Children:
-                              - conTkKpi:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =fxThemeColor("Background")
-                                    Height: =56
-                                    LayoutDirection: =LayoutDirection.Vertical
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                    Width: =Parent.TemplateWidth
-                                  Children:
-                                    - lblTkKpiValue:
-                                        Control: ModernText@1.0.0
-                                        Properties:
-                                          Color: =fxThemeColor("TextPrimary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =gblTheme.FontWeights.Bold
-                                          Height: =24
-                                          Size: =16
-                                          Text: =Text(ThisItem.Value, "0")
-                                          Width: =Parent.Width
-                                    - lblTkKpiLabel:
-                                        Control: ModernText@1.0.0
-                                        Properties:
-                                          Color: =fxThemeColor("TextMuted")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          Height: =18
-                                          Size: =11
-                                          Text: =ThisItem.Label
-                                          Width: =Parent.Width
-                        - galTkChips:
-                            Control: Gallery@2.15.0
-                            Variant: Horizontal
-                            Properties:
-                              Height: =40
-                              Items: |-
-                                =Table(
-                                    {ID: "all", Label: If(gblLanguage = "Arabic", "الكل", "All")},
-                                    {ID: "open", Label: If(gblLanguage = "Arabic", "مفتوحة", "Open")},
-                                    {ID: "overdue", Label: If(gblLanguage = "Arabic", "متأخرة", "Overdue")},
-                                    {ID: "week", Label: If(gblLanguage = "Arabic", "أسبوع", "Week")},
-                                    {ID: "review", Label: If(gblLanguage = "Arabic", "مراجعة", "Review")},
-                                    {ID: "done", Label: If(gblLanguage = "Arabic", "منجزة", "Done")}
-                                )
-                              TemplateSize: =88
-                              Width: =Parent.Width
-                            Children:
-                              - btnTkChip:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =If(varTkQuick = ThisItem.ID, ButtonAppearance.Primary, ButtonAppearance.Subtle)
-                                    Height: =32
-                                    OnSelect: =Set(varTkQuick, ThisItem.ID)
-                                    Text: =ThisItem.Label
-                                    Width: =Parent.TemplateWidth
-                        - txtTkSearch:
-                            Control: ModernTextInput@1.1.2
-                            Properties:
-                              Height: =40
-                              Placeholder: =If(gblLanguage = "Arabic", "بحث", "Search")
-                              Width: =Parent.Width
-                        - cmbTkPriority:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              DefaultSelectedItems: =Filter(colTkPriority, Value = "All")
-                              Height: =36
-                              ItemDisplayText: =ThisItem.Label
-                              Items: =colTkPriority
-                              SelectMultiple: =false
-                              Width: =Parent.Width
-                        - lblTkEmpty:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Height: =24
-                              Size: =12
-                              Text: =If(gblLanguage = "Arabic", "لا توجد مهام", "No tasks")
-                              Visible: =CountRows(colTkScope) = 0
-                              Width: =Parent.Width
-                        - galTkTasks:
-                            Control: Gallery@2.15.0
-                            Variant: Vertical
-                            Properties:
-                              FillPortions: =1
-                              Items: |-
-                                =SortByColumns(
-                                    Filter(
-                                        colTkScope,
-                                        And(
-                                            Or(varTkScope <> "approve", st = "Pending Approval"),
-                                            Or(
-                                                varTkQuick = "all",
-                                                And(varTkQuick = "open", IsOpen),
-                                                And(varTkQuick = "overdue", IsOver),
-                                                And(varTkQuick = "week", And(Not(IsBlank(DueDate)), DueDate >= Today(), DueDate <= DateAdd(Today(), 7, TimeUnit.Days))),
-                                                And(varTkQuick = "review", st = "Pending Approval"),
-                                                And(varTkQuick = "done", st = "Completed")
-                                            ),
-                                            Or(IsBlank(txtTkSearch.Text), txtTkSearch.Text in Coalesce(Title, "")),
-                                            Or(cmbTkPriority.Selected.Value = "All", IsBlank(cmbTkPriority.Selected.Value), Priority.Value = cmbTkPriority.Selected.Value)
-                                        )
-                                    ),
-                                    "Rank",
-                                    SortOrder.Ascending,
-                                    "SortKey",
-                                    SortOrder.Ascending
-                                )
-                              TemplateSize: =64
-                              Width: =Parent.Width
-                            Children:
-                              - btnTkRow:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Transparent
-                                    Height: =Parent.TemplateHeight
-                                    OnSelect: |-
-                                      =Set(varTask, ThisItem);
-                                      Set(varTkForm, "");
-                                      ClearCollect(colTkHistory, Filter(ApprovalHistory, RequestItemID = Text(ThisItem.ID)))
-                                    Text: |-
-                                      =Coalesce(ThisItem.Title, "") & Char(10) & Coalesce(ThisItem.st, "") & " · " & Text(ThisItem.DueDate, "dd mmm")
-                                    Width: =Parent.TemplateWidth
-                  - conTkDetail:
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =4
+                  - conAllTkDetail:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
@@ -550,6 +594,7 @@ Screens:
                         DropShadow: =DropShadow.None
                         Fill: =fxThemeColor("Surface")
                         Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
                         LayoutDirection: =LayoutDirection.Vertical
                         LayoutGap: =8
                         LayoutMinHeight: =0
@@ -559,513 +604,405 @@ Screens:
                         PaddingLeft: =12
                         PaddingRight: =12
                         PaddingTop: =12
-                        Visible: =And(varTkForm = "", Not(IsBlank(varTask)))
-                        Width: =If(App.Width >= 1100, Parent.Width - 392, Parent.Width)
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =Or(App.Width >= 700, Not(IsBlank(varTask)))
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - 368)
                       Children:
-                        - conTkDetailHead:
+                        - lblAllTkPick:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =14
+                              Text: =If(gblLanguage = "Arabic", "اختر مهمة من القائمة.", "Select a task from the list.")
+                              Visible: =IsBlank(varTask)
+                              Width: =Parent.Width
+                        - conAllTkDetailHead:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
                             Properties:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
-                              Height: =40
+                              FillPortions: =0
+                              Height: =44
                               LayoutAlignItems: =LayoutAlignItems.Center
                               LayoutDirection: =LayoutDirection.Horizontal
                               LayoutGap: =8
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              Width: =Parent.Width
+                              Visible: =Not(IsBlank(varTask))
                             Children:
-                              - btnTkBack:
+                              - btnAllTkBack:
                                   Control: ModernButton@1.0.0
                                   Properties:
                                     Appearance: =ButtonAppearance.Subtle
-                                    Height: =32
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: =Set(varTask, Blank())
                                     Text: =If(gblLanguage = "Arabic", "رجوع", "Back")
-                                    Visible: =App.Width < 1100
-                                    Width: =80
-                              - lblTkDetailTitle:
-                                  Control: ModernText@1.0.0
+                                    Visible: =App.Width < 700
+                                    Width: =90
+                              - lblAllTkName:
+                                  Control: Label@2.5.1
                                   Properties:
                                     Color: =fxThemeColor("TextPrimary")
                                     FillPortions: =1
                                     Font: =gblTheme.Typography.FontFamily
                                     FontWeight: =gblTheme.FontWeights.Bold
-                                    Height: =28
+                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     Size: =16
                                     Text: =Coalesce(varTask.Title, "")
                                     Width: =160
-                              - lblTkStatus:
-                                  Control: ModernText@1.0.0
+                                    Wrap: =false
+                              - btnAllTkTalk:
+                                  Control: ModernButton@1.0.0
                                   Properties:
-                                    Align: =Align.Center
-                                    Color: =fxToneInk(Switch(varTask.Status.Value, "Completed", "completed", "Pending Approval", "warning", "In Progress", "info", "Not Started", "muted", "Cancelled", "danger", "On Hold", "warning", "muted"))
-                                    Fill: =fxToneFill(Switch(varTask.Status.Value, "Completed", "completed", "Pending Approval", "warning", "In Progress", "info", "Not Started", "muted", "Cancelled", "danger", "On Hold", "warning", "muted"))
-                                    Height: =26
-                                    RadiusBottomLeft: =gblTheme.Radius.Round
-                                    RadiusBottomRight: =gblTheme.Radius.Round
-                                    RadiusTopLeft: =gblTheme.Radius.Round
-                                    RadiusTopRight: =gblTheme.Radius.Round
-                                    Size: =11
-                                    Text: =Coalesce(varTask.Status.Value, "-")
-                                    Width: =120
-                        - lblTkRoleHint:
-                            Control: ModernText@1.0.0
+                                    Appearance: =If(varTkPane = "Discussion", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varTkPane, If(varTkPane = "Discussion", "Details", "Discussion"))
+                                    Text: =If(gblLanguage = "Arabic", "تعليقات", "Comments")
+                                    Width: =110
+                              - btnAllTkEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varTaskForm, "edit");
+                                      Set(varTaskReturn, "all");
+                                      Navigate(scrTaskEditor, ScreenTransition.Cover)
+                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Width: =90
+                        - lblAllTkMeta:
+                            Control: Label@2.5.1
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Height: =20
-                              Size: =11
-                              Text: =If(lblTkRole.Text = "D", If(gblLanguage = "Arabic", "إكمال مباشر", "Direct complete"), If(lblTkRole.Text = "M", If(gblLanguage = "Arabic", "مُسندة إليك", "Assigned to you"), If(lblTkRole.Text = "B", If(gblLanguage = "Arabic", "كلّفتها أنت", "You assigned this"), "")))
-                              Width: =Parent.Width
-                        - lblTkInfo:
-                            Control: ModernText@1.0.0
-                            Properties:
+                              AutoHeight: =true
                               Color: =fxThemeColor("TextSecondary")
-                              Height: =64
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =48
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Text: |-
+                                =Concatenate(
+                                    Coalesce(varTask.Status.Value, ""),
+                                    " · ",
+                                    Coalesce(varTask.Priority.Value, ""),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "المشروع ", "Project "),
+                                    Coalesce(varTask.Project.Value, "-"),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "النشاط ", "Activity "),
+                                    Coalesce(varTask.Activity.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "المسند إليه ", "Assignee "),
+                                    Coalesce(varTask.AssignedTo.Value, "-"),
+                                    " · ",
+                                    Text(Coalesce(varTask.Progress, 0)),
+                                    "%"
+                                )
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
+                              Width: =Parent.Width
+                        - lblAllTkDates:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
                               Size: =12
                               Text: |-
-                                =Coalesce(varTask.AssignedTo.Value, "") & " · " & Coalesce(varTask.Priority.Value, "") & Char(10) & Text(varTask.PlannedStart, "dd mmm yyyy") & " - " & Text(varTask.DueDate, "dd mmm yyyy") & Char(10) & Text(Coalesce(varTask.Progress, 0), "0") & "%"
+                                =Concatenate(
+                                    If(gblLanguage = "Arabic", "البداية ", "Start "),
+                                    If(IsBlank(varTask.PlannedStart), "-", Text(varTask.PlannedStart, "yyyy-mm-dd")),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "الاستحقاق ", "Due "),
+                                    If(IsBlank(varTask.DueDate), "-", Text(varTask.DueDate, "yyyy-mm-dd")),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "التذكير ", "Reminder "),
+                                    If(IsBlank(varTask.ReminderDate), "-", Text(varTask.ReminderDate, "yyyy-mm-dd"))
+                                )
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
                               Width: =Parent.Width
-                        - lblTkDesc:
-                            Control: ModernText@1.0.0
+                        - lblAllTkDesc:
+                            Control: Label@2.5.1
                             Properties:
+                              AutoHeight: =true
                               Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
                               Height: =48
-                              Size: =13
-                              Text: =Coalesce(varTask.TaskDescription, If(gblLanguage = "Arabic", "لا يوجد وصف", "No description"))
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Text: =Coalesce(varTask.TaskDescription, If(gblLanguage = "Arabic", "لا يوجد وصف.", "No description."))
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
                               Width: =Parent.Width
-                        - lblTkRemarks:
-                            Control: ModernText@1.0.0
+                        - lblAllTkRemarks:
+                            Control: Label@2.5.1
                             Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Height: =36
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =32
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
                               Size: =12
                               Text: =Coalesce(varTask.Remarks, "")
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details", Not(IsBlank(varTask.Remarks)))
                               Width: =Parent.Width
-                        - txtTkComment:
+                        - txtAllTkNote:
                             Control: ModernTextInput@1.1.2
                             Properties:
-                              Height: =64
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "ملاحظة الاعتماد أو الإرجاع", "Approval or return note")
+                              Height: =72
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
                               Placeholder: =If(gblLanguage = "Arabic", "ملاحظة الاعتماد أو الإرجاع", "Approval or return note")
                               Type: =TextInputType.Multiline
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
                               Width: =Parent.Width
-                        - conTkActions:
+                        - conAllTkActions:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
                             Properties:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
-                              Height: =80
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 120, 40)
                               LayoutDirection: =LayoutDirection.Horizontal
                               LayoutGap: =6
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              Width: =Parent.Width
+                              LayoutWrap: =true
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
                             Children:
-                              - btnTkStart:
+                              - btnAllTkStart:
                                   Control: ModernButton@1.0.0
                                   Properties:
                                     Appearance: =ButtonAppearance.Secondary
-                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: |-
-                                      =IfError(
-                                          Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "In Progress"}, ActualStart: Today()}));
-                                          Select(btnTkReload);
-                                          Notify(If(gblLanguage = "Arabic", "بدأت المهمة", "Task started"), NotificationType.Success),
-                                          Notify(If(gblLanguage = "Arabic", "تعذر التحديث", "Could not update"), NotificationType.Error)
-                                      )
+                                      =Set(varTkOp, "start");
+                                      Set(varTkNote, txtAllTkNote.Text);
+                                      Select(btnAllTkAct)
                                     Text: =If(gblLanguage = "Arabic", "بدء", "Start")
-                                    Visible: =And(lblTkRole.Text = "M", varTask.Status.Value = "Not Started")
-                                    Width: =70
-                              - btnTkSubmit:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Primary
-                                    Height: =32
-                                    OnSelect: |-
-                                      =Set(varTkKind, "submit");
-                                      Set(varTkNote, txtTkComment.Text);
-                                      Set(varTkOp, "log");
-                                      Select(btnTkSvc)
-                                    Text: =If(lblTkRole.Text = "D", If(gblLanguage = "Arabic", "إكمال", "Done"), If(gblLanguage = "Arabic", "إرسال", "Submit"))
-                                    Visible: =Or(lblTkRole.Text = "M", lblTkRole.Text = "D")
+                                    Visible: =And(varTask.AssignedToID = varMeID, varTask.Status.Value = "Not Started")
                                     Width: =80
-                              - btnTkApprove:
+                              - btnAllTkSubmit:
                                   Control: ModernButton@1.0.0
                                   Properties:
-                                    Appearance: =ButtonAppearance.Primary
-                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: |-
-                                      =Set(varTkKind, "approve");
-                                      Set(varTkNote, txtTkComment.Text);
-                                      Set(varTkOp, "log");
-                                      Select(btnTkSvc)
+                                      =Set(varTkOp, "submit");
+                                      Set(varTkNote, txtAllTkNote.Text);
+                                      Select(btnAllTkAct)
+                                    Text: |-
+                                      =If(
+                                          Or(Coalesce(varTask.AssignedByID, 0) = 0, varTask.AssignedByID = varTask.AssignedToID),
+                                          If(gblLanguage = "Arabic", "إكمال", "Complete"),
+                                          If(gblLanguage = "Arabic", "إرسال للاعتماد", "Submit")
+                                      )
+                                    Visible: |-
+                                      =And(
+                                          varTask.AssignedToID = varMeID,
+                                          Or(varTask.Status.Value = "Not Started", varTask.Status.Value = "In Progress", varTask.Status.Value = "Reopened", varTask.Status.Value = "In Review")
+                                      )
+                                    Width: =140
+                              - btnAllTkApprove:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varTkOp, "approve");
+                                      Set(varTkNote, txtAllTkNote.Text);
+                                      Select(btnAllTkAct)
                                     Text: =If(gblLanguage = "Arabic", "اعتماد", "Approve")
-                                    Visible: =And(lblTkRole.Text = "B", varTask.Status.Value = "Pending Approval")
-                                    Width: =90
-                              - btnTkReturn:
+                                    Visible: |-
+                                      =And(
+                                          varTask.AssignedByID = varMeID,
+                                          varTask.AssignedByID <> varTask.AssignedToID,
+                                          Or(varTask.Status.Value = "Pending Approval", varTask.Status.Value = "In Review")
+                                      )
+                                    Width: =100
+                              - btnAllTkReturn:
                                   Control: ModernButton@1.0.0
                                   Properties:
                                     Appearance: =ButtonAppearance.Secondary
-                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: |-
                                       =If(
-                                          IsBlank(Trim(txtTkComment.Text)),
-                                          Notify(If(gblLanguage = "Arabic", "اكتب سبب الإرجاع", "Enter a return comment"), NotificationType.Warning),
-                                          Set(varTkKind, "return");
-                                          Set(varTkNote, txtTkComment.Text);
-                                          Set(varTkOp, "log");
-                                          Select(btnTkSvc)
+                                          IsBlank(Trim(txtAllTkNote.Text)),
+                                          Notify(If(gblLanguage = "Arabic", "اكتب سبب الإرجاع.", "Enter a return note."), NotificationType.Warning),
+                                          Set(varTkOp, "return");
+                                          Set(varTkNote, txtAllTkNote.Text);
+                                          Select(btnAllTkAct)
                                       )
                                     Text: =If(gblLanguage = "Arabic", "إرجاع", "Return")
-                                    Visible: =And(lblTkRole.Text = "B", varTask.Status.Value = "Pending Approval")
-                                    Width: =80
-                              - btnTkHold:
+                                    Visible: |-
+                                      =And(
+                                          varTask.AssignedByID = varMeID,
+                                          varTask.AssignedByID <> varTask.AssignedToID,
+                                          Or(varTask.Status.Value = "Pending Approval", varTask.Status.Value = "In Review")
+                                      )
+                                    Width: =90
+                              - btnAllTkCancel:
                                   Control: ModernButton@1.0.0
                                   Properties:
                                     Appearance: =ButtonAppearance.Subtle
-                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: |-
-                                      =IfError(
-                                          Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: If(varTask.Status.Value = "On Hold", "In Progress", "On Hold")}}));
-                                          Select(btnTkReload),
-                                          Notify(If(gblLanguage = "Arabic", "تعذر التحديث", "Could not update"), NotificationType.Error)
+                                      =Set(varTkOp, "cancel");
+                                      Set(varTkNote, txtAllTkNote.Text);
+                                      Select(btnAllTkAct)
+                                    Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                                    Visible: |-
+                                      =And(
+                                          Or(varTask.AssignedToID = varMeID, varTask.AssignedByID = varMeID),
+                                          varTask.Status.Value <> "Completed",
+                                          varTask.Status.Value <> "Cancelled"
                                       )
-                                    Text: =If(varTask.Status.Value = "On Hold", If(gblLanguage = "Arabic", "استئناف", "Resume"), If(gblLanguage = "Arabic", "إيقاف", "Hold"))
-                                    Visible: =lblTkRole.Text = "M"
-                                    Width: =80
-                              - btnTkReopen:
+                                    Width: =90
+                              - btnAllTkReopen:
                                   Control: ModernButton@1.0.0
                                   Properties:
                                     Appearance: =ButtonAppearance.Subtle
-                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: |-
-                                      =IfError(
-                                          Set(varTask, Patch(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID), {Status: {Value: "In Progress"}, Progress: 90, CompletedDate: Blank()}));
-                                          Select(btnTkReload),
-                                          Notify(If(gblLanguage = "Arabic", "تعذر إعادة الفتح", "Could not reopen"), NotificationType.Error)
-                                      )
+                                      =Set(varTkOp, "reopen");
+                                      Set(varTkNote, txtAllTkNote.Text);
+                                      Select(btnAllTkAct)
                                     Text: =If(gblLanguage = "Arabic", "إعادة فتح", "Reopen")
-                                    Visible: =varTask.Status.Value = "Completed"
-                                    Width: =80
-                              - btnTkEdit:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Subtle
-                                    Height: =32
-                                    OnSelect: |-
-                                      =Set(varTkForm, "edit");
-                                      ClearCollect(colTkActRaw, Filter(ProjectsActivities, Project.Id = varTask.ProjectID));
-                                      ClearCollect(colTkActivities, Filter(colTkActRaw, ActivityType.Value = "SubActivity"))
-                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
-                                    Width: =70
-                              - btnTkEmail:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Subtle
-                                    Height: =32
-                                    OnSelect: =Notify(If(gblLanguage = "Arabic", "البريد غير مربوط في هذه الشاشة", "Email is not wired on this screen"), NotificationType.Information)
-                                    Text: =If(gblLanguage = "Arabic", "بريد", "Email")
-                                    Width: =70
-                              - btnTkNote:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Subtle
-                                    Height: =32
-                                    OnSelect: =Notify(If(gblLanguage = "Arabic", "الملاحظة تُستخدم عند الإرجاع والاعتماد", "Use the note box when you return or approve"), NotificationType.Information)
-                                    Text: =If(gblLanguage = "Arabic", "ملاحظة", "Note")
-                                    Width: =70
-                              - btnTkDelete:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Subtle
-                                    BasePaletteColor: =fxThemeColor("Danger")
-                                    Height: =32
-                                    OnSelect: |-
-                                      =If(
-                                          Confirm(If(gblLanguage = "Arabic", "حذف هذه المهمة؟", "Delete this task?")),
-                                          Remove(ProjectsTasks, LookUp(ProjectsTasks, ID = varTask.ID));
-                                          Set(varTask, Blank());
-                                          Select(btnTkReload)
+                                    Visible: |-
+                                      =And(
+                                          Or(varTask.AssignedToID = varMeID, varTask.AssignedByID = varMeID),
+                                          Or(varTask.Status.Value = "Completed", varTask.Status.Value = "Cancelled")
                                       )
-                                    Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
-                                    Width: =70
-                        - conTkProgress:
+                                    Width: =100
+                        - conAllTkProg:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
                             Properties:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
-                              Height: =44
+                              FillPortions: =0
+                              Height: =40
                               LayoutDirection: =LayoutDirection.Horizontal
                               LayoutGap: =8
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              Visible: =lblTkRole.Text = "M"
-                              Width: =Parent.Width
+                              Visible: |-
+                                =And(
+                                    Not(IsBlank(varTask)),
+                                    varTkPane = "Details",
+                                    varTask.AssignedToID = varMeID,
+                                    varTask.Status.Value <> "Completed",
+                                    varTask.Status.Value <> "Cancelled",
+                                    varTask.Status.Value <> "Pending Approval"
+                                )
                             Children:
-                              - txtTkProgress:
+                              - txtAllTkProgress:
                                   Control: ModernTextInput@1.1.2
                                   Properties:
                                     Default: =Text(Coalesce(varTask.Progress, 0))
-                                    Height: =40
-                                    Placeholder: =If(gblLanguage = "Arabic", "التقدم", "Progress")
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "التقدم %", "Progress %")
                                     Width: =120
-                              - btnTkProgress:
+                              - btnAllTkProgress:
                                   Control: ModernButton@1.0.0
                                   Properties:
                                     Appearance: =ButtonAppearance.Secondary
                                     Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
                                     OnSelect: |-
-                                      =IfError(
-                                          Set(
-                                              varTask,
-                                              Patch(
-                                                  ProjectsTasks,
-                                                  LookUp(ProjectsTasks, ID = varTask.ID),
-                                                  {
-                                                      Progress: Value(txtTkProgress.Text),
-                                                      Status: {Value: If(Value(txtTkProgress.Text) >= 100, "Completed", If(Value(txtTkProgress.Text) <= 0, "Not Started", "In Progress"))},
-                                                      CompletedDate: If(Value(txtTkProgress.Text) >= 100, Today(), Blank())
-                                                  }
-                                              )
-                                          );
-                                          Select(btnTkReload);
-                                          Notify(If(gblLanguage = "Arabic", "تم تحديث التقدم", "Progress updated"), NotificationType.Success),
-                                          Notify(If(gblLanguage = "Arabic", "تعذر التحديث", "Could not update"), NotificationType.Error)
+                                      =If(
+                                          Or(Not(IsNumeric(txtAllTkProgress.Text)), Value(txtAllTkProgress.Text) < 0, Value(txtAllTkProgress.Text) > 100),
+                                          Notify(If(gblLanguage = "Arabic", "التقدم من 0 إلى 100.", "Progress must be from 0 to 100."), NotificationType.Warning),
+                                          Set(varTkNum, Value(txtAllTkProgress.Text));
+                                          Set(varTkOp, "progress");
+                                          Set(varTkNote, "");
+                                          Select(btnAllTkAct)
                                       )
                                     Text: =If(gblLanguage = "Arabic", "تحديث التقدم", "Update progress")
-                                    Width: =140
-                        - lblTkHistoryTitle:
-                            Control: ModernText@1.0.0
+                                    Width: =150
+                        - lblAllTkHistTitle:
+                            Control: Label@2.5.1
                             Properties:
                               Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
                               FontWeight: =gblTheme.FontWeights.Medium
-                              Height: =22
-                              Size: =13
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
                               Text: =If(gblLanguage = "Arabic", "سجل الاعتماد", "Approval history")
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
                               Width: =Parent.Width
-                        - galTkHistory:
+                              Wrap: =false
+                        - galAllTkHist:
                             Control: Gallery@2.15.0
                             Variant: Vertical
                             Properties:
-                              Height: =120
+                              FillPortions: =0
+                              Height: =140
                               Items: =Filter(colTkHistory, RequestType.Value = "Task")
-                              TemplateSize: =36
-                              Width: =Parent.Width
-                            Children:
-                              - lblTkHistRow:
-                                  Control: ModernText@1.0.0
-                                  Properties:
-                                    Height: =32
-                                    Size: =12
-                                    Text: |-
-                                      =Coalesce(ThisItem.Action.Value, "") & " · " & Coalesce(ThisItem.Comments, "")
-                                    Width: =Parent.TemplateWidth
-                  - conTkForm:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        BorderColor: =fxThemeColor("Border")
-                        BorderThickness: =1
-                        DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("Surface")
-                        Height: =Parent.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =8
-                        LayoutMinHeight: =0
-                        LayoutMinWidth: =0
-                        LayoutOverflowY: =LayoutOverflow.Scroll
-                        PaddingBottom: =12
-                        PaddingLeft: =12
-                        PaddingRight: =12
-                        PaddingTop: =12
-                        Visible: =varTkForm <> ""
-                        Width: =Parent.Width
-                      Children:
-                        - lblTkFormTitle:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =28
-                              Size: =16
-                              Text: =If(varTkForm = "new", If(gblLanguage = "Arabic", "مهمة جديدة", "New task"), If(gblLanguage = "Arabic", "تعديل المهمة", "Edit task"))
-                              Width: =Parent.Width
-                        - txtTkTitle:
-                            Control: ModernTextInput@1.1.2
-                            Properties:
-                              Default: =If(varTkForm = "new", "", varTask.Title)
-                              Height: =40
-                              Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
-                              Width: =Parent.Width
-                        - cmbTkProject:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              DefaultSelectedItems: =If(varTkForm = "edit", Filter(colProjectScope, ID = varTask.ProjectID), If(IsBlank(varSelectedProject), Filter(colProjectScope, false), Filter(colProjectScope, ID = varSelectedProject.ID)))
-                              Height: =40
-                              ItemDisplayText: =ThisItem.Title
-                              Items: =colProjectScope
-                              OnChange: |-
-                                =ClearCollect(colTkActRaw, Filter(ProjectsActivities, Project.Id = Self.Selected.ID));
-                                ClearCollect(colTkActivities, Filter(colTkActRaw, ActivityType.Value = "SubActivity"))
-                              SelectMultiple: =false
-                              Width: =Parent.Width
-                        - cmbTkActivity:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              DefaultSelectedItems: =If(varTkForm = "new", Filter(colTkActivities, false), Filter(colTkActivities, ID = varTask.ActivityID))
-                              Height: =40
-                              ItemDisplayText: =ThisItem.Title
-                              Items: =colTkActivities
-                              SelectMultiple: =false
-                              Width: =Parent.Width
-                        - cmbTkAssignee:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              DefaultSelectedItems: =If(varTkForm = "new", Filter(Employees, ID = varMeID), Filter(Employees, ID = varTask.AssignedToID))
-                              Height: =40
-                              ItemDisplayText: =ThisItem.FullName
-                              Items: =Employees
-                              SelectMultiple: =false
-                              Width: =Parent.Width
-                        - cmbTkFormPriority:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              DefaultSelectedItems: =If(varTkForm = "new", Filter(colTkPriority, Value = "Medium"), Filter(colTkPriority, Value = varTask.Priority.Value))
-                              Height: =40
-                              ItemDisplayText: =ThisItem.Value
-                              Items: =Filter(colTkPriority, Value <> "All")
-                              SelectMultiple: =false
-                              Width: =Parent.Width
-                        - dteTkStart:
-                            Control: ModernDatePicker@1.0.2
-                            Properties:
-                              DefaultDate: =If(varTkForm = "new", Today(), varTask.PlannedStart)
-                              Height: =40
-                              Placeholder: =If(gblLanguage = "Arabic", "البداية المخططة", "Planned start")
-                              Width: =Parent.Width
-                        - dteTkDue:
-                            Control: ModernDatePicker@1.0.2
-                            Properties:
-                              DefaultDate: =If(varTkForm = "new", Blank(), varTask.DueDate)
-                              Height: =40
-                              Placeholder: =If(gblLanguage = "Arabic", "الاستحقاق", "Due")
-                              Width: =Parent.Width
-                        - dteTkRemind:
-                            Control: ModernDatePicker@1.0.2
-                            Properties:
-                              DefaultDate: =If(varTkForm = "new", Blank(), varTask.ReminderDate)
-                              Height: =40
-                              Placeholder: =If(gblLanguage = "Arabic", "تذكير", "Reminder")
-                              Width: =Parent.Width
-                        - txtTkDesc:
-                            Control: ModernTextInput@1.1.2
-                            Properties:
-                              Default: =If(varTkForm = "new", "", varTask.TaskDescription)
-                              Height: =72
-                              Placeholder: =If(gblLanguage = "Arabic", "الوصف", "Description")
-                              Type: =TextInputType.Multiline
-                              Width: =Parent.Width
-                        - txtTkRemarks:
-                            Control: ModernTextInput@1.1.2
-                            Properties:
-                              Default: =If(varTkForm = "new", "", varTask.Remarks)
-                              Height: =72
-                              Placeholder: =If(gblLanguage = "Arabic", "ملاحظات", "Remarks")
-                              Type: =TextInputType.Multiline
-                              Width: =Parent.Width
-                        - conTkFormActions:
-                            Control: GroupContainer@1.5.0
-                            Variant: AutoLayout
-                            Properties:
-                              DropShadow: =DropShadow.None
-                              Fill: =Color.Transparent
-                              Height: =44
-                              LayoutDirection: =LayoutDirection.Horizontal
-                              LayoutGap: =8
-                              LayoutJustifyContent: =LayoutJustifyContent.End
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
+                              TemplateSize: =36
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Details")
                               Width: =Parent.Width
                             Children:
-                              - btnTkFormCancel:
-                                  Control: ModernButton@1.0.0
+                              - lblAllTkHist:
+                                  Control: Label@2.5.1
                                   Properties:
-                                    Appearance: =ButtonAppearance.Subtle
-                                    Height: =36
-                                    OnSelect: =Set(varTkForm, "")
-                                    Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
-                                    Width: =90
-                              - btnTkFormSave:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Primary
-                                    Height: =36
-                                    OnSelect: |-
-                                      =If(
-                                          Or(IsBlank(Trim(txtTkTitle.Text)), IsBlank(cmbTkProject.Selected), IsBlank(cmbTkActivity.Selected), IsBlank(cmbTkAssignee.Selected)),
-                                          Notify(If(gblLanguage = "Arabic", "العنوان والمشروع والنشاط والمسند إليه مطلوبة", "Title, project, activity, and assignee are required"), NotificationType.Warning),
-                                          If(
-                                              And(Not(IsBlank(dteTkStart.SelectedDate)), Not(IsBlank(dteTkDue.SelectedDate)), dteTkDue.SelectedDate < dteTkStart.SelectedDate),
-                                              Notify(If(gblLanguage = "Arabic", "الاستحقاق قبل البداية", "Due date is before the start"), NotificationType.Warning),
-                                              If(
-                                                  And(Not(IsBlank(dteTkRemind.SelectedDate)), Not(IsBlank(dteTkDue.SelectedDate)), dteTkRemind.SelectedDate > dteTkDue.SelectedDate),
-                                                  Notify(If(gblLanguage = "Arabic", "التذكير بعد الاستحقاق", "Reminder is after the due date"), NotificationType.Warning),
-                                                  Set(
-                                                      varEdSaved,
-                                                      IfError(
-                                                          Patch(
-                                                              ProjectsTasks,
-                                                              If(varTkForm = "new", Defaults(ProjectsTasks), LookUp(ProjectsTasks, ID = varTask.ID)),
-                                                              {
-                                                                  Title: Trim(txtTkTitle.Text),
-                                                                  Project: {Id: cmbTkProject.Selected.ID, Value: cmbTkProject.Selected.Title},
-                                                                  ProjectID: cmbTkProject.Selected.ID,
-                                                                  Activity: {Id: cmbTkActivity.Selected.ID, Value: cmbTkActivity.Selected.Title},
-                                                                  ActivityID: cmbTkActivity.Selected.ID,
-                                                                  AssignedTo: {Id: cmbTkAssignee.Selected.ID, Value: cmbTkAssignee.Selected.FullName},
-                                                                  AssignedToID: cmbTkAssignee.Selected.ID,
-                                                                  AssignedByID: If(Or(varTkForm = "new", cmbTkAssignee.Selected.ID <> varTask.AssignedToID), varMeID, varTask.AssignedByID),
-                                                                  Priority: {Value: Coalesce(cmbTkFormPriority.Selected.Value, "Medium")},
-                                                                  PlannedStart: dteTkStart.SelectedDate,
-                                                                  DueDate: dteTkDue.SelectedDate,
-                                                                  ReminderDate: dteTkRemind.SelectedDate,
-                                                                  Status: {Value: If(varTkForm = "new", "Not Started", Coalesce(varTask.Status.Value, "Not Started"))},
-                                                                  Progress: If(varTkForm = "new", 0, Coalesce(varTask.Progress, 0)),
-                                                                  TaskDescription: txtTkDesc.Text,
-                                                                  Remarks: txtTkRemarks.Text
-                                                              }
-                                                          ),
-                                                          Blank()
-                                                      )
-                                                  );
-                                                  If(
-                                                      IsBlank(varEdSaved),
-                                                      Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
-                                                      If(
-                                                          And(varTkForm = "new", cmbTkAssignee.Selected.ID <> varMeID),
-                                                          Patch(
-                                                              Notifications,
-                                                              Defaults(Notifications),
-                                                              {
-                                                                  Title: varEdSaved.Title,
-                                                                  Body: If(gblLanguage = "Arabic", "أُسندت إليك مهمة", "A task was assigned to you"),
-                                                                  RecipientID: cmbTkAssignee.Selected.ID,
-                                                                  RecordType: "Task",
-                                                                  IsRead: "false"
-                                                              }
-                                                          )
-                                                      );
-                                                      Set(varTask, varEdSaved);
-                                                      Set(varSelectedProject, cmbTkProject.Selected);
-                                                      Set(varTkForm, "");
-                                                      Select(btnTkReload);
-                                                      Notify(If(gblLanguage = "Arabic", "تم الحفظ", "Saved"), NotificationType.Success)
-                                                  )
-                                              )
-                                          )
-                                      )
-                                    Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
-                                    Width: =90
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Height: =32
+                                    Size: =12
+                                    Text: =Concatenate(Coalesce(ThisItem.Action.Value, ""), " · ", Coalesce(ThisItem.Decision.Value, ""), " · ", Coalesce(ThisItem.Comments, ""))
+                                    Width: =Parent.TemplateWidth
+                        - cmpAllTkComments:
+                            Control: CanvasComponent
+                            ComponentName: cmpComments
+                            Properties:
+                              Height: =480
+                              Involved: |-
+                                =Filter(
+                                    Table(
+                                        {UserID: Coalesce(varTask.AssignedToID, 0), UserName: Coalesce(varTask.AssignedTo.Value, "")},
+                                        {UserID: Coalesce(varTask.AssignedByID, 0), UserName: Coalesce(LookUp(colTkPeople, ID = varTask.AssignedByID).FullName, "")},
+                                        {UserID: Coalesce(varTask.ReviewerID, 0), UserName: Coalesce(LookUp(colTkPeople, ID = varTask.ReviewerID).FullName, "")}
+                                    ),
+                                    UserID > 0
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ModuleName: ="Projects"
+                              People: =colTkPeople
+                              RecordID: =Coalesce(varTask.ID, 0)
+                              RecordNumber: =Text(Coalesce(varTask.ID, 0))
+                              RecordType: ="Task"
+                              RelatedEntity: ="Task"
+                              Title: =If(gblLanguage = "Arabic", "التعليقات", "Comments")
+                              Visible: =And(Not(IsBlank(varTask)), varTkPane = "Discussion")
+                              Width: =Parent.Width

@@ -1,0 +1,1809 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrTrainingManagement:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "HR");
+        Set(VarHRmodule, "Training");
+        Set(varNavSelectedID, 17);
+        Set(varHasTeam, CountRows(Filter(Employees, ManagerID = gblUser.ID)) > 0);
+        Set(varDeskBlocked, Not(Or(hrCanManageTraining, hrIsHR, hrCanApprove, hrCanFinanceApprove, varHasTeam)));
+        If(IsBlank(varDeskTab), Set(varDeskTab, If(hrCanManageTraining, "Courses", "Queue")));
+        Set(varTrainReqID, 0);
+        If(!varDeskBlocked, Select(btnTrainMgmtReload));
+        If(hrIsHR, ClearCollect(colPerfEmployees, FirstN(Filter(Employees, ID >= 1), hrPageSize)))
+    Children:
+      - cmpscrTrainingManagementTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Certificate"
+            ModuleName: =If(gblLanguage = "Arabic", "الموارد البشرية", "Human Resources")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(ScrHR, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "البرامج والموافقات", "Courses and approvals")
+            ScreenTitle: =If(gblLanguage = "Arabic", "مكتب التدريب", "Training desk")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpscrTrainingManagementPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height
+      - conscrTrainingManagementPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =12
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =If(App.Width < 700, 64, 16)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =68
+            Width: =Parent.Width
+          Children:
+            - conDeskFail:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =96
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Visible: =CountRows(colFailedWrites) > 0
+                  Width: =Parent.Width
+                Children:
+                  - lblDeskFail:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        Color: =fxThemeColor("Warning")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Body
+                        Text: =If(gblLanguage = "Arabic", "فشلت بعض كتابات السجل أو الإشعارات.", "Some log or notification writes failed.")
+                        Width: =Parent.Width
+                  - btnDeskFailClear:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إخفاء", "Dismiss")
+                        Appearance: =ButtonAppearance.Subtle
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =If(App.Width < 700, 44, 36)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Clear(colFailedWrites)
+                        Text: =If(gblLanguage = "Arabic", "إخفاء", "Dismiss")
+                        Width: =120
+            - conDeskErr:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =72
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Visible: =varDeskLoadError
+                  Width: =Parent.Width
+                Children:
+                  - lblDeskErr:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        Color: =fxThemeColor("Danger")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =48
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Body
+                        Text: =If(gblLanguage = "Arabic", "تعذر تحميل بيانات التدريب. أضف قوائم التدريب ثم حدّث.", "Training data could not be loaded. Add the training lists, then refresh.")
+                        Width: =Parent.Width
+            - lblDeskHead:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(gblIsRTL, Align.Right, Align.Left)
+                  Color: =fxThemeColor("TextPrimary")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =36
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =gblTheme.Typography.PageTitle
+                  Text: =If(gblLanguage = "Arabic", "مكتب التدريب", "Training desk")
+                  Width: =Parent.Width
+            - lblDeskSub:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(gblIsRTL, Align.Right, Align.Left)
+                  Color: =fxThemeColor("TextSecondary")
+                  Font: =gblTheme.Typography.FontFamily
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =gblTheme.Typography.Body
+                  Text: =If(gblLanguage = "Arabic", "البرامج والجلسات والموافقات والشهادات. يُكتب سجل الموافقة مباشرة.", "Courses, sessions, approvals, and certificates. Approval history is written directly.")
+                  Width: =Parent.Width
+            - lblDeskBlock:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(gblIsRTL, Align.Right, Align.Left)
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =gblTheme.Typography.Body
+                  Text: =If(gblLanguage = "Arabic", "ليست لديك صلاحية لهذا المكتب.", "You do not have access to this desk.")
+                  Visible: =varDeskBlocked
+                  Width: =Parent.Width
+            - conDeskTabs:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =52
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutOverflowX: =LayoutOverflow.Scroll
+                  Width: =Parent.Width
+                Children:
+                  - btnDeskCourses:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "البرامج", "Courses")
+                        Appearance: =If(varDeskTab = "Courses", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =If(App.Width < 700, 44, 36)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varDeskTab, "Courses")
+                        Text: =If(gblLanguage = "Arabic", "البرامج", "Courses")
+                        Visible: =hrCanManageTraining
+                        Width: =130
+                  - btnDeskSess:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الجلسات", "Sessions")
+                        Appearance: =If(varDeskTab = "Sessions", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =If(App.Width < 700, 44, 36)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varDeskTab, "Sessions")
+                        Text: =If(gblLanguage = "Arabic", "الجلسات", "Sessions")
+                        Visible: =hrCanManageTraining
+                        Width: =140
+                  - btnDeskQueue:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الموافقات", "Approvals")
+                        Appearance: =If(varDeskTab = "Queue", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =If(App.Width < 700, 44, 36)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varDeskTab, "Queue")
+                        Text: =If(gblLanguage = "Arabic", "الموافقات", "Approvals")
+                        Width: =150
+                  - btnDeskCerts:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الشهادات", "Certificates")
+                        Appearance: =If(varDeskTab = "Certs", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =If(App.Width < 700, 44, 36)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varDeskTab, "Certs")
+                        Text: =If(gblLanguage = "Arabic", "الشهادات", "Certificates")
+                        Visible: =hrIsHR
+                        Width: =160
+                  - btnDeskMine:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تدريبي", "My training")
+                        Appearance: =ButtonAppearance.Secondary
+                        BasePaletteColor: =fxThemeColor("Primary")
+                        Height: =If(App.Width < 700, 44, 36)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Navigate(scrMyTraining, ScreenTransition.None)
+                        Text: =If(gblLanguage = "Arabic", "تدريبي", "My training")
+                        Width: =150
+            - txtDeskSearch:
+                Control: ModernTextInput@1.1.2
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "بحث في الصفوف المحملة", "Search loaded rows")
+                  Default: =varDeskSearch
+                  Height: =40
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnChange: =Set(varDeskSearch, Self.Text)
+                  Placeholder: =If(gblLanguage = "Arabic", "بحث في الصفوف المحملة", "Search loaded rows")
+                  Width: =Parent.Width
+            - conDeskCourses:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Visible: =And(!varDeskBlocked, varDeskTab = "Courses")
+                  Width: =Parent.Width
+                Children:
+                  - galDeskCourses:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "البرامج", "Courses")
+                        BorderStyle: =BorderStyle.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =420
+                        Items: =Filter(colDeskCourses, IsBlank(varDeskSearch) || varDeskSearch in Coalesce(Title, ""))
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplatePadding: =4
+                        TemplateSize: =132
+                        Width: =Parent.Width
+                      Children:
+                        - congalDeskCoursesRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              PaddingBottom: =6
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblDeskCourse:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =28
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =ThisItem.Title
+                                    Width: =Parent.Width
+                              - lblDeskCourseMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =22
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: =Coalesce(ThisItem.Status.Value, "") & "  " & If(ThisItem.IsActive, "Active", "Inactive")
+                                    Width: =Parent.Width
+                              - btnPickCourse:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "اختيار", "Select")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varDeskCourseID, ThisItem.ID);
+                                      Set(varDeskCourseName, ThisItem.Title);
+                                      Set(varCertCourseID, ThisItem.ID);
+                                      Set(varCertCourseName, ThisItem.Title)
+                                    Text: =If(gblLanguage = "Arabic", "اختيار", "Select")
+                                    Width: =140
+                  - lblDeskEmptyC:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =28
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Body
+                        Text: =If(gblLanguage = "Arabic", "لا يوجد شيء للعرض بعد.", "Nothing to show yet.")
+                        Visible: =CountRows(colDeskCourses) = 0
+                        Width: =Parent.Width
+                  - conNewCourse:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =6
+                        RadiusBottomRight: =6
+                        RadiusTopLeft: =6
+                        RadiusTopRight: =6
+                        Visible: =And(hrCanManageTraining, varDeskTab = "Courses")
+                        Width: =Parent.Width
+                      Children:
+                        - lblNewCourse:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =28
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.SectionTitle
+                              Text: =If(gblLanguage = "Arabic", "برنامج جديد", "New course")
+                              Width: =Parent.Width
+                        - txtCourseTitle:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "اسم البرنامج", "Course title")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "اسم البرنامج", "Course title")
+                              Width: =Parent.Width
+                        - txtCourseCode:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الرمز", "Code")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "الرمز", "Code")
+                              Width: =220
+                        - ddCourseCat:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "التصنيف", "Category")
+                              Height: =40
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =colTrainCats
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                        - ddCourseMode:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "طريقة التقديم", "Delivery")
+                              Height: =40
+                              ItemDisplayText: =ThisItem.Value
+                              Items: |-
+                                =Table({Value: "Classroom"}, {Value: "Online"}, {Value: "Blended"}, {Value: "On the job"})
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =240
+                        - txtCourseHours:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الساعات", "Hours")
+                              Default: ="0"
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "الساعات", "Hours")
+                              Width: =160
+                        - txtCourseProvider:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الجهة", "Provider")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "الجهة", "Provider")
+                              Width: =Parent.Width
+                        - txtCourseCost:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "التكلفة للشخص", "Cost per person")
+                              Default: ="0"
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "التكلفة للشخص", "Cost per person")
+                              Width: =180
+                        - ddCourseCur:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "العملة", "Currency")
+                              Default: |-
+                                ={Value: "USD"}
+                              Height: =40
+                              ItemDisplayText: =ThisItem.Value
+                              Items: |-
+                                =Table({Value: "USD"}, {Value: "YER"}, {Value: "SAR"})
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =160
+                        - txtCourseDesc:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "لمن هذا البرنامج؟", "Who is this for?")
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - conCourseBtns:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutOverflowX: =LayoutOverflow.Scroll
+                              Width: =Parent.Width
+                            Children:
+                              - btnCourseSave:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إنشاء البرنامج", "Create course")
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnCourseCommit)
+                                    Text: =If(gblLanguage = "Arabic", "إنشاء البرنامج", "Create course")
+                                    Width: =180
+                              - btnCourseRetire:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إيقاف المختار", "Retire selected")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnCourseRetireDo)
+                                    Text: =If(gblLanguage = "Arabic", "إيقاف المختار", "Retire selected")
+                                    Width: =180
+            - conDeskSessions:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Visible: =And(!varDeskBlocked, varDeskTab = "Sessions")
+                  Width: =Parent.Width
+                Children:
+                  - galDeskSess:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الجلسات", "Sessions")
+                        BorderStyle: =BorderStyle.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =420
+                        Items: =Filter(colDeskSessions, Or(Coalesce(varDeskCourseID, 0) = 0, CourseID = varDeskCourseID))
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplatePadding: =4
+                        TemplateSize: =132
+                        Width: =Parent.Width
+                      Children:
+                        - congalDeskSessRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              PaddingBottom: =6
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblSessTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =28
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =Coalesce(ThisItem.Title, "-")
+                                    Width: =Parent.Width
+                              - lblSessMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =22
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: =Coalesce(ThisItem.Status.Value, "-") & "  " & Coalesce(Text(ThisItem.StartDate, "yyyy-mm-dd"), "") & "  " & If(IsBlank(ThisItem.SessionNumber), If(gblLanguage = "Arabic", "الرقم قيد الإصدار", "Number pending"), ThisItem.SessionNumber)
+                                    Width: =Parent.Width
+                              - btnPickSess:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "اختيار", "Select")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varDeskSessionID, ThisItem.ID); Set(varSessExpected, ThisItem.Status.Value); Set(varCertSessionID, ThisItem.ID)
+                                    Text: =If(gblLanguage = "Arabic", "اختيار", "Select")
+                                    Width: =140
+                  - conNewSess:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =6
+                        RadiusBottomRight: =6
+                        RadiusTopLeft: =6
+                        RadiusTopRight: =6
+                        Visible: =And(hrCanManageTraining, varDeskTab = "Sessions")
+                        Width: =Parent.Width
+                      Children:
+                        - lblNewSess:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =28
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.SectionTitle
+                              Text: =If(gblLanguage = "Arabic", "جلسة جديدة للبرنامج المختار", "New session for the selected course")
+                              Width: =Parent.Width
+                        - lblSessCourse:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =Coalesce(varDeskCourseName, "")
+                              Width: =Parent.Width
+                        - txtSessTitle:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "عنوان الجلسة", "Session title")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "عنوان الجلسة", "Session title")
+                              Width: =Parent.Width
+                        - dteSessStart:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تاريخ البداية", "Start date")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =220
+                        - dteSessEnd:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تاريخ النهاية", "End date")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =220
+                        - txtSessWhere:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المكان", "Location")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "المكان", "Location")
+                              Width: =Parent.Width
+                        - txtSessTrainer:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المدرب", "Trainer")
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "المدرب", "Trainer")
+                              Width: =Parent.Width
+                        - txtSessCap:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "السعة", "Capacity")
+                              Default: ="0"
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "السعة", "Capacity")
+                              Width: =160
+                        - btnSessCreate:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "إنشاء الجلسة", "Create session")
+                              BasePaletteColor: =fxThemeColor("Primary")
+                              Height: =If(App.Width < 700, 44, 36)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnSessCommit)
+                              Text: =If(gblLanguage = "Arabic", "إنشاء الجلسة", "Create session")
+                              Width: =180
+                        - conSessActs:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutOverflowX: =LayoutOverflow.Scroll
+                              Width: =Parent.Width
+                            Children:
+                              - btnSessOpen2:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "فتح", "Open")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSessNext, "Open"); Select(btnSessStatus)
+                                    Text: =If(gblLanguage = "Arabic", "فتح", "Open")
+                                    Width: =110
+                              - btnSessStart:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "بدء", "Start")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSessNext, "In Progress"); Select(btnSessStatus)
+                                    Text: =If(gblLanguage = "Arabic", "بدء", "Start")
+                                    Width: =110
+                              - btnSessDone2:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إكمال", "Complete")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSessNext, "Completed"); Select(btnSessStatus)
+                                    Text: =If(gblLanguage = "Arabic", "إكمال", "Complete")
+                                    Width: =130
+                              - btnSessCancel:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSessNext, "Cancelled"); Select(btnSessStatus)
+                                    Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                                    Width: =120
+            - conDeskQueue:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Visible: =And(!varDeskBlocked, varDeskTab = "Queue")
+                  Width: =Parent.Width
+                Children:
+                  - galQueue:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "موافقات التدريب", "Training approvals")
+                        BorderStyle: =BorderStyle.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =420
+                        Items: =Filter(colTrainQueue, IsBlank(varDeskSearch) || varDeskSearch in Coalesce(Title, ""))
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplatePadding: =4
+                        TemplateSize: =132
+                        Width: =Parent.Width
+                      Children:
+                        - congalQueueRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              PaddingBottom: =6
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblQTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =28
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =Coalesce(ThisItem.Employee.Value, "-") & " - " & Coalesce(ThisItem.Course.Value, ThisItem.Title, "")
+                                    Width: =Parent.Width
+                              - lblQMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =22
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: =Coalesce(ThisItem.Status.Value, "-") & "  " & Text(Coalesce(ThisItem.EstimatedCost, 0)) & " " & Coalesce(ThisItem.Currency.Value, "") & "  " & If(IsBlank(ThisItem.RequestNumber), If(gblLanguage = "Arabic", "الرقم قيد الإصدار", "Number pending"), ThisItem.RequestNumber)
+                                    Width: =Parent.Width
+                              - btnQPick:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "مراجعة", "Review")
+                                    Appearance: =ButtonAppearance.Secondary
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varTrainReqID, ThisItem.ID);
+                                      Set(varTrainExpected, ThisItem.Status.Value);
+                                      Set(varTrainExpectedLevel, ThisItem.ApprovalLevelNum)
+                                    Text: =If(gblLanguage = "Arabic", "مراجعة", "Review")
+                                    Width: =140
+                  - lblQEmpty:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =28
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Body
+                        Text: =If(gblLanguage = "Arabic", "لا يوجد شيء للعرض بعد.", "Nothing to show yet.")
+                        Visible: =CountRows(colTrainQueue) = 0
+                        Width: =Parent.Width
+                  - conDecide:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =6
+                        RadiusBottomRight: =6
+                        RadiusTopLeft: =6
+                        RadiusTopRight: =6
+                        Visible: =And(varDeskTab = "Queue", Coalesce(varTrainReqID, 0) > 0)
+                        Width: =Parent.Width
+                      Children:
+                        - lblDecide:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =28
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.SectionTitle
+                              Text: =If(gblLanguage = "Arabic", "القرار", "Decision")
+                              Width: =Parent.Width
+                        - txtDeskComment:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "تعليق", "Comment")
+                              Default: =varTrainComment
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnChange: =Set(varTrainComment, Self.Text)
+                              Placeholder: =If(gblLanguage = "Arabic", "مطلوب للرفض والإعادة", "Required for reject and return")
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - conDecideBtns:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutOverflowX: =LayoutOverflow.Scroll
+                              Width: =Parent.Width
+                            Children:
+                              - btnDecApprove:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "موافقة", "Approve")
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varTrainDecision, "Approved"); Select(btnTrainDecide)
+                                    Text: =If(gblLanguage = "Arabic", "موافقة", "Approve")
+                                    Width: =140
+                              - btnDecReject:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "رفض", "Reject")
+                                    Appearance: =ButtonAppearance.Secondary
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varTrainDecision, "Rejected"); Select(btnTrainDecide)
+                                    Text: =If(gblLanguage = "Arabic", "رفض", "Reject")
+                                    Width: =130
+                              - btnDecReturn:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إعادة", "Return")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varTrainDecision, "Returned"); Select(btnTrainDecide)
+                                    Text: =If(gblLanguage = "Arabic", "إعادة", "Return")
+                                    Width: =130
+            - conDeskCerts:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =6
+                  RadiusBottomRight: =6
+                  RadiusTopLeft: =6
+                  RadiusTopRight: =6
+                  Visible: =And(!varDeskBlocked, hrIsHR, varDeskTab = "Certs")
+                  Width: =Parent.Width
+                Children:
+                  - galDeskCert:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الشهادات", "Certificates")
+                        BorderStyle: =BorderStyle.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =420
+                        Items: =colDeskCerts
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplatePadding: =4
+                        TemplateSize: =132
+                        Width: =Parent.Width
+                      Children:
+                        - congalDeskCertRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("BorderLight")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.TemplateHeight
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              PaddingBottom: =6
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =6
+                              RadiusBottomLeft: =6
+                              RadiusBottomRight: =6
+                              RadiusTopLeft: =6
+                              RadiusTopRight: =6
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - lblDCert:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =28
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =Coalesce(ThisItem.Employee.Value, "-") & " - " & Coalesce(ThisItem.Course.Value, "")
+                                    Width: =Parent.Width
+                              - lblDCertNo:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =22
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: =If(IsBlank(ThisItem.CertificateNumber), If(gblLanguage = "Arabic", "الرقم قيد الإصدار", "Number pending"), ThisItem.CertificateNumber) & "  " & Coalesce(ThisItem.Status.Value, "")
+                                    Width: =Parent.Width
+                              - btnCertPick:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "اختيار", "Select")
+                                    Appearance: =ButtonAppearance.Subtle
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varCertID, ThisItem.ID)
+                                    Text: =If(gblLanguage = "Arabic", "اختيار", "Select")
+                                    Width: =140
+                  - conCertForm:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =6
+                        RadiusBottomRight: =6
+                        RadiusTopLeft: =6
+                        RadiusTopRight: =6
+                        Visible: =And(hrIsHR, varDeskTab = "Certs")
+                        Width: =Parent.Width
+                      Children:
+                        - lblCertForm:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =28
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.SectionTitle
+                              Text: =If(gblLanguage = "Arabic", "إصدار أو إلغاء", "Issue or revoke")
+                              Width: =Parent.Width
+                        - lblCertWho:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =Coalesce(varCertEmployeeName, "") & " / " & Coalesce(varCertCourseName, "")
+                              Width: =Parent.Width
+                        - ddCertEmp:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                              Height: =40
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =colPerfEmployees
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnChange: =Set(varCertEmployeeID, Self.Selected.ID); Set(varCertEmployeeName, Self.Selected.FullName)
+                              Width: =Parent.Width
+                        - txtRevokeWhy:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "سبب الإلغاء", "Revoke reason")
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "لماذا تُلغى هذه الشهادة؟", "Why is this certificate revoked?")
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - conCertBtns:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =52
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutOverflowX: =LayoutOverflow.Scroll
+                              Width: =Parent.Width
+                            Children:
+                              - btnCertIssue:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إصدار", "Issue")
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnCertIssueDo)
+                                    Text: =If(gblLanguage = "Arabic", "إصدار", "Issue")
+                                    Width: =140
+                              - btnCertRevoke:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء", "Revoke")
+                                    Appearance: =ButtonAppearance.Secondary
+                                    BasePaletteColor: =fxThemeColor("Primary")
+                                    Height: =If(App.Width < 700, 44, 36)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnCertRevokeDo)
+                                    Text: =If(gblLanguage = "Arabic", "إلغاء", "Revoke")
+                                    Width: =140
+            - btnDeskRefresh:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                  Appearance: =ButtonAppearance.Subtle
+                  BasePaletteColor: =fxThemeColor("Primary")
+                  Height: =If(App.Width < 700, 44, 36)
+                  Icon: ="ArrowSync"
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =Select(btnTrainMgmtReload)
+                  Text: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                  Width: =140
+      - btnTrainMgmtReload:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث مكتب التدريب", "Refresh training desk")
+            Height: =1
+            OnSelect: |-
+              =Set(varDeskLoadError, false);
+              If(
+                  Not(Or(hrCanManageTraining, hrCanApprove, hrIsHR, hrCanFinanceApprove)),
+                  Set(varDeskLoadError, false),
+                  IfError(
+                      Concurrent(
+                          ClearCollect(colTrainCats, Filter(TrainingCategories, IsActive = true)),
+                          ClearCollect(colDeskCourses, FirstN(Sort(Filter(TrainingCourses, ID >= 1), ID, SortOrder.Descending), hrPageSize)),
+                          ClearCollect(colDeskSessions, FirstN(Sort(Filter(TrainingSessions, ID >= 1), ID, SortOrder.Descending), hrPageSize)),
+                          ClearCollect(colDeskCerts, FirstN(Sort(Filter(TrainingCertificates, ID >= 1), ID, SortOrder.Descending), hrPageSize)),
+                          If(
+                              hrIsHR,
+                              ClearCollect(colTrainQueue, FirstN(Filter(TrainingRequests, ApprovalLevelNum = 2), hrPageSize));
+                              Collect(colTrainQueue, FirstN(Filter(TrainingRequests, ApprovalLevelNum = 1), hrPageSize));
+                              Collect(colTrainQueue, FirstN(Filter(TrainingRequests, ApprovalLevelNum = 3), hrPageSize)),
+                              If(
+                                  hrCanFinanceApprove,
+                                  ClearCollect(colTrainQueue, FirstN(Filter(TrainingRequests, ApprovalLevelNum = 3), hrPageSize)),
+                                  ClearCollect(colTrainQueue, FirstN(Filter(TrainingRequests, ManagerID = gblUser.ID && ApprovalLevelNum = 1), hrPageSize))
+                              )
+                          )
+                      ),
+                      Set(varDeskLoadError, true);
+                      Notify(If(gblLanguage = "Arabic", "تعذر تحميل بيانات التدريب. أضف قوائم التدريب ثم حدّث.", "Training data could not be loaded. Add the training lists, then refresh."), NotificationType.Error)
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnTrainDecide:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "حفظ قرار التدريب", "Save training decision")
+            Height: =1
+            OnSelect: |-
+              =If(
+                  Or(Coalesce(varTrainReqID, 0) <= 0, IsBlank(varTrainDecision)),
+                  Notify(If(gblLanguage = "Arabic", "اختر طلباً أولاً.", "Select a request first."), NotificationType.Warning),
+                  If(
+                      And(varTrainDecision <> "Approved", Len(Trim(Coalesce(txtDeskComment.Text, ""))) < 10),
+                      Notify(If(gblLanguage = "Arabic", "الرفض والإعادة يحتاجان إلى تعليق من 10 أحرف على الأقل.", "Reject and return need a comment of at least 10 characters."), NotificationType.Error),
+                      With(
+                          {fresh: LookUp(TrainingRequests, ID = varTrainReqID)},
+                          If(
+                              Or(IsBlank(fresh.ID), fresh.Status.Value <> varTrainExpected, fresh.ApprovalLevelNum <> varTrainExpectedLevel),
+                              Notify(If(gblLanguage = "Arabic", "تغيّر هذا الطلب. حدّث الصفحة ثم أعد المحاولة.", "This request changed. Refresh and try again."), NotificationType.Warning),
+                              If(
+                                  Not(
+                                      Or(
+                                          And(fresh.ApprovalLevelNum = 1, fresh.ManagerID = gblUser.ID),
+                                          And(fresh.ApprovalLevelNum = 2, hrIsHR),
+                                          And(fresh.ApprovalLevelNum = 3, hrCanFinanceApprove)
+                                      )
+                                  ),
+                                  Notify(If(gblLanguage = "Arabic", "لا يمكنك اتخاذ إجراء على هذا الطلب.", "You cannot act on this request."), NotificationType.Error),
+                                  With(
+                                      {
+                                          nxt: fnNextTrainingStatus(fresh.Status.Value, varTrainDecision, Coalesce(fresh.EstimatedCost, 0))
+                                      },
+                                      IfError(
+                                          Set(
+                                              varSavedReq,
+                                              Patch(
+                                                  TrainingRequests,
+                                                  fresh,
+                                                  {Status: {Value: nxt}, ApprovalLevelNum: fnTrainingLevelNum(nxt)}
+                                              )
+                                          ),
+                                          Set(varSavedReq, Blank());
+                                          Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                                      );
+                                      If(
+                                          !IsBlank(varSavedReq.ID),
+                                          fnLogHR("Training Request", varSavedReq.ID, Coalesce(varSavedReq.RequestNumber, ""), varTrainDecision, "Important", Coalesce(varSavedReq.ProjectID, 0), Coalesce(varSavedReq.EstimatedCost, 0), Coalesce(varSavedReq.Currency.Value, ""), "Status", fresh.Status.Value, nxt, "id=" & varSavedReq.ID, "", false);
+                                          fnApprovalRow(varSavedReq.ID, Coalesce(varSavedReq.RequestNumber, Text(varSavedReq.ID)), If(varTrainDecision = "Approved", "Approved", If(varTrainDecision = "Rejected", "Rejected", "Returned")), If(varTrainDecision = "Approved", "Approved", If(varTrainDecision = "Rejected", "Rejected", "Returned")), Left(Coalesce(txtDeskComment.Text, ""), 250), fnApprovalLevelLabel(fresh.Status.Value), Coalesce(varSavedReq.EmployeeID, 0), Coalesce(varSavedReq.Priority.Value, "Medium"));
+                                          fnNotifyHR(Coalesce(varSavedReq.EmployeeID, 0), Coalesce(varSavedReq.Employee.Value, ""), If(gblLanguage = "Arabic", "تحديث طلب تدريب", "Training request update"), If(gblLanguage = "Arabic", "حالة طلب التدريب أصبحت", "Your training request status is now") & " " & nxt, "TrainingRequest", varSavedReq.ID, If(varTrainDecision = "Approved", "Success", "Approval"));
+                                          If(
+                                              nxt = "Approved",
+                                              fnEnrollIfApproved(varSavedReq.ID, Coalesce(varSavedReq.SessionID, 0), Coalesce(varSavedReq.EmployeeID, 0), Coalesce(varSavedReq.Employee.Value, ""), Coalesce(varSavedReq.CourseID, 0), Coalesce(varSavedReq.Course.Value, ""))
+                                          );
+                                          Notify(If(gblLanguage = "Arabic", "تم حفظ القرار.", "Decision saved."), NotificationType.Success);
+                                          Set(varTrainReqID, 0);
+                                          Select(btnTrainMgmtReload)
+                                      )
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnCourseCommit:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "إنشاء البرنامج", "Create course")
+            Height: =1
+            OnSelect: |-
+              =If(
+                  Or(Not(hrCanManageTraining), Len(Trim(Coalesce(txtCourseTitle.Text, ""))) < 3),
+                  Notify(If(gblLanguage = "Arabic", "اختر برنامجاً واكتب مبرراً من 10 أحرف على الأقل.", "Choose a course and write a justification of at least 10 characters."), NotificationType.Error),
+                  IfError(
+                      Set(
+                          varSavedCourse,
+                          Patch(
+                              TrainingCourses,
+                              Defaults(TrainingCourses),
+                              {
+                                  Title: txtCourseTitle.Text,
+                                  CourseCode: Coalesce(txtCourseCode.Text, ""),
+                                  Description: Coalesce(txtCourseDesc.Text, ""),
+                                  DeliveryMode: {Value: Coalesce(ddCourseMode.Selected.Value, "Classroom")},
+                                  DurationHours: IfError(Value(txtCourseHours.Text), 0),
+                                  Provider: Coalesce(txtCourseProvider.Text, ""),
+                                  IsActive: true,
+                                  CostPerPerson: IfError(Value(txtCourseCost.Text), 0),
+                                  Currency: {Value: Coalesce(ddCourseCur.Selected.Value, "USD")},
+                                  Status: {Value: "Active"},
+                                  Category: If(Coalesce(ddCourseCat.Selected.ID, 0) > 0, {Id: ddCourseCat.Selected.ID, Value: ddCourseCat.Selected.Title}, Blank()),
+                                  CategoryID: If(Coalesce(ddCourseCat.Selected.ID, 0) > 0, ddCourseCat.Selected.ID, Blank())
+                              }
+                          )
+                      ),
+                      Set(varSavedCourse, Blank());
+                      Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                  );
+                  If(
+                      !IsBlank(varSavedCourse.ID),
+                      fnLogHR("Training Course", varSavedCourse.ID, Coalesce(varSavedCourse.CourseCode, ""), "Created", "Info", 0, Blank(), "", "Status", "", "Active", "id=" & varSavedCourse.ID, "", false);
+                      Notify(If(gblLanguage = "Arabic", "تم حفظ القرار.", "Decision saved."), NotificationType.Success);
+                      Select(btnTrainMgmtReload)
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnCourseRetireDo:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "إيقاف البرنامج", "Retire course")
+            Height: =1
+            OnSelect: |-
+              =With(
+                  {fresh: LookUp(TrainingCourses, ID = varDeskCourseID)},
+                  If(
+                      Or(Not(hrCanManageTraining), IsBlank(fresh.ID)),
+                      Notify(If(gblLanguage = "Arabic", "لا يمكنك اتخاذ إجراء على هذا الطلب.", "You cannot act on this request."), NotificationType.Error),
+                      IfError(
+                          Set(varSavedCourse, Patch(TrainingCourses, fresh, {IsActive: false, Status: {Value: "Retired"}})),
+                          Set(varSavedCourse, Blank());
+                          Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                      );
+                      If(
+                          !IsBlank(varSavedCourse.ID),
+                          fnLogHR("Training Course", varSavedCourse.ID, Coalesce(varSavedCourse.CourseCode, ""), "Updated", "Important", 0, Blank(), "", "Status", Coalesce(fresh.Status.Value, ""), "Retired", "id=" & varSavedCourse.ID, "", false);
+                          Select(btnTrainMgmtReload)
+                      )
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnSessCommit:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "إنشاء الجلسة", "Create session")
+            Height: =1
+            OnSelect: |-
+              =If(
+                  Or(Not(hrCanManageTraining), Coalesce(varDeskCourseID, 0) <= 0, IsBlank(dteSessStart.SelectedDate)),
+                  Notify(If(gblLanguage = "Arabic", "اختر برنامجاً واكتب مبرراً من 10 أحرف على الأقل.", "Choose a course and write a justification of at least 10 characters."), NotificationType.Error),
+                  IfError(
+                      Set(
+                          varSavedSess,
+                          Patch(
+                              TrainingSessions,
+                              Defaults(TrainingSessions),
+                              {
+                                  Title: If(Len(Trim(Coalesce(txtSessTitle.Text, ""))) = 0, Coalesce(varDeskCourseName, "Session"), txtSessTitle.Text),
+                                  Course: {Id: varDeskCourseID, Value: Coalesce(varDeskCourseName, "")},
+                                  CourseID: varDeskCourseID,
+                                  StartDate: dteSessStart.SelectedDate,
+                                  EndDate: Coalesce(dteSessEnd.SelectedDate, dteSessStart.SelectedDate),
+                                  Location: Coalesce(txtSessWhere.Text, ""),
+                                  Trainer: Coalesce(txtSessTrainer.Text, ""),
+                                  Capacity: IfError(Value(txtSessCap.Text), 0),
+                                  Status: {Value: "Planned"},
+                                  ProjectID: If(Coalesce(gblUser.ProjectID, 0) > 0, gblUser.ProjectID, Blank()),
+                                  OfficeID: If(Coalesce(gblUser.OfficeId, 0) > 0, gblUser.OfficeId, Blank())
+                              }
+                          )
+                      ),
+                      Set(varSavedSess, Blank());
+                      Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                  );
+                  If(
+                      !IsBlank(varSavedSess.ID),
+                      fnLogHR("Training Session", varSavedSess.ID, "", "Created", "Info", Coalesce(gblUser.ProjectID, 0), Blank(), "", "Status", "", "Planned", "id=" & varSavedSess.ID, "", false);
+                      Notify(If(gblLanguage = "Arabic", "تم حفظ القرار.", "Decision saved."), NotificationType.Success);
+                      Select(btnTrainMgmtReload)
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnSessStatus:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث الجلسة", "Update session")
+            Height: =1
+            OnSelect: |-
+              =With(
+                  {fresh: LookUp(TrainingSessions, ID = varDeskSessionID)},
+                  If(
+                      Or(Not(hrCanManageTraining), IsBlank(fresh.ID), IsBlank(varSessNext)),
+                      Notify(If(gblLanguage = "Arabic", "لا يمكنك اتخاذ إجراء على هذا الطلب.", "You cannot act on this request."), NotificationType.Error),
+                      If(
+                          Or(fresh.Status.Value = "Full", fresh.Status.Value <> varSessExpected),
+                          Notify(If(gblLanguage = "Arabic", "تغيّر هذا الطلب. حدّث الصفحة ثم أعد المحاولة.", "This request changed. Refresh and try again."), NotificationType.Warning),
+                          If(
+                              Not(Or(varSessNext = "Planned", varSessNext = "Open", varSessNext = "In Progress", varSessNext = "Completed", varSessNext = "Cancelled")),
+                              Notify(If(gblLanguage = "Arabic", "لا يمكنك اتخاذ إجراء على هذا الطلب.", "You cannot act on this request."), NotificationType.Error),
+                              IfError(
+                                  Set(varSavedSess, Patch(TrainingSessions, fresh, {Status: {Value: varSessNext}})),
+                                  Set(varSavedSess, Blank());
+                                  Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                              );
+                              If(
+                                  !IsBlank(varSavedSess.ID),
+                                  fnLogHR("Training Session", varSavedSess.ID, Coalesce(varSavedSess.SessionNumber, ""), "Updated", "Important", 0, Blank(), "", "Status", fresh.Status.Value, varSessNext, "id=" & varSavedSess.ID, "", false);
+                                  Select(btnTrainMgmtReload)
+                              )
+                          )
+                      )
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnCertIssueDo:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "إصدار الشهادة", "Issue certificate")
+            Height: =1
+            OnSelect: |-
+              =If(
+                  Or(Not(hrIsHR), Coalesce(varCertEmployeeID, 0) <= 0, Coalesce(varCertCourseID, 0) <= 0),
+                  Notify(If(gblLanguage = "Arabic", "اختر برنامجاً واكتب مبرراً من 10 أحرف على الأقل.", "Choose a course and write a justification of at least 10 characters."), NotificationType.Error),
+                  IfError(
+                      Set(
+                          varSavedCert,
+                          Patch(
+                              TrainingCertificates,
+                              Defaults(TrainingCertificates),
+                              {
+                                  Title: Left(Coalesce(varCertEmployeeName, "") & " - " & Coalesce(varCertCourseName, ""), 255),
+                                  Employee: {Id: varCertEmployeeID, Value: Coalesce(varCertEmployeeName, "")},
+                                  EmployeeID: varCertEmployeeID,
+                                  Course: {Id: varCertCourseID, Value: Coalesce(varCertCourseName, "")},
+                                  CourseID: varCertCourseID,
+                                  SessionID: If(Coalesce(varCertSessionID, 0) > 0, varCertSessionID, Blank()),
+                                  IssueDate: Today()
+                              }
+                          )
+                      ),
+                      Set(varSavedCert, Blank());
+                      Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                  );
+                  If(
+                      !IsBlank(varSavedCert.ID),
+                      fnLogHR("Training Certificate", varSavedCert.ID, "", "Issued", "Important", 0, Blank(), "", "Status", "", "Pending", "id=" & varSavedCert.ID, "", false);
+                      Notify(If(gblLanguage = "Arabic", "تم إنشاء الشهادة. الرقم ما زال قيد الإصدار.", "Certificate row created. The number is still pending."), NotificationType.Success);
+                      Select(btnTrainMgmtReload)
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - btnCertRevokeDo:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(gblLanguage = "Arabic", "إلغاء الشهادة", "Revoke certificate")
+            Height: =1
+            OnSelect: |-
+              =With(
+                  {fresh: LookUp(TrainingCertificates, ID = varCertID)},
+                  If(
+                      Or(Not(hrIsHR), IsBlank(fresh.ID), Len(Trim(Coalesce(txtRevokeWhy.Text, ""))) < 10),
+                      Notify(If(gblLanguage = "Arabic", "اكتب سبب الإلغاء من 10 أحرف على الأقل.", "Write a revoke reason of at least 10 characters."), NotificationType.Error),
+                      If(
+                          fresh.Status.Value = "Revoked",
+                          Notify(If(gblLanguage = "Arabic", "تغيّر هذا الطلب. حدّث الصفحة ثم أعد المحاولة.", "This request changed. Refresh and try again."), NotificationType.Warning),
+                          IfError(
+                              Set(varSavedCert, Patch(TrainingCertificates, fresh, {Status: {Value: "Revoked"}, RevokedDate: Now(), RevokeReason: txtRevokeWhy.Text})),
+                              Set(varSavedCert, Blank());
+                              Notify(If(gblLanguage = "Arabic", "تعذر تحديث الطلب.", "Could not update the request.") & " " & FirstError.Message, NotificationType.Error)
+                          );
+                          If(
+                              !IsBlank(varSavedCert.ID),
+                              fnLogHR("Training Certificate", varSavedCert.ID, Coalesce(varSavedCert.CertificateNumber, ""), "Revoked", "Important", 0, Blank(), "", "Status", Coalesce(fresh.Status.Value, ""), "Revoked", "id=" & varSavedCert.ID, "", false);
+                              Notify(If(gblLanguage = "Arabic", "تم إلغاء الشهادة.", "Certificate revoked."), NotificationType.Success);
+                              Select(btnTrainMgmtReload)
+                          )
+                      )
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1
+      - conscrTrainingManagementNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpscrTrainingManagementNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: =Set(gblMenuExpanded, !Coalesce(gblMenuExpanded, true)); If(!gblMenuExpanded, Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width

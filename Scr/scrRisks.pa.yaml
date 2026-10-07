@@ -1,0 +1,1505 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrRisks:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Programs");
+        Set(varCurrentScreen, "Programs");
+        Set(VarProgrammodule, "PRisks");
+        Set(varNavSelectedID, 28);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project"));
+        If(IsBlank(varRkQuick), Set(varRkQuick, "all"));
+        Set(varRkCell, Blank());
+        Set(varRkPane, "Details");
+        Set(varRkError, false);
+        ClearCollect(
+            colRkScale,
+            {k: "Low", n: 1},
+            {k: "Medium", n: 2},
+            {k: "High", n: 3}
+        );
+        ClearCollect(
+            colRkAxis,
+            {n: 1, en: "Low", ar: "منخفض"},
+            {n: 2, en: "Medium", ar: "متوسط"},
+            {n: 3, en: "High", ar: "مرتفع"}
+        );
+        ClearCollect(
+            colRkLevelUI,
+            {k: "Low", en: "Low", ar: "منخفض"},
+            {k: "Medium", en: "Medium", ar: "متوسط"},
+            {k: "High", en: "High", ar: "مرتفع"},
+            {k: "Critical", en: "Critical", ar: "حرج"}
+        );
+        ClearCollect(
+            colRkStatusUI,
+            {k: "Identified", en: "Identified", ar: "مُحدَّدة"},
+            {k: "Under Assessment", en: "Under Assessment", ar: "قيد التقييم"},
+            {k: "Mitigation Planned", en: "Mitigation Planned", ar: "معالجة مخططة"},
+            {k: "Mitigation In Progress", en: "Mitigation In Progress", ar: "معالجة جارية"},
+            {k: "Accepted", en: "Accepted", ar: "مقبولة"},
+            {k: "Pending Closure", en: "Pending Closure", ar: "بانتظار الإغلاق"},
+            {k: "Closed", en: "Closed", ar: "مغلقة"}
+        );
+        If(
+            Coalesce(gblSelectedRiskID, 0) > 0,
+            Set(varSelectedRisk, LookUp(Risks, ID = gblSelectedRiskID));
+            Set(gblSelectedRiskID, 0)
+        );
+        Select(btnRkReload)
+    Children:
+      - cmpRkTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Warning"
+            ModuleName: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrProjects, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "المخاطر", "Risks")
+            ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =600
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpRkPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 28, Module: "Risks", Title: If(gblLanguage = "Arabic", "المخاطر", "Risks"), Icon: "Warning", Visible: true},
+                  {ID: 25, Module: "Activities", Title: If(gblLanguage = "Arabic", "الأنشطة", "Activities"), Icon: "Activity", Visible: true},
+                  {ID: 22, Module: "Projects", Title: If(gblLanguage = "Arabic", "المشاريع", "Projects"), Icon: "Box", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Risks", Navigate(scrRisks, ScreenTransition.None),
+                  "Activities", Navigate(scrActivities, ScreenTransition.None),
+                  "Projects", Navigate(ScrAllProjects, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =600
+            Y: =Parent.Height - Self.Height
+      - conRkSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnRkReload:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varRkError, false);
+                    IfError(
+                        Refresh(Risks);
+                        Concurrent(
+                            ClearCollect(colRkMine, Filter(Risks, OwnerID = varMeID)),
+                            ClearCollect(colRkAppr, Filter(Risks, ApproverID = varMeID)),
+                            ClearCollect(
+                                colRkProj,
+                                If(
+                                    IsBlank(varSelectedProject),
+                                    Filter(Risks, ID = -1),
+                                    Filter(Risks, ProjectID = varSelectedProject.ID)
+                                )
+                            )
+                        );
+                        If(Not(IsBlank(varSelectedRisk)), Set(varSelectedRisk, LookUp(Risks, ID = varSelectedRisk.ID)));
+                        Select(btnRkSync),
+                        Set(varRkError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل المخاطر.", "Could not load risks."), NotificationType.Warning)
+                    )
+                  Text: ="Reload"
+                  Visible: =false
+                  Width: =1
+            - btnRkSync:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =ClearCollect(
+                        colRkScope,
+                        AddColumns(
+                            AddColumns(
+                                AddColumns(
+                                    Switch(
+                                        varRkScope,
+                                        "project", colRkProj,
+                                        "approve", Filter(colRkAppr, Status.Value = "Pending Closure"),
+                                        colRkMine
+                                    ),
+                                    P, Coalesce(LookUp(colRkScale, k = Probability.Value).n, 0),
+                                    I, Coalesce(LookUp(colRkScale, k = Impact.Value).n, 0)
+                                ),
+                                Sc, P * I
+                            ),
+                            LvK, If(Sc >= 9, "Critical", Sc >= 6, "High", Sc >= 3, "Medium", Sc >= 1, "Low", Coalesce(Level.Value, "Low")),
+                            IsOpen, Status.Value <> "Closed",
+                            RevOver, And(Not(IsBlank(ReviewDate)), ReviewDate < Today(), Status.Value <> "Closed")
+                        )
+                    );
+                    If(
+                        Not(IsBlank(varSelectedRisk)),
+                        ClearCollect(colRkHist, FirstN(SortByColumns(Filter(ProjectActivityLog, And(RelatedEntity.Value = "Risk", RelatedItemId = varSelectedRisk.ID)), "Date", SortOrder.Descending), 8)),
+                        Clear(colRkHist)
+                    )
+                  Text: ="Sync"
+                  Visible: =false
+                  Width: =1
+            - btnRkAct:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            t: varSelectedRisk,
+                            n: Left(Trim(txtRkNote.Text), 250),
+                            ar: gblLanguage = "Arabic",
+                            op: varRkOp
+                        },
+                        IfError(
+                            If(
+                                op = "close",
+                                With(
+                                    {direct: Or(IsBlank(t.ApproverID), t.ApproverID = varMeID)},
+                                    Set(varSelectedRisk, Patch(Risks, LookUp(Risks, ID = t.ID), {Status: {Value: If(direct, "Closed", "Pending Closure")}, ClosingDate: If(direct, Today(), Blank())}));
+                                    If(
+                                        Not(direct),
+                                        IfError(
+                                            Patch(
+                                                ApprovalHistory,
+                                                Defaults(ApprovalHistory),
+                                                {
+                                                    Title: t.Title,
+                                                    RequestItemID: Text(t.ID),
+                                                    RequestNumber: "RSK-" & Text(t.ID, "0000"),
+                                                    RequestType: {Value: "Risk"},
+                                                    Module: {Value: "Projects"},
+                                                    Decision: {Value: "Pending"},
+                                                    Comments: n,
+                                                    AssignedDate: Now(),
+                                                    Approver: {Id: t.ApproverID, Value: Coalesce(LookUp(Employees, ID = t.ApproverID, FullName), "")},
+                                                    ApproverID: t.ApproverID,
+                                                    Requester: {Id: varMeID, Value: varMeName},
+                                                    RequesterID: varMeID,
+                                                    ProjectID: t.ProjectID
+                                                }
+                                            ),
+                                            Notify(If(ar, "أُرسل الطلب لكن تعذر حفظ سجل الاعتماد.", "Request sent, but the approval log could not be saved."), NotificationType.Warning)
+                                        );
+                                        fnProjNotify(
+                                            t.ApproverID,
+                                            Coalesce(LookUp(Employees, ID = t.ApproverID, FullName), ""),
+                                            "طلب إغلاق مخاطرة بانتظار اعتمادك / Risk closure awaiting your approval: " & t.Title,
+                                            n,
+                                            "Risk",
+                                            t.ID,
+                                            "Risk"
+                                        )
+                                    );
+                                    fnProjLog(
+                                        "Risk: " & t.Title,
+                                        t.ProjectID,
+                                        Coalesce(t.Project.Value, ""),
+                                        "Risk",
+                                        t.ID,
+                                        If(direct, "Closed", "Closure Requested"),
+                                        n
+                                    );
+                                    Notify(If(direct, If(ar, "تم إغلاق المخاطرة.", "Risk closed."), If(ar, "تم إرسال طلب الإغلاق للاعتماد.", "Closure request sent for approval.")), NotificationType.Success)
+                                ),
+                                If(
+                                    op = "approve",
+                                    Set(varSelectedRisk, Patch(Risks, LookUp(Risks, ID = t.ID), {Status: {Value: "Closed"}, ClosingDate: Today()}));
+                                    IfError(
+                                        Patch(
+                                            ApprovalHistory,
+                                            Defaults(ApprovalHistory),
+                                            {
+                                                Title: t.Title,
+                                                RequestItemID: Text(t.ID),
+                                                RequestNumber: "RSK-" & Text(t.ID, "0000"),
+                                                RequestType: {Value: "Risk"},
+                                                Module: {Value: "Projects"},
+                                                Decision: {Value: "Approved"},
+                                                Comments: n,
+                                                DecisionDate: Now(),
+                                                ActionDate: Now(),
+                                                Approver: {Id: varMeID, Value: varMeName},
+                                                ApproverID: varMeID,
+                                                Requester: {Id: t.OwnerID, Value: t.Owner.Value},
+                                                RequesterID: t.OwnerID,
+                                                ProjectID: t.ProjectID
+                                            }
+                                        ),
+                                        Notify(If(ar, "تم الاعتماد لكن تعذر حفظ السجل.", "Approved, but the approval log could not be saved."), NotificationType.Warning)
+                                    );
+                                    fnProjNotify(
+                                        t.OwnerID,
+                                        Coalesce(t.Owner.Value, ""),
+                                        "تم اعتماد إغلاق المخاطرة / Risk closure approved: " & t.Title,
+                                        n,
+                                        "Risk",
+                                        t.ID,
+                                        "Risk"
+                                    );
+                                    fnProjLog(
+                                        "Risk: " & t.Title,
+                                        t.ProjectID,
+                                        Coalesce(t.Project.Value, ""),
+                                        "Risk",
+                                        t.ID,
+                                        "Closure Approved",
+                                        n
+                                    );
+                                    Notify(If(ar, "تم اعتماد إغلاق المخاطرة.", "Risk closure approved."), NotificationType.Success),
+                                    If(
+                                        op = "reject",
+                                        If(
+                                            IsBlank(n),
+                                            Notify(If(ar, "يرجى كتابة سبب الرفض.", "Please add a note explaining the rejection."), NotificationType.Error),
+                                            Set(varSelectedRisk, Patch(Risks, LookUp(Risks, ID = t.ID), {Status: {Value: "Identified"}, ClosingDate: Blank()}));
+                                            IfError(
+                                                Patch(
+                                                    ApprovalHistory,
+                                                    Defaults(ApprovalHistory),
+                                                    {
+                                                        Title: t.Title,
+                                                        RequestItemID: Text(t.ID),
+                                                        RequestNumber: "RSK-" & Text(t.ID, "0000"),
+                                                        RequestType: {Value: "Risk"},
+                                                        Module: {Value: "Projects"},
+                                                        Decision: {Value: "Rejected"},
+                                                        Comments: n,
+                                                        DecisionDate: Now(),
+                                                        ActionDate: Now(),
+                                                        Approver: {Id: varMeID, Value: varMeName},
+                                                        ApproverID: varMeID,
+                                                        Requester: {Id: t.OwnerID, Value: t.Owner.Value},
+                                                        RequesterID: t.OwnerID,
+                                                        ProjectID: t.ProjectID
+                                                    }
+                                                ),
+                                                Notify(If(ar, "تم الرفض لكن تعذر حفظ السجل.", "Rejected, but the approval log could not be saved."), NotificationType.Warning)
+                                            );
+                                            fnProjNotify(
+                                                t.OwnerID,
+                                                Coalesce(t.Owner.Value, ""),
+                                                "تم رفض إغلاق المخاطرة / Risk closure rejected: " & t.Title,
+                                                n,
+                                                "Risk",
+                                                t.ID,
+                                                "Risk"
+                                            );
+                                            fnProjLog(
+                                                "Risk: " & t.Title,
+                                                t.ProjectID,
+                                                Coalesce(t.Project.Value, ""),
+                                                "Risk",
+                                                t.ID,
+                                                "Closure Rejected",
+                                                n
+                                            );
+                                            Notify(If(ar, "تم رفض طلب الإغلاق وإعادة المخاطرة للمسؤول.", "Closure rejected and the risk was returned to the owner."), NotificationType.Success)
+                                        ),
+                                        If(
+                                            op = "reopen",
+                                            Set(varSelectedRisk, Patch(Risks, LookUp(Risks, ID = t.ID), {Status: {Value: "Identified"}, ClosingDate: Blank()}));
+                                            fnProjLog(
+                                                "Risk: " & t.Title,
+                                                t.ProjectID,
+                                                Coalesce(t.Project.Value, ""),
+                                                "Risk",
+                                                t.ID,
+                                                "Reopened",
+                                                ""
+                                            );
+                                            Notify(If(ar, "تمت إعادة فتح المخاطرة.", "Risk reopened."), NotificationType.Success),
+                                            If(
+                                                op = "delete",
+                                                If(
+                                                    Confirm(If(ar, "هل أنت متأكد من حذف هذه المخاطرة نهائياً؟", "Permanently delete this risk?") & Char(10) & t.Title),
+                                                    IfError(
+                                                        Remove(Risks, LookUp(Risks, ID = t.ID));
+                                                        Set(varSelectedRisk, Blank());
+                                                        Notify(If(ar, "تم حذف المخاطرة.", "Risk deleted."), NotificationType.Success),
+                                                        Notify(If(ar, "تعذر حذف المخاطرة.", "Unable to delete the risk."), NotificationType.Error)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            );
+                            Reset(txtRkNote);
+                            Select(btnRkReload),
+                            Notify(If(ar, "تعذر تحديث المخاطرة. حاول مرة أخرى.", "Unable to update the risk. Please try again."), NotificationType.Error)
+                        )
+                    )
+                  Text: ="Act"
+                  Visible: =false
+                  Width: =1
+      - conRkPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpRkPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpRkTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conRkHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblRkTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.SectionTitle
+                        Text: =If(gblLanguage = "Arabic", "إدارة المخاطر", "Risk Management")
+                        Width: =160
+                        Wrap: =false
+                  - btnRkRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnRkReload)
+                        Text: =""
+                        Width: =44
+                  - btnRkNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        Icon: ="Add"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varRiskForm, "new");
+                          Set(varRiskReturn, "risks");
+                          Set(varSelectedRisk, Blank());
+                          Navigate(scrRiskEditor, ScreenTransition.Cover)
+                        Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "مخاطرة", "Risk"))
+                        Visible: =Not(IsBlank(varSelectedProject))
+                        Width: =If(App.Width < 700, 44, 110)
+            - galRkTabs:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =40
+                  Items: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            nMy: CountRows(Filter(colRkMine, Status.Value <> "Closed")),
+                            nProj: CountRows(Filter(colRkProj, Status.Value <> "Closed")),
+                            nApr: CountRows(Filter(colRkAppr, Status.Value = "Pending Closure"))
+                        },
+                        Filter(
+                            Table(
+                                {k: "my", t: If(ar, "مخاطري", "My Risks"), n: nMy},
+                                {k: "project", t: If(ar, "مخاطر المشروع", "Project Risks"), n: nProj},
+                                {k: "approve", t: If(ar, "بانتظار اعتمادي", "To Approve"), n: nApr}
+                            ),
+                            Or(k <> "project", Not(IsBlank(varSelectedProject)))
+                        )
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =160
+                  Width: =Parent.Width
+                Children:
+                  - btnRkTab:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(ThisItem.k = varRkScope, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =30
+                        OnSelect: |-
+                          =Set(varRkScope, ThisItem.k);
+                          Set(varSelectedRisk, Blank());
+                          Set(varRkCell, Blank());
+                          Select(btnRkSync)
+                        Text: =ThisItem.t & " (" & ThisItem.n & ")"
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+            - galRkKpi:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 0, 72)
+                  Items: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", r: colRkScope},
+                        Table(
+                            {k: If(ar, "الإجمالي", "Total"), v: CountRows(r)},
+                            {k: If(ar, "مفتوحة", "Open"), v: CountRows(Filter(r, IsOpen))},
+                            {k: If(ar, "مرتفعة", "High+"), v: CountRows(Filter(r, And(IsOpen, Sc >= 6)))},
+                            {k: If(ar, "مراجعة متأخرة", "Overdue"), v: CountRows(Filter(r, RevOver))},
+                            {k: If(ar, "مغلقة", "Closed"), v: CountRows(Filter(r, Status.Value = "Closed"))}
+                        )
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplatePadding: =4
+                  TemplateSize: =148
+                  Visible: =App.Width >= 700
+                  Width: =Parent.Width
+                Children:
+                  - conRkKpi:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.TemplateHeight - 8
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+                        Y: =4
+                      Children:
+                        - lblRkKpiV:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =28
+                              PaddingBottom: =0
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.CardTitle
+                              Text: =Text(ThisItem.v)
+                              Width: =Parent.Width
+                              Y: =8
+                        - lblRkKpiK:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =18
+                              PaddingBottom: =0
+                              PaddingLeft: =12
+                              PaddingRight: =12
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =ThisItem.k
+                              Width: =Parent.Width
+                              Y: =36
+            - galRkChips:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =40
+                  Items: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", r: colRkScope},
+                        Table(
+                            {k: "all", t: If(ar, "الكل", "All"), n: CountRows(r)},
+                            {k: "open", t: If(ar, "مفتوحة", "Open"), n: CountRows(Filter(r, IsOpen))},
+                            {k: "high", t: If(ar, "مرتفعة", "High+"), n: CountRows(Filter(r, And(IsOpen, Sc >= 6)))},
+                            {k: "review", t: If(ar, "مراجعة", "Review"), n: CountRows(Filter(r, RevOver))},
+                            {k: "pending", t: If(ar, "إغلاق", "Pending"), n: CountRows(Filter(r, Status.Value = "Pending Closure"))},
+                            {k: "closed", t: If(ar, "مغلقة", "Closed"), n: CountRows(Filter(r, Status.Value = "Closed"))}
+                        )
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =120
+                  Width: =Parent.Width
+                Children:
+                  - btnRkChip:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(ThisItem.k = Coalesce(varRkQuick, "all"), ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =30
+                        OnSelect: =Set(varRkQuick, ThisItem.k)
+                        Text: =ThisItem.t & " (" & ThisItem.n & ")"
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+            - conRkTools:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 120, 40)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =App.Width < 700
+                Children:
+                  - txtRkSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "البحث في المخاطر", "Search risks")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "ابحث بالعنوان أو المسؤول", "Search by title or owner")
+                        Width: =If(App.Width < 700, Parent.Width, 220)
+                  - cmbRkCat:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الفئة", "Category")
+                        DefaultSelectedItems: =Filter(Distinct(colRkScope, Category.Value), false)
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الفئات", "All categories")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Sort(Filter(Distinct(colRkScope, Category.Value), Not(IsBlank(Value))), Value)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - cmbRkLvl:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المستوى", "Level")
+                        DefaultSelectedItems: =Filter(colRkLevelUI, false)
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المستويات", "All levels")
+                        IsSearchable: =false
+                        ItemDisplayText: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                        Items: =colRkLevelUI
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - btnRkClear:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Reset(txtRkSearch);
+                          Reset(cmbRkCat);
+                          Reset(cmbRkLvl);
+                          Set(varRkCell, Blank());
+                          Set(varRkQuick, "all")
+                        Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                        Width: =80
+            - lblRkError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varRkError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =gblTheme.Typography.BodySmall
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل بعض المخاطر.", "Some risks could not be loaded.")
+                  Visible: =varRkError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conRkBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 220
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - galRkList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =Color.Transparent
+                        FillPortions: =If(App.Width < 700, 1, 0)
+                        Height: =Parent.Height
+                        Items: |-
+                          =With(
+                              {
+                                  q: Coalesce(varRkQuick, "all"),
+                                  s: Lower(Trim(txtRkSearch.Text))
+                              },
+                              SortByColumns(
+                                  AddColumns(
+                                      Filter(
+                                          colRkScope,
+                                          And(
+                                              Or(IsBlank(s), s in Lower(Title), s in Lower(Coalesce(Owner.Value, ""))),
+                                              Or(IsBlank(cmbRkCat.Selected.Value), Category.Value = cmbRkCat.Selected.Value),
+                                              Or(IsBlank(cmbRkLvl.Selected.k), LvK = cmbRkLvl.Selected.k),
+                                              Or(IsBlank(varRkCell), And(P = varRkCell.p, I = varRkCell.i)),
+                                              Switch(
+                                                  q,
+                                                  "open", IsOpen,
+                                                  "high", And(IsOpen, Sc >= 6),
+                                                  "review", RevOver,
+                                                  "pending", Status.Value = "Pending Closure",
+                                                  "closed", Status.Value = "Closed",
+                                                  true
+                                              )
+                                          )
+                                      ),
+                                      Rank, If(IsOpen, 0, 1)
+                                  ),
+                                  "Rank",
+                                  SortOrder.Ascending,
+                                  "Sc",
+                                  SortOrder.Descending
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplatePadding: =4
+                        TemplateSize: =84
+                        Visible: =Or(App.Width >= 700, IsBlank(varSelectedRisk))
+                        Width: =If(App.Width < 700, Parent.Width, 360)
+                      Children:
+                        - conRkRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              BorderColor: =If(ThisItem.ID = varSelectedRisk.ID, fxThemeColor("Primary"), fxThemeColor("Border"))
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =If(ThisItem.ID = varSelectedRisk.ID, fxThemeColor("SurfaceSelected"), fxThemeColor("Surface"))
+                              Height: =Parent.TemplateHeight - 8
+                              RadiusBottomLeft: =gblTheme.Radius.XL
+                              RadiusBottomRight: =gblTheme.Radius.XL
+                              RadiusTopLeft: =gblTheme.Radius.XL
+                              RadiusTopRight: =gblTheme.Radius.XL
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =4
+                            Children:
+                              - recRkLevel:
+                                  Control: Rectangle@2.3.0
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: |-
+                                      =Switch(
+                                          ThisItem.LvK,
+                                          "Critical", fxThemeColor("Danger"),
+                                          "High", fxThemeColor("Warning"),
+                                          "Medium", fxThemeColor("Info"),
+                                          fxThemeColor("Success")
+                                      )
+                                    Height: =Parent.Height - 20
+                                    Width: =4
+                                    X: =10
+                                    Y: =10
+                              - lblRkRowTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =22
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: =Coalesce(ThisItem.Title, "")
+                                    Width: =Parent.Width - 34
+                                    Wrap: =false
+                                    X: =22
+                                    Y: =10
+                              - lblRkRowMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =18
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =Concatenate(
+                                          Coalesce(ThisItem.LvK, ""),
+                                          " · ",
+                                          Coalesce(ThisItem.Status.Value, ""),
+                                          " · ",
+                                          Text(Coalesce(ThisItem.Sc, 0)),
+                                          " · ",
+                                          ThisItem.P,
+                                          "×",
+                                          ThisItem.I
+                                      )
+                                    Width: =Parent.Width - 34
+                                    Wrap: =false
+                                    X: =22
+                                    Y: =34
+                              - btnRkRow:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Transparent
+                                    Height: =Parent.Height
+                                    OnSelect: |-
+                                      =Set(varSelectedRisk, LookUp(Risks, ID = ThisItem.ID));
+                                      Set(varRkPane, "Details");
+                                      Reset(txtRkNote);
+                                      Select(btnRkSync)
+                                    Text: =""
+                                    Width: =Parent.Width
+                  - conRkDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Visible: =Or(App.Width >= 700, Not(IsBlank(varSelectedRisk)))
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - 368)
+                      Children:
+                        - lblRkPick:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.CardTitle
+                              Text: =If(gblLanguage = "Arabic", "اختر مخاطرة من القائمة، أو راجع خريطة الحرارة على الشاشات العريضة.", "Select a risk from the list, or review the heat map on wide screens.")
+                              Visible: =IsBlank(varSelectedRisk)
+                              Width: =Parent.Width
+                        - conRkHm:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =220
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =And(IsBlank(varSelectedRisk), App.Width >= 900)
+                            Children:
+                              - lblRkHmT:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =24
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =gblTheme.Typography.CardTitle
+                                    Text: =If(gblLanguage = "Arabic", "خريطة المخاطر الحرارية (المفتوحة)", "Risk heat map (open risks)")
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblRkHmHint:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =18
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =If(gblLanguage = "Arabic", "عمودي: الاحتمالية · أفقي: الأثر · اضغط خلية للتصفية", "Vertical: Probability · Horizontal: Impact · Click a cell to filter")
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - galRkHm:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    Height: =160
+                                    Items: |-
+                                      =With(
+                                          {r: Filter(colRkScope, IsOpen)},
+                                          ForAll(
+                                              Sequence(9) As x,
+                                              With(
+                                                  {
+                                                      pp: 3 - RoundDown((x.Value - 1) / 3, 0),
+                                                      ii: Mod(x.Value - 1, 3) + 1
+                                                  },
+                                                  {
+                                                      p: pp,
+                                                      i: ii,
+                                                      n: CountRows(Filter(r, And(P = pp, I = ii))),
+                                                      lk: If(pp * ii >= 9, "Critical", pp * ii >= 6, "High", pp * ii >= 3, "Medium", "Low")
+                                                  }
+                                              )
+                                          )
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    TemplateSize: =52
+                                    Width: =Parent.Width
+                                    WrapCount: =3
+                                  Children:
+                                    - btnRkHmCell:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =If(And(varRkCell.p = ThisItem.p, varRkCell.i = ThisItem.i), ButtonAppearance.Primary, ButtonAppearance.Outline)
+                                          Height: =44
+                                          OnSelect: |-
+                                            =Set(varRkCell, If(And(varRkCell.p = ThisItem.p, varRkCell.i = ThisItem.i), Blank(), {p: ThisItem.p, i: ThisItem.i}))
+                                          Text: =If(ThisItem.n = 0, ThisItem.p & "×" & ThisItem.i, ThisItem.n & " · " & ThisItem.lk)
+                                          Width: =Parent.TemplateWidth - 8
+                                          X: =4
+                                          Y: =4
+                        - conRkDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =44
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =Not(IsBlank(varSelectedRisk))
+                            Children:
+                              - btnRkBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSelectedRisk, Blank())
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblRkDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =gblTheme.Typography.CardTitle
+                                    Text: =Coalesce(varSelectedRisk.Title, "")
+                                    Width: =160
+                                    Wrap: =false
+                              - btnRkEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    Icon: ="Edit"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRiskForm, "edit");
+                                      Set(varRiskReturn, "risks");
+                                      Navigate(scrRiskEditor, ScreenTransition.Cover)
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تعديل", "Edit"))
+                                    Width: =If(App.Width < 700, 44, 100)
+                        - lblRkDetMeta:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =48
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: |-
+                                =With(
+                                    {
+                                        pn: Coalesce(LookUp(colRkScale, k = varSelectedRisk.Probability.Value).n, 0),
+                                        im: Coalesce(LookUp(colRkScale, k = varSelectedRisk.Impact.Value).n, 0)
+                                    },
+                                    Coalesce(varSelectedRisk.Status.Value, "") & " · " & Coalesce(varSelectedRisk.Level.Value, "") & " · Score " & (pn * im) & Char(10) &
+                                    Coalesce(varSelectedRisk.Project.Value, "-") & " · " & Coalesce(varSelectedRisk.Category.Value, "-") & " · " &
+                                    Coalesce(varSelectedRisk.Probability.Value, "-") & " / " & Coalesce(varSelectedRisk.Impact.Value, "-") & Char(10) &
+                                    If(gblLanguage = "Arabic", "المسؤول: ", "Owner: ") & Coalesce(varSelectedRisk.Owner.Value, "-") &
+                                    If(And(Not(IsBlank(varSelectedRisk.ReviewDate)), varSelectedRisk.ReviewDate < Today(), varSelectedRisk.Status.Value <> "Closed"), If(gblLanguage = "Arabic", " · مراجعة متأخرة", " · Review overdue"), "")
+                                )
+                              Visible: =Not(IsBlank(varSelectedRisk))
+                              Width: =Parent.Width
+                        - galRkPane:
+                            Control: Gallery@2.15.0
+                            Variant: Horizontal
+                            Properties:
+                              FillPortions: =0
+                              Height: =36
+                              Items: |-
+                                =Table(
+                                    {k: "Details", t: If(gblLanguage = "Arabic", "التفاصيل", "Details")},
+                                    {k: "Discussion", t: If(gblLanguage = "Arabic", "النقاش", "Discussion")}
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =120
+                              Visible: =Not(IsBlank(varSelectedRisk))
+                              Width: =Parent.Width
+                            Children:
+                              - btnRkPane:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =If(varRkPane = ThisItem.k, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                                    OnSelect: =Set(varRkPane, ThisItem.k)
+                                    Text: =ThisItem.t
+                                    Width: =Parent.TemplateWidth - 8
+                                    X: =4
+                                    Y: =2
+                        - conRkWf:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Background")
+                              FillPortions: =0
+                              Height: =170
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =8
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              PaddingTop: =8
+                              Visible: |-
+                                =And(
+                                    Not(IsBlank(varSelectedRisk)),
+                                    varRkPane = "Details",
+                                    Or(
+                                        And(
+                                            Or(varSelectedRisk.OwnerID = varMeID, varSelectedRisk.ApproverID = varMeID),
+                                            varSelectedRisk.Status.Value <> "Closed",
+                                            varSelectedRisk.Status.Value <> "Pending Closure"
+                                        ),
+                                        And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")
+                                    )
+                                )
+                              Width: =Parent.Width
+                            Children:
+                              - lblRkWfT:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("Primary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =22
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =gblTheme.Typography.Body
+                                    Text: =If(varSelectedRisk.Status.Value = "Pending Closure", If(gblLanguage = "Arabic", "مراجعة طلب الإغلاق", "Review closure request"), If(gblLanguage = "Arabic", "إغلاق المخاطرة", "Close this risk"))
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - txtRkNote:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Appearance: =Appearance.Outline
+                                    FillPortions: =1
+                                    Height: =72
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "ملاحظة / سبب (مطلوبة عند الرفض)", "Note / rationale (required when rejecting)")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - conRkWfBtns:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0
+                                    Height: =42
+                                    LayoutAlignItems: =LayoutAlignItems.Stretch
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - btnRkClose:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          FillPortions: =1
+                                          Height: =42
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          OnSelect: =Set(varRkOp, "close"); Select(btnRkAct)
+                                          Text: =If(Or(IsBlank(varSelectedRisk.ApproverID), varSelectedRisk.ApproverID = varMeID), If(gblLanguage = "Arabic", "إغلاق", "Close"), If(gblLanguage = "Arabic", "طلب إغلاق", "Request closure"))
+                                          Visible: =And(varSelectedRisk.Status.Value <> "Closed", varSelectedRisk.Status.Value <> "Pending Closure")
+                                    - btnRkApprove:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          FillPortions: =1
+                                          Height: =42
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          OnSelect: =Set(varRkOp, "approve"); Select(btnRkAct)
+                                          Text: =If(gblLanguage = "Arabic", "اعتماد", "Approve")
+                                          Visible: =And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")
+                                    - btnRkReject:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Outline
+                                          FillPortions: =1
+                                          Height: =42
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          OnSelect: =Set(varRkOp, "reject"); Select(btnRkAct)
+                                          Text: =If(gblLanguage = "Arabic", "رفض", "Reject")
+                                          Visible: =And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")
+                        - conRkActions:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =44
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                            Children:
+                              - btnRkReopen:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varRkOp, "reopen"); Select(btnRkAct)
+                                    Text: =If(gblLanguage = "Arabic", "إعادة فتح", "Reopen")
+                                    Visible: =And(varSelectedRisk.Status.Value = "Closed", Or(varSelectedRisk.OwnerID = varMeID, varSelectedRisk.ApproverID = varMeID))
+                                    Width: =110
+                              - btnRkDelete:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Outline
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varRkOp, "delete"); Select(btnRkAct)
+                                    Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                    Visible: =Or(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.'Created By'.Email = User().Email)
+                                    Width: =90
+                        - lblRkInfoT:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "معلومات المخاطرة", "Risk information")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblRkInfo:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =120
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: |-
+                                =With(
+                                    {ar: gblLanguage = "Arabic", t: varSelectedRisk, loc: If(gblLanguage = "Arabic", "ar-EG", "en-US")},
+                                    If(ar, "المعتمِد: ", "Approver: ") & Coalesce(LookUp(Employees, ID = t.ApproverID, FullName), "-") & Char(10) &
+                                    If(ar, "تاريخ المخاطرة: ", "Risk date: ") & If(IsBlank(t.RiskDate), "--", Text(t.RiskDate, "dd mmm yyyy", loc)) & Char(10) &
+                                    If(ar, "المراجعة: ", "Review: ") & If(IsBlank(t.ReviewDate), "--", Text(t.ReviewDate, "dd mmm yyyy", loc)) & Char(10) &
+                                    If(ar, "الإغلاق: ", "Closing: ") & If(IsBlank(t.ClosingDate), "--", Text(t.ClosingDate, "dd mmm yyyy", loc)) & Char(10) &
+                                    If(ar, "الاتجاه: ", "Trend: ") & Coalesce(t.Trend.Value, "-") & " · " & If(ar, "تكلفة: ", "Cost: ") & Coalesce(Text(t.EstimatedCost), "-") & Char(10) &
+                                    If(ar, "مؤشر التحفيز: ", "Trigger: ") & Coalesce(t.TriggerIndicator, "-")
+                                )
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                        - lblRkDescT:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblRkDesc:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Fill: =fxThemeColor("Background")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =Coalesce(varSelectedRisk.RiskDescription, "-")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                        - lblRkMitT:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "خطة المعالجة", "Mitigation plan")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblRkMit:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Fill: =fxThemeColor("Background")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =Coalesce(varSelectedRisk.Mitigation, "-")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                        - lblRkContT:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "خطة الطوارئ", "Contingency plan")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblRkCont:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Fill: =fxThemeColor("Background")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =Coalesce(varSelectedRisk.ContingencyPlan, "-")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                        - lblRkRespT:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "الاستجابة", "Response")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblRkResp:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Fill: =fxThemeColor("Background")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =80
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =Coalesce(varSelectedRisk.Response, "-")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                        - lblRkHistT:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Body
+                              Text: =If(gblLanguage = "Arabic", "سجل النشاط", "Activity timeline")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - galRkHist:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              FillPortions: =0
+                              Height: =Min(200, Max(40, CountRows(colRkHist) * 40))
+                              Items: =colRkHist
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =40
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
+                              Width: =Parent.Width
+                            Children:
+                              - lblRkHistRow:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Height: =36
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =Concatenate(
+                                          Coalesce(ThisItem.ActionType.Value, "-"),
+                                          " · ",
+                                          Coalesce(ThisItem.PerformedBy.Value, "-"),
+                                          " · ",
+                                          Text(Coalesce(ThisItem.Date, ThisItem.Created), "dd mmm yyyy hh:mm", If(gblLanguage = "Arabic", "ar-EG", "en-US")),
+                                          If(IsBlank(ThisItem.Details), "", " · " & ThisItem.Details)
+                                      )
+                                    Width: =Parent.TemplateWidth
+                        - cmpRkComments:
+                            Control: CanvasComponent
+                            ComponentName: cmpComments
+                            Properties:
+                              Height: =480
+                              Involved: |-
+                                =Filter(
+                                    Table(
+                                        {UserID: Coalesce(varSelectedRisk.OwnerID, 0), UserName: Coalesce(varSelectedRisk.Owner.Value, "")},
+                                        {UserID: Coalesce(varSelectedRisk.ApproverID, 0), UserName: Coalesce(LookUp(Employees, ID = varSelectedRisk.ApproverID, FullName), "")}
+                                    ),
+                                    UserID > 0
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              ModuleName: ="Projects"
+                              People: =Filter(Employees, Status.Value = "Active")
+                              RecordID: =Coalesce(varSelectedRisk.ID, 0)
+                              RecordNumber: ="RSK-" & Text(Coalesce(varSelectedRisk.ID, 0), "0000")
+                              RecordType: ="Risk"
+                              RelatedEntity: ="Risk"
+                              Title: =If(gblLanguage = "Arabic", "التعليقات", "Comments")
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Discussion")
+                              Width: =Parent.Width
+      - conRkNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpRkNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
