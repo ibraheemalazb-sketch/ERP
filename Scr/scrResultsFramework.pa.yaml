@@ -1,0 +1,1026 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrResultsFramework:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "Results");
+        Set(varNavSelectedID, 77);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varMealRFForm), Set(varMealRFForm, Blank()));
+        If(IsBlank(varMealRFError), Set(varMealRFError, false));
+        If(IsBlank(varSelectedResult), Set(varSelectedResult, Blank()));
+        ClearCollect(
+            colMealRFLevels,
+            {k: "Goal", n: 1, en: "Goal", ar: "هدف"},
+            {k: "Impact", n: 2, en: "Impact", ar: "أثر"},
+            {k: "Outcome", n: 3, en: "Outcome", ar: "نتيجة"},
+            {k: "Intermediate Outcome", n: 4, en: "Intermediate Outcome", ar: "نتيجة وسيطة"},
+            {k: "Output", n: 5, en: "Output", ar: "مخرج"},
+            {k: "Activity", n: 6, en: "Activity", ar: "نشاط"}
+        );
+        If(
+            Not(IsBlank(varSelectedProject)),
+            Set(varMealRFProject, varSelectedProject)
+        );
+        Select(btnMealRFLoad)
+    Children:
+      - conMealRFSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnMealRFLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varMealRFError, false);
+                    Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+                    Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+                    IfError(
+                        Concurrent(
+                            ClearCollect(
+                                colMealRF,
+                                If(
+                                    Coalesce(varMealRFProject.ID, cmbMealRFFltProject.Selected.ID, 0) > 0,
+                                    Filter(
+                                        ResultsFramework,
+                                        ProjectID = Coalesce(varMealRFProject.ID, cmbMealRFFltProject.Selected.ID)
+                                    ),
+                                    FirstN(SortByColumns(ResultsFramework, "DisplayOrder", SortOrder.Ascending), 500)
+                                )
+                            ),
+                            ClearCollect(
+                                colMealRFParents,
+                                If(
+                                    Coalesce(varMealRFProject.ID, cmbMealRFFltProject.Selected.ID, 0) > 0,
+                                    Filter(
+                                        ResultsFramework,
+                                        ProjectID = Coalesce(varMealRFProject.ID, cmbMealRFFltProject.Selected.ID)
+                                    ),
+                                    FirstN(ResultsFramework, 200)
+                                )
+                            )
+                        );
+                        ClearCollect(
+                            colMealRFSorted,
+                            SortByColumns(
+                                AddColumns(
+                                    colMealRF,
+                                    LevelOrd,
+                                    Coalesce(LookUp(colMealRFLevels, k = ResultLevel.Value).n, 99),
+                                    IndentN,
+                                    Coalesce(LookUp(colMealRFLevels, k = ResultLevel.Value).n, 1) - 1
+                                ),
+                                "LevelOrd",
+                                SortOrder.Ascending,
+                                "DisplayOrder",
+                                SortOrder.Ascending
+                            )
+                        );
+                        If(
+                            Not(IsBlank(varSelectedResult)),
+                            Set(varSelectedResult, LookUp(ResultsFramework, ID = varSelectedResult.ID));
+                            ClearCollect(colMealRFIndicators, Filter(Indicators, ResultID = varSelectedResult.ID)),
+                            Clear(colMealRFIndicators)
+                        ),
+                        Set(varMealRFError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل إطار النتائج.", "Could not load the results framework."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnMealRFSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varMealRFForm, "") = "new",
+                            pid: Coalesce(cmbMealRFProject.Selected.ID, 0),
+                            ptt: Coalesce(cmbMealRFProject.Selected.Title, ""),
+                            parent: cmbMealRFParent.Selected,
+                            resp: cmbMealRFResp.Selected
+                        },
+                        If(
+                            Or(IsBlank(Trim(txtMealRFTitle.Text)), IsBlank(Trim(txtMealRFCode.Text)), pid <= 0),
+                            Notify(If(ar, "العنوان ورمز النتيجة والمشروع مطلوبة.", "Title, result code, and project are required."), NotificationType.Error),
+                            IfError(
+                                Set(
+                                    varSelectedResult,
+                                    Patch(
+                                        ResultsFramework,
+                                        If(isNew, Defaults(ResultsFramework), LookUp(ResultsFramework, ID = varSelectedResult.ID)),
+                                        {
+                                            Title: Trim(txtMealRFTitle.Text),
+                                            ResultCode: Trim(txtMealRFCode.Text),
+                                            Project: {Id: pid, Value: ptt},
+                                            ProjectID: pid,
+                                            ParentResultID: If(IsBlank(parent), Blank(), parent.ID),
+                                            ResultLevel: {Value: Coalesce(cmbMealRFLevel.Selected.Value, "Outcome")},
+                                            Sector: If(IsBlank(cmbMealRFSector.Selected), Blank(), {Value: cmbMealRFSector.Selected.Value}),
+                                            Assumptions: txtMealRFAssumptions.Text,
+                                            Risks: txtMealRFRisks.Text,
+                                            ResponsiblePersonID: If(IsBlank(resp), Blank(), resp.ID),
+                                            ResponsiblePerson: If(IsBlank(resp), Blank(), {Id: resp.ID, Value: resp.FullName}),
+                                            DisplayOrder: If(IsBlank(Trim(txtMealRFOrder.Text)), 0, Value(txtMealRFOrder.Text)),
+                                            IsActive: togMealRFActive.Checked
+                                        }
+                                    )
+                                );
+                                fnMealLog("Result", varSelectedResult.ID, Coalesce(varSelectedResult.ResultCode, ""), If(isNew, "Created", "Updated"), "Info", pid, Coalesce(LookUp(Projects, ID = pid, ProjectCode), ""), "", "", "", Trim(txtMealRFTitle.Text), false);
+                                If(
+                                    And(!IsBlank(resp), resp.ID <> varMeID),
+                                    fnMealNotify(resp.ID, Coalesce(resp.FullName, ""), If(ar, "أُسندت إليك نتيجة", "A result was assigned to you"), Coalesce(varSelectedResult.ResultCode, varSelectedResult.Title, ""), "Result", varSelectedResult.ID, "Unread")
+                                );
+                                Set(varMealRFForm, Blank());
+                                Select(btnMealRFLoad);
+                                Notify(If(ar, "تم حفظ النتيجة.", "Result saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ النتيجة.", "Could not save the result."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+            - btnMealRFDelete:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", r: varSelectedResult},
+                        If(
+                            IsBlank(r),
+                            Notify(If(ar, "اختر نتيجة أولاً.", "Select a result first."), NotificationType.Warning),
+                            If(
+                                Confirm(If(ar, "حذف هذه النتيجة؟", "Delete this result?") & Char(10) & Coalesce(r.Title, "")),
+                                IfError(
+                                    Remove(ResultsFramework, LookUp(ResultsFramework, ID = r.ID));
+                                    fnMealLog("Result", r.ID, Coalesce(r.ResultCode, ""), "Deleted", "Important", Coalesce(r.ProjectID, 0), "", "", "", "", Coalesce(r.Title, ""), false);
+                                    Set(varSelectedResult, Blank());
+                                    Set(varMealRFForm, Blank());
+                                    Clear(colMealRFIndicators);
+                                    Select(btnMealRFLoad);
+                                    Notify(If(ar, "تم الحذف.", "Deleted."), NotificationType.Success),
+                                    Notify(If(ar, "تعذر الحذف.", "Could not delete."), NotificationType.Error)
+                                )
+                            )
+                        )
+                    )
+                  Text: ="Delete"
+                  Visible: =false
+                  Width: =1
+      - conMealRFPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpMealRFPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpMealRFTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conMealRFHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblMealRFTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "إطار النتائج", "Results Framework")
+                        Width: =200
+                        Wrap: =false
+                  - btnMealRFRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnMealRFLoad)
+                        Text: =""
+                        Width: =44
+                  - btnMealRFNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        Icon: ="Add"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varSelectedResult, Blank());
+                          Set(varMealRFForm, "new");
+                          Clear(colMealRFIndicators)
+                        Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "جديد", "New"))
+                        Width: =If(App.Width < 700, 44, 100)
+            - lblMealRFError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varMealRFError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل بعض البيانات.", "Some data could not be loaded.")
+                  Visible: =varMealRFError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conMealRFBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 60
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - conMealRFList:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =Or(App.Width >= 700, And(IsBlank(varMealRFForm), IsBlank(varSelectedResult)))
+                        Width: =If(App.Width < 700, Parent.Width, If(Or(Not(IsBlank(varMealRFForm)), Not(IsBlank(varSelectedResult))), Parent.Width - 380, Parent.Width))
+                      Children:
+                        - conMealRFTools:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 88, 40)
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutWrap: =App.Width < 700
+                            Children:
+                              - cmbMealRFFltProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          Not(IsBlank(varMealRFProject)),
+                                          Filter(Projects, ID = varMealRFProject.ID),
+                                          Filter(Projects, false)
+                                      )
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    ItemDisplayText: =ThisItem.Title
+                                    Items: =Projects
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnChange: |-
+                                      =Set(varMealRFProject, cmbMealRFFltProject.Selected);
+                                      Select(btnMealRFLoad)
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 220)
+                              - txtMealRFSearch:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    FillPortions: =1
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "بحث بالرمز أو العنوان", "Search code or title")
+                                    Width: =160
+                        - galMealRF:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.Height - 56
+                              Items: |-
+                                =With(
+                                    {q: Lower(Trim(txtMealRFSearch.Text))},
+                                    Filter(
+                                        colMealRFSorted,
+                                        Or(
+                                            IsBlank(q),
+                                            q in Lower(Coalesce(ResultCode, "")),
+                                            q in Lower(Coalesce(Title, "")),
+                                            q in Lower(Coalesce(ResultLevel.Value, ""))
+                                        )
+                                    )
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =64
+                              Width: =Parent.Width
+                            Children:
+                              - conMealRFRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    Fill: |-
+                                      =If(
+                                          ThisItem.ID = varSelectedResult.ID,
+                                          ColorFade(fxThemeColor("Primary"), 0.85),
+                                          Color.Transparent
+                                      )
+                                    Height: =Parent.TemplateHeight - 4
+                                    Width: =Parent.TemplateWidth - 8
+                                    X: =4
+                                    Y: =2
+                                  Children:
+                                    - btnMealRFRow:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Align: =Align.Left
+                                          Appearance: =ButtonAppearance.Transparent
+                                          Height: =Parent.Height
+                                          OnSelect: |-
+                                            =Set(varSelectedResult, LookUp(ResultsFramework, ID = ThisItem.ID));
+                                            Set(varMealRFForm, Blank());
+                                            ClearCollect(colMealRFIndicators, Filter(Indicators, ResultID = ThisItem.ID))
+                                          Text: |-
+                                            =Concatenate(
+                                                Coalesce(ThisItem.ResultCode, "-"),
+                                                "  ",
+                                                Coalesce(ThisItem.Title, "-"),
+                                                Char(10),
+                                                Coalesce(ThisItem.ResultLevel.Value, "-"),
+                                                " · ",
+                                                If(ThisItem.IsActive, If(gblLanguage = "Arabic", "نشط", "Active"), If(gblLanguage = "Arabic", "غير نشط", "Inactive"))
+                                            )
+                                          Width: =Parent.Width - Coalesce(ThisItem.IndentN, 0) * 16
+                                          X: =Coalesce(ThisItem.IndentN, 0) * 16
+                  - conMealRFDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =And(IsBlank(varMealRFForm), Not(IsBlank(varSelectedResult)))
+                        Width: =If(App.Width < 700, Parent.Width, 360)
+                      Children:
+                        - conMealRFDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnMealRFDetBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSelectedResult, Blank())
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblMealRFDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =14
+                                    Text: =If(gblLanguage = "Arabic", "تفاصيل النتيجة", "Result details")
+                                    Width: =140
+                                    Wrap: =false
+                              - btnMealRFEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    Icon: ="Edit"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealRFForm, "edit")
+                                    Text: =""
+                                    Width: =44
+                        - lblMealRFDetCode:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "الرمز: ", "Code: ") & Coalesce(varSelectedResult.ResultCode, "-")
+                              Width: =Parent.Width
+                        - lblMealRFDetName:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Semibold
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =14
+                              Text: =Coalesce(varSelectedResult.Title, "-")
+                              Width: =Parent.Width
+                        - lblMealRFDetLevel:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "المستوى: ", "Level: ") & Coalesce(varSelectedResult.ResultLevel.Value, "-")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblMealRFDetSector:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "القطاع: ", "Sector: ") & Coalesce(varSelectedResult.Sector.Value, "-")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblMealRFDetResp:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "المسؤول: ", "Responsible: ") & Coalesce(
+                                    varSelectedResult.ResponsiblePerson.Value,
+                                    LookUp(Employees, ID = varSelectedResult.ResponsiblePersonID, FullName),
+                                    "-"
+                                )
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - lblMealRFDetAssumptions:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =60
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "الافتراضات: ", "Assumptions: ") & Coalesce(varSelectedResult.Assumptions, "-")
+                              Width: =Parent.Width
+                        - lblMealRFDetRisks:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =60
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =If(gblLanguage = "Arabic", "المخاطر: ", "Risks: ") & Coalesce(varSelectedResult.Risks, "-")
+                              Width: =Parent.Width
+                        - lblMealRFIndHead:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "المؤشرات", "Indicators") & " (" & Text(CountRows(colMealRFIndicators)) & ")"
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - galMealRFIndicators:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Fill: =Color.Transparent
+                              Height: =180
+                              Items: =colMealRFIndicators
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =48
+                              Width: =Parent.Width
+                            Children:
+                              - btnMealRFIndRow:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Align: =Align.Left
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =40
+                                    OnSelect: |-
+                                      =Set(varSelectedIndicator, LookUp(Indicators, ID = ThisItem.ID));
+                                      Navigate(scrIndicators, ScreenTransition.None)
+                                    Text: =Coalesce(ThisItem.IndicatorCode, ThisItem.Title, "-") & Char(10) & Coalesce(ThisItem.Status.Value, "-")
+                                    Width: =Parent.TemplateWidth - 4
+                                    X: =2
+                                    Y: =2
+                  - conMealRFForm:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =Not(IsBlank(varMealRFForm))
+                        Width: =If(App.Width < 700, Parent.Width, 360)
+                      Children:
+                        - conMealRFFormHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnMealRFFormBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealRFForm, Blank())
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblMealRFFormTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =14
+                                    Text: |-
+                                      =If(
+                                          varMealRFForm = "new",
+                                          If(gblLanguage = "Arabic", "نتيجة جديدة", "New result"),
+                                          If(gblLanguage = "Arabic", "تعديل النتيجة", "Edit result")
+                                      )
+                                    Width: =140
+                                    Wrap: =false
+                              - btnMealRFFormDel:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="Delete"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnMealRFDelete)
+                                    Text: =""
+                                    Visible: =varMealRFForm = "edit"
+                                    Width: =44
+                        - txtMealRFCode:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealRFForm = "new", "", Coalesce(varSelectedResult.ResultCode, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "رمز النتيجة *", "Result code *")
+                              Width: =Parent.Width
+                        - txtMealRFTitle:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealRFForm = "new", "", Coalesce(varSelectedResult.Title, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "العنوان *", "Title *")
+                              Width: =Parent.Width
+                        - cmbMealRFProject:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varMealRFForm = "edit",
+                                    Filter(Projects, ID = Coalesce(varSelectedResult.ProjectID, varSelectedResult.Project.Id)),
+                                    If(Not(IsBlank(varMealRFProject)), Filter(Projects, ID = varMealRFProject.ID), Filter(Projects, false))
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع *", "Project *")
+                              ItemDisplayText: =ThisItem.Title
+                              Items: =Projects
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - cmbMealRFParent:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    And(varMealRFForm = "edit", Coalesce(varSelectedResult.ParentResultID, 0) > 0),
+                                    Filter(colMealRFParents, ID = varSelectedResult.ParentResultID),
+                                    Filter(colMealRFParents, false)
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "النتيجة الأب", "Parent result")
+                              ItemDisplayText: =ThisItem.ResultCode & " — " & ThisItem.Title
+                              Items: |-
+                                =Filter(
+                                    colMealRFParents,
+                                    Or(IsBlank(varSelectedResult), ID <> varSelectedResult.ID)
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - cmbMealRFLevel:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varMealRFForm = "edit",
+                                    Filter(Choices(ResultsFramework.ResultLevel), Value = varSelectedResult.ResultLevel.Value),
+                                    Filter(Choices(ResultsFramework.ResultLevel), Value = "Outcome")
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "مستوى النتيجة", "Result level")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ResultsFramework.ResultLevel)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - cmbMealRFSector:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varMealRFForm = "edit",
+                                    Filter(Choices(ResultsFramework.Sector), Value = varSelectedResult.Sector.Value),
+                                    Filter(Choices(ResultsFramework.Sector), false)
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "القطاع", "Sector")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ResultsFramework.Sector)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - txtMealRFAssumptions:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealRFForm = "new", "", Coalesce(varSelectedResult.Assumptions, ""))
+                              Height: =72
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "الافتراضات", "Assumptions")
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - txtMealRFRisks:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealRFForm = "new", "", Coalesce(varSelectedResult.Risks, ""))
+                              Height: =72
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "المخاطر", "Risks")
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - cmbMealRFResp:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    And(varMealRFForm = "edit", Coalesce(varSelectedResult.ResponsiblePersonID, varSelectedResult.ResponsiblePerson.Id, 0) > 0),
+                                    Filter(Employees, ID = Coalesce(varSelectedResult.ResponsiblePersonID, varSelectedResult.ResponsiblePerson.Id)),
+                                    Filter(Employees, false)
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المسؤول", "Responsible person")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Employees
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - txtMealRFOrder:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealRFForm = "new", "10", Text(Coalesce(varSelectedResult.DisplayOrder, 0)))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "ترتيب العرض", "Display order")
+                              Width: =Parent.Width
+                        - togMealRFActive:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =If(varMealRFForm = "new", true, Coalesce(varSelectedResult.IsActive, true))
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "نشط", "Active")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                        - btnMealRFFormSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealRFSave)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =Parent.Width
+                        - btnMealRFFormCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealRFForm, Blank())
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =Parent.Width
+      - conMealRFNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpMealRFNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpMealRFTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Layers"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrMEAL, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "إطار النتائج", "Results Framework")
+            ScreenTitle: =If(gblLanguage = "Arabic", "إطار النتائج", "Results Framework")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpMealRFPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 77, Module: "Results", Title: If(gblLanguage = "Arabic", "النتائج", "Results"), Icon: "Layers", Visible: true},
+                  {ID: 62, Module: "Indicators", Title: If(gblLanguage = "Arabic", "المؤشرات", "Indicators"), Icon: "Chart", Visible: true},
+                  {ID: 67, Module: "IndicatorResults", Title: If(gblLanguage = "Arabic", "البيانات", "Results Data"), Icon: "Database", Visible: true},
+                  {ID: 60, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Results", Navigate(scrResultsFramework, ScreenTransition.None),
+                  "Indicators", Navigate(scrIndicators, ScreenTransition.None),
+                  "IndicatorResults", Navigate(scrIndicatorResults, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

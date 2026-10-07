@@ -1,0 +1,1059 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrReports:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "Reporting");
+        Set(VarMEALmodule, "Reports");
+        Set(varNavSelectedID, 74);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varRepViewMode), Set(varRepViewMode, "list"));
+        If(IsBlank(varRepQ), Set(varRepQ, ""));
+        If(IsBlank(varRepFltProject), Set(varRepFltProject, Blank()));
+        If(IsBlank(varRepFltType), Set(varRepFltType, Blank()));
+        If(IsBlank(varRepFltPeriod), Set(varRepFltPeriod, Blank()));
+        If(IsBlank(varRepFltStatus), Set(varRepFltStatus, Blank()));
+        If(IsBlank(varRepListError), Set(varRepListError, false));
+        If(IsBlank(varRepPane), Set(varRepPane, "Details"));
+        Select(btnRepListLoad)
+    Children:
+      - conRepListSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnRepListLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varRepListError, false);
+                    Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+                    Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+                    ClearCollect(
+                        colRepStatusUI,
+                        {k: "Draft", en: "Draft", ar: "مسودة"},
+                        {k: "In Preparation", en: "In Preparation", ar: "قيد الإعداد"},
+                        {k: "Pending Project Manager", en: "Pending Project Manager", ar: "بانتظار مدير المشروع"},
+                        {k: "Pending MEAL", en: "Pending MEAL", ar: "بانتظار المتابعة والتقييم"},
+                        {k: "Pending Program Director", en: "Pending Program Director", ar: "بانتظار مدير البرنامج"},
+                        {k: "Approved", en: "Approved", ar: "معتمد"},
+                        {k: "Sent to Donor", en: "Sent to Donor", ar: "أُرسل للمانح"},
+                        {k: "Returned for Revision", en: "Returned for Revision", ar: "مُعاد للمراجعة"},
+                        {k: "Archived", en: "Archived", ar: "مؤرشف"}
+                    );
+                    ClearCollect(
+                        colRepTypeUI,
+                        {k: "Narrative", en: "Narrative", ar: "سردي"},
+                        {k: "Financial", en: "Financial", ar: "مالي"},
+                        {k: "Indicator", en: "Indicator", ar: "مؤشرات"},
+                        {k: "Donor", en: "Donor", ar: "مانح"},
+                        {k: "Internal", en: "Internal", ar: "داخلي"},
+                        {k: "Other", en: "Other", ar: "أخرى"}
+                    );
+                    IfError(
+                        Concurrent(
+                            ClearCollect(
+                                colRepPeriods,
+                                Filter(ReportingPeriods, Status.Value = "Active")
+                            ),
+                            ClearCollect(
+                                colRepListRaw,
+                                If(
+                                    Coalesce(varRepFltProject.ID, 0) > 0,
+                                    Filter(ProjectReports, ProjectID = varRepFltProject.ID),
+                                    FirstN(SortByColumns(ProjectReports, "Modified", SortOrder.Descending), 500)
+                                )
+                            )
+                        );
+                        ClearCollect(
+                            colRepList,
+                            Filter(
+                                colRepListRaw,
+                                And(
+                                    Or(
+                                        IsBlank(Trim(Coalesce(varRepQ, ""))),
+                                        Trim(varRepQ) in Coalesce(ReportNumber, ""),
+                                        Trim(varRepQ) in Coalesce(Title, ""),
+                                        Trim(varRepQ) in Coalesce(Project.Value, "")
+                                    ),
+                                    Or(
+                                        IsBlank(varRepFltType),
+                                        IsBlank(varRepFltType.k),
+                                        ReportType.Value = varRepFltType.k
+                                    ),
+                                    Or(
+                                        IsBlank(varRepFltPeriod),
+                                        ReportingPeriodID = varRepFltPeriod.ID
+                                    ),
+                                    Or(
+                                        IsBlank(varRepFltStatus),
+                                        IsBlank(Trim(Coalesce(varRepFltStatus, ""))),
+                                        And(varRepFltStatus = "Pending", "Pending" in Coalesce(Status.Value, "")),
+                                        And(varRepFltStatus = "Approved", Or(Status.Value = "Approved", Status.Value = "Sent to Donor")),
+                                        Status.Value = varRepFltStatus
+                                    )
+                                )
+                            )
+                        );
+                        If(
+                            Coalesce(varSelectedReport.ID, 0) > 0,
+                            Set(varSelectedReport, LookUp(ProjectReports, ID = varSelectedReport.ID))
+                        ),
+                        Set(varRepListError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل التقارير.", "Could not load reports."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnRepListAct:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =IfError(
+                        With(
+                            {
+                                r: varSelectedReport,
+                                st: Coalesce(varSelectedReport.Status.Value, "")
+                            },
+                            With(
+                                {
+                                    nextSt: Switch(
+                                        varRepOp,
+                                        "submit", "Pending Project Manager",
+                                        "approve", Switch(
+                                            st,
+                                            "Pending Project Manager", "Pending MEAL",
+                                            "Pending MEAL", "Pending Program Director",
+                                            "Pending Program Director", "Approved",
+                                            "Approved", "Sent to Donor",
+                                            Coalesce(st, "Approved")
+                                        ),
+                                        "return", "Returned for Revision",
+                                        "senddonor", "Sent to Donor",
+                                        Coalesce(st, "Draft")
+                                    ),
+                                    nextLevel: Switch(
+                                        varRepOp,
+                                        "submit", 1,
+                                        "approve", Coalesce(r.CurrentLevel, 0) + 1,
+                                        "return", 0,
+                                        Coalesce(r.CurrentLevel, 0)
+                                    )
+                                },
+                                With(
+                                    {
+                                        notifyWho: Switch(
+                                            varRepOp,
+                                            "submit", Coalesce(r.ReviewerID, r.ProjectManagerID, 0),
+                                            "approve", Switch(
+                                                nextSt,
+                                                "Pending MEAL", Coalesce(r.MEALReviewerID, r.ReviewerID, 0),
+                                                "Pending Program Director", Coalesce(r.ProgramDirectorID, r.ApproverID, 0),
+                                                "Approved", Coalesce(r.PreparedByID, 0),
+                                                "Sent to Donor", Coalesce(r.PreparedByID, 0),
+                                                0
+                                            ),
+                                            "return", Coalesce(r.PreparedByID, 0),
+                                            "senddonor", Coalesce(r.PreparedByID, 0),
+                                            0
+                                        )
+                                    },
+                                    If(
+                                        varRepOp = "delete",
+                                        Remove(ProjectReports, LookUp(ProjectReports, ID = r.ID));
+                                        fnRepLog("Report", r.ID, Coalesce(r.ReportNumber, r.Title, ""), "Deleted", "Important", Coalesce(r.ProjectID, 0), "", "Status", Coalesce(r.Status.Value, ""), "", Coalesce(varRepNote, ""));
+                                        Set(varSelectedReport, Blank()),
+                                        If(
+                                            Or(varRepOp = "submit", varRepOp = "approve", varRepOp = "return", varRepOp = "senddonor"),
+                                            Set(
+                                                varSelectedReport,
+                                                Patch(
+                                                    ProjectReports,
+                                                    LookUp(ProjectReports, ID = r.ID),
+                                                    {
+                                                        Status: {Value: nextSt},
+                                                        SubmittedDate: If(varRepOp = "submit", Now(), r.SubmittedDate),
+                                                        SubmittedBID: If(varRepOp = "submit", varMeID, r.SubmittedBID),
+                                                        ApprovalStarted: If(Or(varRepOp = "submit", varRepOp = "approve"), true, If(varRepOp = "return", false, r.ApprovalStarted)),
+                                                        CurrentLevel: nextLevel,
+                                                        ApprovedDate: If(And(varRepOp = "approve", nextSt = "Approved"), Now(), r.ApprovedDate),
+                                                        ReturnCount: If(varRepOp = "return", Coalesce(r.ReturnCount, 0) + 1, r.ReturnCount),
+                                                        SentToDonorDate: If(varRepOp = "senddonor", Now(), r.SentToDonorDate)
+                                                    }
+                                                )
+                                            );
+                                            IfError(
+                                                Patch(
+                                                    ApprovalHistory,
+                                                    Defaults(ApprovalHistory),
+                                                    {
+                                                        Title: Coalesce(r.ReportNumber, r.Title),
+                                                        RequestType: {Value: "Report"},
+                                                        RequestItemID: Text(r.ID),
+                                                        Action: {Value: Switch(varRepOp, "submit", "Submitted", "approve", "Approved", "return", "Returned", "senddonor", "Sent to Donor", "Updated")},
+                                                        Decision: {Value: Switch(varRepOp, "approve", If(nextSt = "Approved", "Approved", "Pending"), "return", "Returned", "senddonor", "Approved", "submit", "Pending", "Pending")},
+                                                        Comments: Left(Coalesce(varRepNote, ""), 255),
+                                                        PerformedBy: {Id: varMeID, Value: varMeName},
+                                                        RequesterID: Coalesce(r.PreparedByID, varMeID),
+                                                        RequestorID: Coalesce(r.PreparedByID, varMeID),
+                                                        DecisionDate: Now(),
+                                                        Module: {Value: "MEAL"}
+                                                    }
+                                                ),
+                                                Notify(If(gblLanguage = "Arabic", "حُفظ التقرير. تعذر كتابة سجل الاعتماد.", "Report saved. Approval history could not be written."), NotificationType.Warning)
+                                            );
+                                            If(
+                                                And(notifyWho > 0, notifyWho <> varMeID),
+                                                IfError(
+                                                    Patch(
+                                                        Notifications,
+                                                        Defaults(Notifications),
+                                                        {
+                                                            Title: Left(
+                                                                Switch(
+                                                                    varRepOp,
+                                                                    "submit", If(gblLanguage = "Arabic", "تقرير بانتظار المراجعة", "Report pending review"),
+                                                                    "approve", If(gblLanguage = "Arabic", "تحديث اعتماد التقرير", "Report approval update"),
+                                                                    "return", If(gblLanguage = "Arabic", "تقرير مُعاد للمراجعة", "Report returned for revision"),
+                                                                    "senddonor", If(gblLanguage = "Arabic", "أُرسل التقرير للمانح", "Report sent to donor"),
+                                                                    If(gblLanguage = "Arabic", "تحديث تقرير", "Report update")
+                                                                ),
+                                                                255
+                                                            ),
+                                                            Message: Left(
+                                                                Concatenate(
+                                                                    Coalesce(r.ReportNumber, r.Title, ""),
+                                                                    " · ",
+                                                                    nextSt,
+                                                                    If(IsBlank(varRepNote), "", " — " & varRepNote)
+                                                                ),
+                                                                500
+                                                            ),
+                                                            IsRead: "No",
+                                                            Createddate: Now(),
+                                                            RecipientID: notifyWho,
+                                                            Recipient: {Id: notifyWho, Value: Coalesce(LookUp(Employees, ID = notifyWho, FullName), "")},
+                                                            RecipientNo: LookUp(Employees, ID = notifyWho, EmployeeNumber),
+                                                            RelatedEntity: {Value: "Report"},
+                                                            RelatedItemID: r.ID,
+                                                            RecordType: "Report",
+                                                            Module: {Value: "MEAL"},
+                                                            Status: {Value: "Unread"},
+                                                            Duration: 0,
+                                                            ReadDate: Blank()
+                                                        }
+                                                    ),
+                                                    Trace("Report notify failed", TraceSeverity.Warning)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        );
+                        fnRepLog("Report", Coalesce(varSelectedReport.ID, 0), Coalesce(varSelectedReport.ReportNumber, varSelectedReport.Title, ""), "Status Changed", "Important", Coalesce(varSelectedReport.ProjectID, 0), "", "Status", "", Coalesce(varSelectedReport.Status.Value, ""), Coalesce(varRepNote, ""));
+                        Set(varRepNote, "");
+                        Select(btnRepListLoad);
+                        Notify(If(gblLanguage = "Arabic", "تم تحديث التقرير.", "Report updated."), NotificationType.Success),
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحديث التقرير.", "The report could not be updated."), NotificationType.Error)
+                    )
+                  Text: ="Act"
+                  Visible: =false
+                  Width: =1
+      - conRepListPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpRepListPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpRepListTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conRepListHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblRepListTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "قائمة التقارير", "Reports")
+                        Width: =160
+                        Wrap: =false
+                  - btnRepListDash:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Navigate(scrReporting, ScreenTransition.None)
+                        Text: =If(gblLanguage = "Arabic", "لوحة التقارير", "Dashboard")
+                        Width: =120
+                  - btnRepListFromSched:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        Icon: ="Add"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varRepStartFromSchedule, true);
+                          Navigate(scrReportSchedules, ScreenTransition.None)
+                        Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "من جدول", "From Schedule"))
+                        Width: =If(App.Width < 700, 44, 140)
+                  - btnRepListArchive:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Navigate(scrReportArchive, ScreenTransition.None)
+                        Text: =If(gblLanguage = "Arabic", "الأرشيف", "Archive")
+                        Width: =100
+                  - btnRepListRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnRepListLoad)
+                        Text: =""
+                        Width: =44
+            - conRepListTools:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 160, 40)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =App.Width < 700
+                Children:
+                  - txtRepListSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "بحث في التقارير", "Search reports")
+                        Default: =varRepQ
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepQ, Self.Text);
+                          Select(btnRepListLoad)
+                        Placeholder: =If(gblLanguage = "Arabic", "رقم التقرير أو العنوان أو المشروع", "Report number, title, or project")
+                        Width: =If(App.Width < 700, Parent.Width, 220)
+                  - cmbRepListProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        DefaultSelectedItems: =If(IsBlank(varRepFltProject), Filter(Projects, false), Filter(Projects, ID = varRepFltProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                        ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  ForAll(
+                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                      LookUp(Projects, ID = access.ProjectID)
+                                  ),
+                                  !IsBlank(ID)
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepFltProject, Self.Selected);
+                          Select(btnRepListLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbRepListType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "نوع التقرير", "Report type")
+                        DefaultSelectedItems: =If(IsBlank(varRepFltType), Filter(colRepTypeUI, false), Filter(colRepTypeUI, k = varRepFltType.k))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأنواع", "All types")
+                        IsSearchable: =false
+                        ItemDisplayText: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                        Items: =colRepTypeUI
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepFltType, Self.Selected);
+                          Select(btnRepListLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - cmbRepListPeriod:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الفترة", "Period")
+                        DefaultSelectedItems: =If(IsBlank(varRepFltPeriod), Filter(colRepPeriods, false), Filter(colRepPeriods, ID = varRepFltPeriod.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الفترات", "All periods")
+                        ItemDisplayText: =Coalesce(ThisItem.Title, ThisItem.PeriodName, Text(ThisItem.ID))
+                        Items: =colRepPeriods
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepFltPeriod, Self.Selected);
+                          Select(btnRepListLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - cmbRepListStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        DefaultSelectedItems: =If(IsBlank(varRepFltStatus), Filter(colRepStatusUI, false), Filter(colRepStatusUI, k = varRepFltStatus))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
+                        IsSearchable: =false
+                        ItemDisplayText: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                        Items: =colRepStatusUI
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepFltStatus, Self.Selected.k);
+                          Select(btnRepListLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - btnRepListViewList:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "قائمة", "List")
+                        Appearance: =If(varRepViewMode = "list", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varRepViewMode, "list")
+                        Text: =If(gblLanguage = "Arabic", "قائمة", "List")
+                        Width: =80
+                  - btnRepListViewCards:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "بطاقات", "Cards")
+                        Appearance: =If(varRepViewMode = "cards", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varRepViewMode, "cards")
+                        Text: =If(gblLanguage = "Arabic", "بطاقات", "Cards")
+                        Width: =90
+            - lblRepListError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varRepListError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل التقارير.", "Reports could not be loaded.")
+                  Visible: =varRepListError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conRepListBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 160
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - galRepList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =If(App.Width < 700, 1, 0)
+                        Height: =Parent.Height
+                        Items: =SortByColumns(colRepList, "Modified", SortOrder.Descending)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =If(varRepViewMode = "cards", 120, 80)
+                        Visible: =Or(App.Width >= 700, IsBlank(varSelectedReport))
+                        Width: =If(App.Width < 700, Parent.Width, If(varRepViewMode = "cards", Parent.Width * 0.55, 420))
+                      Children:
+                        - btnRepListRow:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(Coalesce(varSelectedReport.ID, 0) = ThisItem.ID, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              Height: =Parent.TemplateHeight - 8
+                              OnSelect: |-
+                                =Set(varSelectedReport, ThisItem);
+                                Set(varRepPane, "Details");
+                                Set(varRepNote, "")
+                              Text: |-
+                                =If(
+                                    varRepViewMode = "cards",
+                                    Concatenate(
+                                        Coalesce(ThisItem.ReportNumber, "-"),
+                                        Char(10),
+                                        Coalesce(ThisItem.Title, Coalesce(ThisItem.ReportType.Value, "-")),
+                                        Char(10),
+                                        Coalesce(ThisItem.Project.Value, "-"),
+                                        " · ",
+                                        Coalesce(ThisItem.ReportingPeriod.Value, "-"),
+                                        Char(10),
+                                        Coalesce(ThisItem.Status.Value, "-"),
+                                        " · ",
+                                        Text(Coalesce(ThisItem.OverallProgress, 0)),
+                                        "% · ",
+                                        Coalesce(ThisItem.HealthStatus.Value, "-")
+                                    ),
+                                    Concatenate(
+                                        Coalesce(ThisItem.ReportNumber, "-"),
+                                        " · ",
+                                        Coalesce(ThisItem.Project.Value, "-"),
+                                        Char(10),
+                                        Coalesce(ThisItem.ReportType.Value, "-"),
+                                        " · ",
+                                        Coalesce(ThisItem.ReportingPeriod.Value, "-"),
+                                        " · ",
+                                        Coalesce(LookUp(Employees, ID = ThisItem.PreparedByID, FullName), ThisItem.PreparedBy.Value, "-"),
+                                        Char(10),
+                                        Coalesce(ThisItem.Status.Value, "-"),
+                                        " · ",
+                                        Text(Coalesce(ThisItem.OverallProgress, 0)),
+                                        "% · ",
+                                        Coalesce(ThisItem.HealthStatus.Value, "-"),
+                                        " · ",
+                                        If(IsBlank(ThisItem.SubmittedDate), "-", Text(ThisItem.SubmittedDate, "yyyy-mm-dd")),
+                                        " · ",
+                                        If(IsBlank(ThisItem.Modified), "-", Text(ThisItem.Modified, "yyyy-mm-dd"))
+                                    )
+                                )
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =4
+                  - conRepListDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        Visible: =Not(IsBlank(varSelectedReport))
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - 428)
+                      Children:
+                        - conRepListDetailHdr:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblRepListDetailTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =16
+                                    Text: =Coalesce(varSelectedReport.ReportNumber, varSelectedReport.Title, If(gblLanguage = "Arabic", "تقرير", "Report"))
+                                    Width: =200
+                                    Wrap: =false
+                              - btnRepListClose:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSelectedReport, Blank())
+                                    Text: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                                    Visible: =App.Width < 700
+                                    Width: =80
+                        - lblRepListMeta:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =96
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Text: |-
+                                =Concatenate(
+                                    If(gblLanguage = "Arabic", "المشروع ", "Project "),
+                                    Coalesce(varSelectedReport.Project.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "النوع ", "Type "),
+                                    Coalesce(varSelectedReport.ReportType.Value, "-"),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "الفترة ", "Period "),
+                                    Coalesce(varSelectedReport.ReportingPeriod.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "المُعِدّ ", "Prepared by "),
+                                    Coalesce(LookUp(Employees, ID = varSelectedReport.PreparedByID, FullName), varSelectedReport.PreparedBy.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "الحالة ", "Status "),
+                                    Coalesce(varSelectedReport.Status.Value, "-"),
+                                    " · ",
+                                    Text(Coalesce(varSelectedReport.OverallProgress, 0)),
+                                    "% · ",
+                                    Coalesce(varSelectedReport.HealthStatus.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "التقديم ", "Submitted "),
+                                    If(IsBlank(varSelectedReport.SubmittedDate), "-", Text(varSelectedReport.SubmittedDate, "yyyy-mm-dd hh:mm")),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "تعديل ", "Modified "),
+                                    If(IsBlank(varSelectedReport.Modified), "-", Text(varSelectedReport.Modified, "yyyy-mm-dd"))
+                                )
+                              Width: =Parent.Width
+                        - txtRepListNote:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "ملاحظة الاعتماد أو الإرجاع", "Approval or return note")
+                              Default: =varRepNote
+                              Height: =72
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnChange: =Set(varRepNote, Self.Text)
+                              Placeholder: =If(gblLanguage = "Arabic", "ملاحظة الاعتماد أو الإرجاع", "Approval or return note")
+                              Type: =TextInputType.Multiline
+                              Visible: |-
+                                =Or(
+                                    varSelectedReport.Status.Value = "Draft",
+                                    "Pending" in Coalesce(varSelectedReport.Status.Value, ""),
+                                    varSelectedReport.Status.Value = "Returned for Revision"
+                                )
+                              Width: =Parent.Width
+                        - conRepListActions:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 160, 80)
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutWrap: =true
+                            Children:
+                              - btnRepListEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepForm, "edit");
+                                      Navigate(scrReportEditor, ScreenTransition.Cover)
+                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Visible: |-
+                                      =Or(
+                                          varSelectedReport.Status.Value = "Draft",
+                                          varSelectedReport.Status.Value = "Returned for Revision",
+                                          varSelectedReport.Status.Value = "In Preparation"
+                                      )
+                                    Width: =100
+                              - btnRepListSubmit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepOp, "submit");
+                                      Select(btnRepListAct)
+                                    Text: =If(gblLanguage = "Arabic", "إرسال", "Submit")
+                                    Visible: |-
+                                      =And(
+                                          Or(
+                                              varSelectedReport.Status.Value = "Draft",
+                                              varSelectedReport.Status.Value = "Returned for Revision",
+                                              varSelectedReport.Status.Value = "In Preparation"
+                                          ),
+                                          Or(
+                                              varSelectedReport.PreparedByID = varMeID,
+                                              Coalesce(varSelectedReport.PreparedByID, 0) = 0
+                                          )
+                                      )
+                                    Width: =100
+                              - btnRepListDelete:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepOp, "delete");
+                                      Select(btnRepListAct)
+                                    Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                    Visible: |-
+                                      =And(
+                                          varSelectedReport.Status.Value = "Draft",
+                                          Or(
+                                              varSelectedReport.PreparedByID = varMeID,
+                                              Coalesce(varSelectedReport.PreparedByID, 0) = 0
+                                          )
+                                      )
+                                    Width: =90
+                              - btnRepListView:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepForm, "view");
+                                      Navigate(scrReportReview, ScreenTransition.Cover)
+                                    Text: =If(gblLanguage = "Arabic", "عرض", "View")
+                                    Visible: |-
+                                      =Or(
+                                          "Pending" in Coalesce(varSelectedReport.Status.Value, ""),
+                                          varSelectedReport.Status.Value = "Approved",
+                                          varSelectedReport.Status.Value = "Sent to Donor"
+                                      )
+                                    Width: =90
+                              - btnRepListReview:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepForm, "review");
+                                      Navigate(scrReportReview, ScreenTransition.Cover)
+                                    Text: =If(gblLanguage = "Arabic", "مراجعة", "Review")
+                                    Visible: =("Pending" in Coalesce(varSelectedReport.Status.Value, ""))
+                                    Width: =100
+                              - btnRepListReturn:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepOp, "return");
+                                      Select(btnRepListAct)
+                                    Text: =If(gblLanguage = "Arabic", "إرجاع", "Return")
+                                    Visible: =("Pending" in Coalesce(varSelectedReport.Status.Value, ""))
+                                    Width: =90
+                              - btnRepListApprove:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepOp, "approve");
+                                      Select(btnRepListAct)
+                                    Text: =If(gblLanguage = "Arabic", "اعتماد", "Approve")
+                                    Visible: =("Pending" in Coalesce(varSelectedReport.Status.Value, ""))
+                                    Width: =100
+                              - btnRepListPrint:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepForm, "print");
+                                      Navigate(scrReportReview, ScreenTransition.None)
+                                    Text: =If(gblLanguage = "Arabic", "طباعة", "Print")
+                                    Visible: |-
+                                      =Or(
+                                          varSelectedReport.Status.Value = "Approved",
+                                          varSelectedReport.Status.Value = "Sent to Donor"
+                                      )
+                                    Width: =90
+                              - btnRepListDownload:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepForm, "download");
+                                      Navigate(scrReportReview, ScreenTransition.None)
+                                    Text: =If(gblLanguage = "Arabic", "تنزيل", "Download")
+                                    Visible: |-
+                                      =Or(
+                                          varSelectedReport.Status.Value = "Approved",
+                                          varSelectedReport.Status.Value = "Sent to Donor"
+                                      )
+                                    Width: =100
+                              - btnRepListSendDonor:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepOp, "senddonor");
+                                      Select(btnRepListAct)
+                                    Text: =If(gblLanguage = "Arabic", "إرسال للمانح", "Send to Donor")
+                                    Visible: =varSelectedReport.Status.Value = "Approved"
+                                    Width: =130
+                        - lblRepListEmptyDetail:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Text: =If(gblLanguage = "Arabic", "اختر تقريراً لعرض التفاصيل والإجراءات.", "Select a report to view details and actions.")
+                              Visible: =IsBlank(varSelectedReport)
+                              Width: =Parent.Width
+            - lblRepListEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("TextMuted")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(And(Not(varRepListError), CountRows(colRepList) = 0), 28, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "لا توجد تقارير مطابقة.", "No matching reports.")
+                  Visible: =And(Not(varRepListError), CountRows(colRepList) = 0)
+                  Width: =Parent.Width
+                  Wrap: =false
+      - conRepListNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpRepListNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpRepListTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Document"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrReporting, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "قائمة التقارير", "Reports")
+            ScreenTitle: =If(gblLanguage = "Arabic", "التقارير", "Reports")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpRepListPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 64, Module: "Reporting", Title: If(gblLanguage = "Arabic", "التقارير", "Reporting"), Icon: "Dashboard", Visible: true},
+                  {ID: 74, Module: "Reports", Title: If(gblLanguage = "Arabic", "القائمة", "Reports"), Icon: "Document", Visible: true},
+                  {ID: 75, Module: "Schedules", Title: If(gblLanguage = "Arabic", "الجداول", "Schedules"), Icon: "Calendar", Visible: true},
+                  {ID: 60, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Chart", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Reporting", Navigate(scrReporting, ScreenTransition.None),
+                  "Reports", Navigate(scrReports, ScreenTransition.None),
+                  "Schedules", Navigate(scrReportSchedules, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

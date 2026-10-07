@@ -1,0 +1,1004 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrMELStudies:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "Studies");
+        Set(varNavSelectedID, 78);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varMealStMode), Set(varMealStMode, "list"));
+        If(IsBlank(varMealStQ), Set(varMealStQ, ""));
+        Set(varMealStError, false);
+        ClearCollect(
+            colMealStStatusUI,
+            {k: "Planned", en: "Planned", ar: "مخططة"},
+            {k: "Tool Design", en: "Tool Design", ar: "تصميم الأداة"},
+            {k: "Data Collection", en: "Data Collection", ar: "جمع البيانات"},
+            {k: "Analysis", en: "Analysis", ar: "تحليل"},
+            {k: "Reporting", en: "Reporting", ar: "إعداد التقرير"},
+            {k: "Completed", en: "Completed", ar: "مكتملة"},
+            {k: "Cancelled", en: "Cancelled", ar: "ملغاة"}
+        );
+        Select(btnMealStLoad)
+    Children:
+      - conMealStSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnMealStLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varMealStError, false);
+                    IfError(
+                        Concurrent(
+                            ClearCollect(
+                                colMealStList,
+                                FirstN(
+                                    SortByColumns(
+                                        If(
+                                            Coalesce(varMealStFltProject.ID, 0) > 0,
+                                            Filter(MELStudies, ProjectID = varMealStFltProject.ID),
+                                            MELStudies
+                                        ),
+                                        "Modified",
+                                        SortOrder.Descending
+                                    ),
+                                    500
+                                )
+                            ),
+                            ClearCollect(
+                                colMealStPeople,
+                                FirstN(SortByColumns(Filter(Employees, Status.Value = "Active"), "FullName", SortOrder.Ascending), 300)
+                            )
+                        );
+                        ClearCollect(
+                            colMealStView,
+                            AddColumns(
+                                Filter(
+                                    colMealStList,
+                                    And(
+                                        Or(
+                                            IsBlank(Trim(Coalesce(varMealStQ, ""))),
+                                            Trim(varMealStQ) in Coalesce(StudyNumber, ""),
+                                            Trim(varMealStQ) in Coalesce(Title, ""),
+                                            Trim(varMealStQ) in Coalesce(Project.Value, "")
+                                        ),
+                                        Or(IsBlank(varMealStFltType), StudyType.Value = varMealStFltType),
+                                        Or(IsBlank(varMealStFltStatus), Status.Value = varMealStFltStatus.k),
+                                        Or(IsBlank(varMealStFltMethod), Methodology.Value = varMealStFltMethod)
+                                    )
+                                ),
+                                CompletionPct,
+                                If(
+                                    Or(IsBlank(SampleSizePlanned), SampleSizePlanned = 0),
+                                    If(Status.Value = "Completed", 100, 0),
+                                    Round(Coalesce(SampleSizeActual, 0) / SampleSizePlanned * 100, 1)
+                                )
+                            )
+                        );
+                        If(Coalesce(varSelectedStudy.ID, 0) > 0, Set(varSelectedStudy, LookUp(MELStudies, ID = varSelectedStudy.ID)); Select(btnMealStKids)),
+                        Set(varMealStError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل الدراسات.", "Could not load studies."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnMealStKids:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {sid: Coalesce(varSelectedStudy.ID, 0)},
+                        If(
+                            sid <= 0,
+                            Clear(colMealStActions),
+                            ClearCollect(colMealStActions, Filter(MELActions, And(SourceType.Value = "Study", SourceID = sid)))
+                        )
+                    )
+                  Text: ="Kids"
+                  Visible: =false
+                  Width: =1
+            - btnMealStSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varMealStMode, "") = "new",
+                            proj: cmbMealStEdProject.Selected,
+                            lead: cmbMealStEdLead.Selected,
+                            stype: Coalesce(cmbMealStEdType.Selected.Value, ""),
+                            pstart: dteMealStEdStart.SelectedDate,
+                            pend: dteMealStEdEnd.SelectedDate,
+                            snum: Trim(txtMealStEdNumber.Text)
+                        },
+                        If(
+                            Or(IsBlank(snum), IsBlank(proj), Coalesce(proj.ID, 0) <= 0, IsBlank(stype), IsBlank(pstart), IsBlank(pend), IsBlank(lead), Coalesce(lead.ID, 0) <= 0),
+                            Notify(If(ar, "رقم الدراسة والمشروع ونوع الدراسة والتواريخ المخططة والمسؤول مطلوبة.", "Study number, project, study type, planned dates, and lead person are required."), NotificationType.Error),
+                            IfError(
+                                Set(
+                                    varSelectedStudy,
+                                    Patch(
+                                        MELStudies,
+                                        If(isNew, Defaults(MELStudies), LookUp(MELStudies, ID = varSelectedStudy.ID)),
+                                        {
+                                            Title: Coalesce(Trim(txtMealStEdTitle.Text), snum & " - " & stype),
+                                            StudyNumber: snum,
+                                            Project: {Id: proj.ID, Value: Coalesce(proj.Title, "")},
+                                            ProjectID: proj.ID,
+                                            StudyType: {Value: stype},
+                                            Methodology: {Value: Coalesce(cmbMealStEdMethod.Selected.Value, "")},
+                                            DataCollectionTool: {Value: Coalesce(cmbMealStEdTool.Selected.Value, "")},
+                                            Status: {Value: Coalesce(cmbMealStEdStatus.Selected.Value, If(isNew, "Planned", varSelectedStudy.Status.Value, "Planned"))},
+                                            PlannedStartDate: pstart,
+                                            PlannedEndDate: pend,
+                                            ActualStartDate: dteMealStEdActStart.SelectedDate,
+                                            ActualEndDate: dteMealStEdActEnd.SelectedDate,
+                                            SampleSizePlanned: If(IsBlank(Trim(txtMealStEdSampleP.Text)), Blank(), Value(txtMealStEdSampleP.Text)),
+                                            SampleSizeActual: If(IsBlank(Trim(txtMealStEdSampleA.Text)), Blank(), Value(txtMealStEdSampleA.Text)),
+                                            LeadPersonID: lead.ID,
+                                            ExternalConsultant: Trim(txtMealStEdConsult.Text),
+                                            Budget: If(IsBlank(Trim(txtMealStEdBudget.Text)), Blank(), Value(txtMealStEdBudget.Text)),
+                                            Sector: Trim(txtMealStEdSector.Text),
+                                            Governorate: Trim(txtMealStEdGov.Text),
+                                            KeyFindings: txtMealStEdFindings.Text,
+                                            Recommendations: txtMealStEdRec.Text,
+                                            ReportUrl: Trim(txtMealStEdReportUrl.Text),
+                                            DataFolderUrl: Trim(txtMealStEdDataUrl.Text),
+                                            ReportingPeriodID: If(IsBlank(cmbMealStEdPeriod.Selected), Blank(), cmbMealStEdPeriod.Selected.ID)
+                                        }
+                                    )
+                                );
+                                If(
+                                    isNew,
+                                    fnMealLog("Study", varSelectedStudy.ID, snum, "Created", "Info", proj.ID, Coalesce(proj.ProjectCode, ""), "", "", "", "New MEL study", false);
+                                    fnMealNotify(lead.ID, Coalesce(lead.FullName, ""), If(ar, "دراسة جديدة", "New study"), snum, "Study", varSelectedStudy.ID, "Unread")
+                                );
+                                Set(varMealStMode, "list");
+                                Select(btnMealStLoad);
+                                Notify(If(ar, "تم حفظ الدراسة.", "Study saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ الدراسة.", "Could not save the study."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+            - btnMealStWF:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", t: varSelectedStudy, next: varMealStNextStatus},
+                        If(
+                            Or(IsBlank(t), IsBlank(next)),
+                            Notify(If(ar, "اختر دراسة وخطوة تالية.", "Select a study and next step."), NotificationType.Warning),
+                            IfError(
+                                Set(varSelectedStudy, Patch(MELStudies, LookUp(MELStudies, ID = t.ID), {Status: {Value: next}}));
+                                fnMealLog("Study", t.ID, Coalesce(t.StudyNumber, ""), "Status Changed", "Info", Coalesce(t.ProjectID, 0), "", "Status", Coalesce(t.Status.Value, ""), next, "", false);
+                                Select(btnMealStLoad);
+                                Notify(If(ar, "تم تحديث الحالة.", "Status updated."), NotificationType.Success),
+                                Notify(If(ar, "تعذر تحديث الحالة.", "Could not update status."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="WF"
+                  Visible: =false
+                  Width: =1
+      - conMealStPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpMealStPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpMealStTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conMealStHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblMealStTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "الدراسات والتقييم", "Studies & Evaluations")
+                  - btnMealStNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varMealStMode, "new"); Set(varSelectedStudy, Blank())
+                        Text: =If(gblLanguage = "Arabic", "دراسة جديدة", "New study")
+                        Visible: =varMealStMode = "list"
+                        Width: =120
+                  - btnMealStBack:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varMealStMode, "list"); Select(btnMealStLoad)
+                        Text: =If(gblLanguage = "Arabic", "القائمة", "List")
+                        Visible: =varMealStMode <> "list"
+                        Width: =90
+            - lblMealStErr:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varMealStError, 28, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل الدراسات.", "Could not load studies.")
+                  Visible: =varMealStError
+            - conMealStTools:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 120, 40)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =App.Width < 700
+                  Visible: =varMealStMode = "list"
+                Children:
+                  - txtMealStSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =varMealStQ
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealStQ, Self.Text); Select(btnMealStLoad)
+                        Placeholder: =If(gblLanguage = "Arabic", "بحث", "Search")
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - cmbMealStFltProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealStFltProject), Filter(Projects, false), Filter(Projects, ID = varMealStFltProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        Items: =Projects
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealStFltProject, Self.Selected); Select(btnMealStLoad)
+                        SelectMultiple: =false
+                        Width: =160
+                  - cmbMealStFltType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealStFltType), Filter(Choices(MELStudies.StudyType), false), Filter(Choices(MELStudies.StudyType), Value = varMealStFltType))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "النوع", "Type")
+                        Items: =Choices(MELStudies.StudyType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealStFltType, Self.Selected.Value); Select(btnMealStLoad)
+                        SelectMultiple: =false
+                        Width: =140
+                  - cmbMealStFltMethod:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealStFltMethod), Filter(Choices(MELStudies.Methodology), false), Filter(Choices(MELStudies.Methodology), Value = varMealStFltMethod))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المنهجية", "Method")
+                        Items: =Choices(MELStudies.Methodology)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealStFltMethod, Self.Selected.Value); Select(btnMealStLoad)
+                        SelectMultiple: =false
+                        Width: =130
+                  - cmbMealStFltStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealStFltStatus), Filter(colMealStStatusUI, false), Filter(colMealStStatusUI, k = varMealStFltStatus.k))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        Items: =colMealStStatusUI
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealStFltStatus, Self.Selected); Select(btnMealStLoad)
+                        SelectMultiple: =false
+                        Width: =150
+            - galMealStLifecycle:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =36
+                  Items: =colMealStStatusUI
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =110
+                  Visible: =And(varMealStMode = "list", Not(IsBlank(varSelectedStudy)))
+                Children:
+                  - lblMealStLife:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =If(Coalesce(varSelectedStudy.Status.Value, "") = ThisItem.k, fxThemeColor("Primary"), fxThemeColor("TextMuted"))
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =If(Coalesce(varSelectedStudy.Status.Value, "") = ThisItem.k, FontWeight.Semibold, FontWeight.Normal)
+                        Height: =32
+                        Size: =11
+                        Text: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                        Width: =Parent.TemplateWidth - 4
+                        X: =2
+                        Y: =2
+            - conMealStBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =varMealStMode = "list"
+                Children:
+                  - galMealStList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =If(App.Width < 900, 1, 0)
+                        Items: =colMealStView
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =86
+                        Visible: =Or(App.Width >= 900, IsBlank(varSelectedStudy))
+                        Width: =If(App.Width < 900, Parent.Width, 340)
+                      Children:
+                        - conMealStCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              Fill: =If(Coalesce(varSelectedStudy.ID, 0) = ThisItem.ID, fxThemeColor("PrimarySubtle"), fxThemeColor("Background"))
+                              Height: =Parent.TemplateHeight - 6
+                              RadiusBottomLeft: =8
+                              RadiusBottomRight: =8
+                              RadiusTopLeft: =8
+                              RadiusTopRight: =8
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =3
+                            Children:
+                              - lblMealStCardTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =22
+                                    OnSelect: =Set(varSelectedStudy, LookUp(MELStudies, ID = ThisItem.ID)); Select(btnMealStKids)
+                                    Text: =Coalesce(ThisItem.StudyNumber, ThisItem.Title, "-")
+                                    Width: =Parent.Width - 16
+                                    X: =8
+                                    Y: =6
+                              - lblMealStCardMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =48
+                                    Size: =11
+                                    Text: |-
+                                      =Coalesce(ThisItem.StudyType.Value, "-") & " · " & Coalesce(ThisItem.Status.Value, "-") & Char(10) & Coalesce(ThisItem.Project.Value, "-") & Char(10) & If(gblLanguage = "Arabic", "اكتمال العينة: ", "Sample: ") & Text(Coalesce(ThisItem.CompletionPct, 0)) & "%"
+                                    Width: =Parent.Width - 16
+                                    X: =8
+                                    Y: =28
+                  - conMealStDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =8
+                        Visible: =Not(IsBlank(varSelectedStudy))
+                      Children:
+                        - conMealStDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblMealStDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =15
+                                    Text: =Coalesce(varSelectedStudy.Title, varSelectedStudy.StudyNumber, "-")
+                              - btnMealStEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealStMode, "edit")
+                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Width: =80
+                              - btnMealStAdvance:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =With(
+                                          {s: Coalesce(varSelectedStudy.Status.Value, "Planned")},
+                                          Set(
+                                              varMealStNextStatus,
+                                              Switch(
+                                                  s,
+                                                  "Planned", "Tool Design",
+                                                  "Tool Design", "Data Collection",
+                                                  "Data Collection", "Analysis",
+                                                  "Analysis", "Reporting",
+                                                  "Reporting", "Completed",
+                                                  Blank()
+                                              )
+                                          );
+                                          If(IsBlank(varMealStNextStatus), Notify(If(gblLanguage = "Arabic", "لا توجد خطوة تالية.", "No next step."), NotificationType.Warning), Select(btnMealStWF))
+                                      )
+                                    Text: =If(gblLanguage = "Arabic", "تقدم", "Advance")
+                                    Visible: =And(Not(IsBlank(varSelectedStudy)), Not(Or(varSelectedStudy.Status.Value = "Completed", varSelectedStudy.Status.Value = "Cancelled")))
+                                    Width: =90
+                        - lblMealStInfo:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =With(
+                                    {
+                                        ar: gblLanguage = "Arabic",
+                                        s: varSelectedStudy,
+                                        pct: If(Or(IsBlank(s.SampleSizePlanned), s.SampleSizePlanned = 0), If(s.Status.Value = "Completed", 100, 0), Round(Coalesce(s.SampleSizeActual, 0) / s.SampleSizePlanned * 100, 1))
+                                    },
+                                    If(ar, "الرقم: ", "Number: ") & Coalesce(s.StudyNumber, "-") & Char(10) &
+                                    If(ar, "المشروع: ", "Project: ") & Coalesce(s.Project.Value, "-") & Char(10) &
+                                    If(ar, "النوع / المنهجية: ", "Type / method: ") & Coalesce(s.StudyType.Value, "-") & " / " & Coalesce(s.Methodology.Value, "-") & Char(10) &
+                                    If(ar, "العينة المخططة / الفعلية: ", "Sample planned / actual: ") & Text(Coalesce(s.SampleSizePlanned, 0)) & " / " & Text(Coalesce(s.SampleSizeActual, 0)) & " (" & Text(pct) & "%)" & Char(10) &
+                                    If(ar, "مخطط: ", "Planned: ") & Text(s.PlannedStartDate, "dd mmm yyyy") & " – " & Text(s.PlannedEndDate, "dd mmm yyyy") & Char(10) &
+                                    If(ar, "النتائج: ", "Findings: ") & Coalesce(s.KeyFindings, "-") & Char(10) &
+                                    If(ar, "التوصيات: ", "Recommendations: ") & Coalesce(s.Recommendations, "-")
+                                )
+                        - conMealStLinks:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnMealStOpenReport:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =If(IsBlank(varSelectedStudy.ReportUrl), Notify(If(gblLanguage = "Arabic", "لا يوجد رابط تقرير.", "No report URL."), NotificationType.Warning), Launch(varSelectedStudy.ReportUrl))
+                                    Text: =If(gblLanguage = "Arabic", "التقرير", "Report")
+                                    Width: =100
+                              - btnMealStOpenData:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =If(IsBlank(varSelectedStudy.DataFolderUrl), Notify(If(gblLanguage = "Arabic", "لا يوجد مجلد بيانات.", "No data folder URL."), NotificationType.Warning), Launch(varSelectedStudy.DataFolderUrl))
+                                    Text: =If(gblLanguage = "Arabic", "البيانات", "Data")
+                                    Width: =100
+                        - lblMealStActHead:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =FontWeight.Semibold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Text: =If(gblLanguage = "Arabic", "إجراءات مرتبطة", "Linked MEL actions")
+                        - galMealStActions:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Items: =colMealStActions
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =48
+                            Children:
+                              - lblMealStActRow:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =Parent.TemplateHeight - 4
+                                    OnSelect: =Set(varSelectedMELAction, ThisItem); Navigate(scrMELActions, ScreenTransition.None)
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.ActionNumber, ThisItem.Title, "-") & " · " & Coalesce(ThisItem.Status.Value, "-")
+                                    Width: =Parent.TemplateWidth
+                                    Y: =2
+            - conMealStEditor:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
+                  Visible: =Or(varMealStMode = "new", varMealStMode = "edit")
+                Children:
+                  - txtMealStEdNumber:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.StudyNumber, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "رقم الدراسة *", "Study number *")
+                  - txtMealStEdTitle:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.Title, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                  - cmbMealStEdProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(Projects, ID = varSelectedStudy.ProjectID), If(IsBlank(varMealStFltProject), Filter(Projects, false), Filter(Projects, ID = varMealStFltProject.ID)))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع *", "Project *")
+                        Items: =Projects
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealStEdType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(Choices(MELStudies.StudyType), Value = varSelectedStudy.StudyType.Value), Filter(Choices(MELStudies.StudyType), false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع الدراسة *", "Study type *")
+                        Items: =Choices(MELStudies.StudyType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealStEdMethod:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(Choices(MELStudies.Methodology), Value = varSelectedStudy.Methodology.Value), Filter(Choices(MELStudies.Methodology), false))
+                        Height: =40
+                        Items: =Choices(MELStudies.Methodology)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealStEdTool:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(Choices(MELStudies.DataCollectionTool), Value = varSelectedStudy.DataCollectionTool.Value), Filter(Choices(MELStudies.DataCollectionTool), false))
+                        Height: =40
+                        Items: =Choices(MELStudies.DataCollectionTool)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealStEdStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(Choices(MELStudies.Status), Value = varSelectedStudy.Status.Value), Filter(Choices(MELStudies.Status), Value = "Planned"))
+                        Height: =40
+                        Items: =Choices(MELStudies.Status)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealStEdLead:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(colMealStPeople, ID = varSelectedStudy.LeadPersonID), Filter(colMealStPeople, ID = varMeID))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المسؤول *", "Lead person *")
+                        Items: =colMealStPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealStEdPeriod:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealStMode = "edit", Filter(ReportingPeriods, ID = varSelectedStudy.ReportingPeriodID), Filter(ReportingPeriods, false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "فترة التقرير", "Reporting period")
+                        Items: =ReportingPeriods
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - dteMealStEdStart:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealStMode = "new", Today(), varSelectedStudy.PlannedStartDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealStEdEnd:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealStMode = "new", DateAdd(Today(), 30, TimeUnit.Days), varSelectedStudy.PlannedEndDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealStEdActStart:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealStMode = "new", Blank(), varSelectedStudy.ActualStartDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealStEdActEnd:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealStMode = "new", Blank(), varSelectedStudy.ActualEndDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - txtMealStEdSampleP:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", If(IsBlank(varSelectedStudy.SampleSizePlanned), "", Text(varSelectedStudy.SampleSizePlanned)))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "العينة المخططة", "Sample planned")
+                  - txtMealStEdSampleA:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", If(IsBlank(varSelectedStudy.SampleSizeActual), "", Text(varSelectedStudy.SampleSizeActual)))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "العينة الفعلية", "Sample actual")
+                  - txtMealStEdConsult:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.ExternalConsultant, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "استشاري خارجي", "External consultant")
+                  - txtMealStEdBudget:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", If(IsBlank(varSelectedStudy.Budget), "", Text(varSelectedStudy.Budget)))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الميزانية", "Budget")
+                  - txtMealStEdSector:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.Sector, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "القطاع", "Sector")
+                  - txtMealStEdGov:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.Governorate, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "المحافظة", "Governorate")
+                  - txtMealStEdFindings:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.KeyFindings, ""))
+                        Height: =70
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "النتائج الرئيسية", "Key findings")
+                  - txtMealStEdRec:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.Recommendations, ""))
+                        Height: =70
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "التوصيات", "Recommendations")
+                  - txtMealStEdReportUrl:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.ReportUrl, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "رابط التقرير", "Report URL")
+                  - txtMealStEdDataUrl:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealStMode = "new", "", Coalesce(varSelectedStudy.DataFolderUrl, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "مجلد البيانات", "Data folder URL")
+                  - conMealStEdBtns:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnMealStSaveVis:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealStSave)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =100
+                        - btnMealStCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealStMode, "list")
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =100
+      - conMealStNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpMealStNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpMealStTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="File"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrMEAL, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الدراسات والتقييم", "Studies")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpMealStPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 63, Module: "FieldVisits", Title: If(gblLanguage = "Arabic", "زيارات", "Visits"), Icon: "Map", Visible: true},
+                  {ID: 78, Module: "Studies", Title: If(gblLanguage = "Arabic", "دراسات", "Studies"), Icon: "File", Visible: true},
+                  {ID: 79, Module: "CFM", Title: If(gblLanguage = "Arabic", "شكاوى", "CFM"), Icon: "Message", Visible: true},
+                  {ID: 80, Module: "Actions", Title: If(gblLanguage = "Arabic", "إجراءات", "Actions"), Icon: "ClipboardCheck", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "FieldVisits", Navigate(scrFieldVisits, ScreenTransition.None),
+                  "Studies", Navigate(scrMELStudies, ScreenTransition.None),
+                  "CFM", Navigate(scrCFM, ScreenTransition.None),
+                  "Actions", Navigate(scrMELActions, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

@@ -1,0 +1,1874 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrReportingSettings:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "Reporting");
+        Set(varNavSelectedID, 76);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        Set(varRepSetTab, Coalesce(varRepSetTab, "Configs"));
+        If(IsBlank(varRepCfgForm), Set(varRepCfgForm, Blank()));
+        If(IsBlank(varRepPerForm), Set(varRepPerForm, Blank()));
+        Set(varRepSetError, false);
+        ClearCollect(
+            colRepTypeRef,
+            {k: "Progress", en: "Progress Report", ar: "تقرير تقدم"},
+            {k: "Narrative", en: "Narrative Report", ar: "تقرير سردي"},
+            {k: "Financial", en: "Financial Report", ar: "تقرير مالي"},
+            {k: "MEAL", en: "MEAL Report", ar: "تقرير متابعة وتقييم"},
+            {k: "Donor", en: "Donor Report", ar: "تقرير مانح"},
+            {k: "Final", en: "Final Report", ar: "تقرير نهائي"},
+            {k: "Interim", en: "Interim Report", ar: "تقرير مرحلي"},
+            {k: "Quarterly", en: "Quarterly Report", ar: "تقرير ربعي"},
+            {k: "Annual", en: "Annual Report", ar: "تقرير سنوي"},
+            {k: "Other", en: "Other", ar: "أخرى"}
+        );
+        Select(btnRepSetLoad)
+    Children:
+      - conRepSetSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnRepSetLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varRepSetError, false);
+                    IfError(
+                        Concurrent(
+                            Refresh(ReportingConfigurations),
+                            Refresh(ReportingPeriods)
+                        );
+                        ClearCollect(
+                            colRepConfigs,
+                            FirstN(SortByColumns(ReportingConfigurations, "ID", SortOrder.Descending), 500)
+                        );
+                        ClearCollect(
+                            colRepPeriods,
+                            FirstN(SortByColumns(ReportingPeriods, "StartDate", SortOrder.Descending), 500)
+                        );
+                        If(
+                            Not(IsBlank(varSelectedConfig)),
+                            Set(varSelectedConfig, LookUp(ReportingConfigurations, ID = varSelectedConfig.ID))
+                        );
+                        If(
+                            Not(IsBlank(varSelectedPeriod)),
+                            Set(varSelectedPeriod, LookUp(ReportingPeriods, ID = varSelectedPeriod.ID))
+                        ),
+                        Set(varRepSetError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل إعدادات التقارير.", "Could not load reporting settings."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnRepSetSaveCfg:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varRepCfgForm, "") = "new",
+                            pid: Coalesce(cmbRepSetCfgProject.Selected.ID, 0),
+                            ptt: Coalesce(cmbRepSetCfgProject.Selected.Title, ""),
+                            prep: cmbRepSetCfgPrep.Selected,
+                            rev: cmbRepSetCfgRev.Selected,
+                            esc: cmbRepSetCfgEsc.Selected
+                        },
+                        If(
+                            Or(IsBlank(Trim(txtRepSetCfgTitle.Text)), pid <= 0, IsBlank(cmbRepSetCfgType.Selected)),
+                            Notify(If(ar, "العنوان والمشروع ونوع التقرير مطلوبة.", "Title, project, and report type are required."), NotificationType.Error),
+                            IfError(
+                                Set(
+                                    varSelectedConfig,
+                                    Patch(
+                                        ReportingConfigurations,
+                                        If(isNew, Defaults(ReportingConfigurations), LookUp(ReportingConfigurations, ID = varSelectedConfig.ID)),
+                                        {
+                                            Title: Trim(txtRepSetCfgTitle.Text),
+                                            ConfigurationNumber: Trim(txtRepSetCfgNumber.Text),
+                                            Project: {Id: pid, Value: ptt},
+                                            ProjectID: pid,
+                                            ReportType: {Value: cmbRepSetCfgType.Selected.Value},
+                                            IsActive: togRepSetCfgActive.Checked,
+                                            Frequency: If(IsBlank(cmbRepSetCfgFreq.Selected), Blank(), {Value: cmbRepSetCfgFreq.Selected.Value}),
+                                            PeriodType: If(IsBlank(cmbRepSetCfgPeriodType.Selected), Blank(), {Value: cmbRepSetCfgPeriodType.Selected.Value}),
+                                            StartDate: dteRepSetCfgStart.SelectedDate,
+                                            EndDate: dteRepSetCfgEnd.SelectedDate,
+                                            IsRecurring: togRepSetCfgRecurring.Checked,
+                                            AutoGenerate: togRepSetCfgAuto.Checked,
+                                            Donor: Trim(txtRepSetCfgDonor.Text),
+                                            DonorTemplateUrl: Trim(txtRepSetCfgDonorUrl.Text),
+                                            PreparerID: If(IsBlank(prep), Blank(), prep.ID),
+                                            ReviewerID: If(IsBlank(rev), Blank(), rev.ID),
+                                            EscalateToID: If(IsBlank(esc), Blank(), esc.ID),
+                                            DueRuleType: If(IsBlank(cmbRepSetCfgDueRule.Selected), Blank(), {Value: cmbRepSetCfgDueRule.Selected.Value}),
+                                            DueDays: If(IsBlank(Trim(txtRepSetCfgDueDays.Text)), Blank(), Value(txtRepSetCfgDueDays.Text)),
+                                            InternalDueDays: If(IsBlank(Trim(txtRepSetCfgIntDays.Text)), Blank(), Value(txtRepSetCfgIntDays.Text)),
+                                            ReminderDaysBefore: Trim(txtRepSetCfgRemind.Text),
+                                            EscalationAfterDays: If(IsBlank(Trim(txtRepSetCfgEscDays.Text)), Blank(), Value(txtRepSetCfgEscDays.Text)),
+                                            Notes: txtRepSetCfgNotes.Text
+                                        }
+                                    )
+                                );
+                                fnRepLog("Reporting Configuration", varSelectedConfig.ID, Coalesce(varSelectedConfig.ConfigurationNumber, varSelectedConfig.Title, ""), If(isNew, "Created", "Updated"), "Info", pid, Coalesce(cmbRepSetCfgProject.Selected.ProjectCode, ""), "", "", "", Trim(txtRepSetCfgTitle.Text));
+                                Set(varRepCfgForm, Blank());
+                                Select(btnRepSetLoad);
+                                Notify(If(ar, "تم حفظ قاعدة التكوين.", "Configuration rule saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ قاعدة التكوين.", "Could not save the configuration rule."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="SaveCfg"
+                  Visible: =false
+                  Width: =1
+            - btnRepSetDelCfg:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", c: varSelectedConfig},
+                        If(
+                            IsBlank(c),
+                            Notify(If(ar, "اختر تكويناً أولاً.", "Select a configuration first."), NotificationType.Warning),
+                            If(
+                                Confirm(If(ar, "حذف قاعدة التكوين؟", "Delete this configuration rule?") & Char(10) & Coalesce(c.Title, "")),
+                                IfError(
+                                    Remove(ReportingConfigurations, LookUp(ReportingConfigurations, ID = c.ID));
+                                    fnRepLog("Reporting Configuration", c.ID, Coalesce(c.ConfigurationNumber, c.Title, ""), "Deleted", "Important", Coalesce(c.ProjectID, 0), "", "", "", "", Coalesce(c.Title, ""));
+                                    Set(varSelectedConfig, Blank());
+                                    Set(varRepCfgForm, Blank());
+                                    Select(btnRepSetLoad);
+                                    Notify(If(ar, "تم الحذف.", "Deleted."), NotificationType.Success),
+                                    Notify(If(ar, "تعذر الحذف.", "Could not delete."), NotificationType.Error)
+                                )
+                            )
+                        )
+                    )
+                  Text: ="DelCfg"
+                  Visible: =false
+                  Width: =1
+            - btnRepSetSavePer:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varRepPerForm, "") = "new"
+                        },
+                        If(
+                            Or(IsBlank(Trim(txtRepSetPerTitle.Text)), IsBlank(dteRepSetPerStart.SelectedDate), IsBlank(dteRepSetPerEnd.SelectedDate)),
+                            Notify(If(ar, "العنوان وتواريخ البداية والنهاية مطلوبة.", "Title, start, and end dates are required."), NotificationType.Error),
+                            IfError(
+                                Set(
+                                    varSelectedPeriod,
+                                    Patch(
+                                        ReportingPeriods,
+                                        If(isNew, Defaults(ReportingPeriods), LookUp(ReportingPeriods, ID = varSelectedPeriod.ID)),
+                                        {
+                                            Title: Trim(txtRepSetPerTitle.Text),
+                                            Year: If(IsBlank(Trim(txtRepSetPerYear.Text)), Year(dteRepSetPerStart.SelectedDate), Value(txtRepSetPerYear.Text)),
+                                            PeriodType: {Value: Coalesce(cmbRepSetPerType.Selected.Value, "Custom")},
+                                            PeriodNumber: If(IsBlank(Trim(txtRepSetPerNum.Text)), Blank(), Value(txtRepSetPerNum.Text)),
+                                            StartDate: dteRepSetPerStart.SelectedDate,
+                                            EndDate: dteRepSetPerEnd.SelectedDate,
+                                            Status: {Value: Coalesce(cmbRepSetPerStatus.Selected.Value, "Open")}
+                                        }
+                                    )
+                                );
+                                fnRepLog("Reporting Period", varSelectedPeriod.ID, Coalesce(varSelectedPeriod.Title, ""), If(isNew, "Created", "Updated"), "Info", 0, "", "", "", "", Trim(txtRepSetPerTitle.Text));
+                                Set(varRepPerForm, Blank());
+                                Select(btnRepSetLoad);
+                                Notify(If(ar, "تم حفظ الفترة.", "Period saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ الفترة.", "Could not save the period."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="SavePer"
+                  Visible: =false
+                  Width: =1
+            - btnRepSetClosePer:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", p: varSelectedPeriod},
+                        If(
+                            IsBlank(p),
+                            Notify(If(ar, "اختر فترة أولاً.", "Select a period first."), NotificationType.Warning),
+                            IfError(
+                                Set(
+                                    varSelectedPeriod,
+                                    Patch(
+                                        ReportingPeriods,
+                                        LookUp(ReportingPeriods, ID = p.ID),
+                                        {Status: {Value: "Closed"}}
+                                    )
+                                );
+                                fnRepLog("Reporting Period", p.ID, Coalesce(p.Title, ""), "Status Changed", "Info", 0, "", "Status", Coalesce(p.Status.Value, ""), "Closed", "");
+                                Select(btnRepSetLoad);
+                                Notify(If(ar, "تم إغلاق الفترة.", "Period closed."), NotificationType.Success),
+                                Notify(If(ar, "تعذر إغلاق الفترة.", "Could not close the period."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="ClosePer"
+                  Visible: =false
+                  Width: =1
+            - btnRepSetArchPer:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", p: varSelectedPeriod},
+                        If(
+                            IsBlank(p),
+                            Notify(If(ar, "اختر فترة أولاً.", "Select a period first."), NotificationType.Warning),
+                            IfError(
+                                Set(
+                                    varSelectedPeriod,
+                                    Patch(
+                                        ReportingPeriods,
+                                        LookUp(ReportingPeriods, ID = p.ID),
+                                        {Status: {Value: "Archived"}}
+                                    )
+                                );
+                                fnRepLog("Reporting Period", p.ID, Coalesce(p.Title, ""), "Status Changed", "Info", 0, "", "Status", Coalesce(p.Status.Value, ""), "Archived", "");
+                                Select(btnRepSetLoad);
+                                Notify(If(ar, "تمت أرشفة الفترة.", "Period archived."), NotificationType.Success),
+                                Notify(If(ar, "تعذر أرشفة الفترة.", "Could not archive the period."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="ArchPer"
+                  Visible: =false
+                  Width: =1
+      - conRepSetPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpRepSetPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpRepSetTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conRepSetHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblRepSetTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "إعدادات التقارير", "Reporting Settings")
+                        Width: =200
+                        Wrap: =false
+                  - btnRepSetRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnRepSetLoad)
+                        Text: =""
+                        Width: =44
+                  - btnRepSetGoCal:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Secondary
+                        Height: =36
+                        Icon: ="Chart"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Navigate(scrReportSchedules, ScreenTransition.None)
+                        Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "التقويم", "Calendar"))
+                        Width: =If(App.Width < 700, 44, 120)
+            - galRepSetTabs:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =40
+                  Items: |-
+                    =Table(
+                        {k: "Configs", en: "Configuration Rules", ar: "قواعد التكوين"},
+                        {k: "Periods", en: "Reporting Periods", ar: "فترات التقارير"},
+                        {k: "Types", en: "Report Types", ar: "أنواع التقارير"}
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =If(Self.Width < 640, 150, Self.Width / 3)
+                  Width: =Parent.Width
+                Children:
+                  - btnRepSetTab:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(ThisItem.k = Coalesce(varRepSetTab, "Configs"), ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =30
+                        OnSelect: |-
+                          =Set(varRepSetTab, ThisItem.k);
+                          Set(varRepCfgForm, Blank());
+                          Set(varRepPerForm, Blank());
+                          Set(varSelectedConfig, Blank());
+                          Set(varSelectedPeriod, Blank())
+                        Text: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+            - lblRepSetError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varRepSetError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل بعض البيانات.", "Some data could not be loaded.")
+                  Visible: =varRepSetError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conRepSetConfigs:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 120
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =Coalesce(varRepSetTab, "Configs") = "Configs"
+                Children:
+                  - conRepSetCfgList:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =Or(App.Width >= 700, IsBlank(varRepCfgForm))
+                        Width: =If(App.Width < 700, Parent.Width, If(IsBlank(varRepCfgForm), Parent.Width, Parent.Width - 448))
+                      Children:
+                        - conRepSetCfgTools:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 160, 40)
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutWrap: =App.Width < 700
+                            Children:
+                              - txtRepSetCfgSearch:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "بحث", "Search")
+                                    Width: =If(App.Width < 700, Parent.Width, 160)
+                              - cmbRepSetCfgFltProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: =Filter(Projects, false)
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    ItemDisplayText: =ThisItem.Title
+                                    Items: =Projects
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 160)
+                              - cmbRepSetCfgFltType:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: =Filter(Choices(ReportingConfigurations.ReportType), false)
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "النوع", "Type")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(ReportingConfigurations.ReportType)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 140)
+                              - cmbRepSetCfgFltActive:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =Filter(Table({Value: "All"}, {Value: "Active"}, {Value: "Inactive"}), Value = "All")
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "النشاط", "Active")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: |-
+                                      =Table({Value: "All"}, {Value: "Active"}, {Value: "Inactive"})
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 120)
+                              - btnRepSetCfgNew:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    Icon: ="Add"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varSelectedConfig, Blank());
+                                      Set(varRepCfgForm, "new")
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "جديد", "New"))
+                                    Width: =If(App.Width < 700, 44, 100)
+                        - conRepSetCfgHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Background")
+                              FillPortions: =0
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Width: =Parent.Width
+                            Children:
+                              - lblRepSetCfgHProject:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    Width: =110
+                              - lblRepSetCfgHType:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FillPortions: =1
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "نوع التقرير", "Report type")
+                                    Width: =80
+                              - lblRepSetCfgHFreq:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "التكرار", "Frequency")
+                                    Visible: =App.Width >= 900
+                                    Width: =100
+                              - lblRepSetCfgHPrep:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "المُعد", "Preparer")
+                                    Visible: =App.Width >= 1100
+                                    Width: =120
+                              - lblRepSetCfgHAct:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "نشط", "Active")
+                                    Width: =64
+                        - galRepSetCfg:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.Height - 88
+                              Items: |-
+                                =With(
+                                    {
+                                        q: Lower(Trim(txtRepSetCfgSearch.Text)),
+                                        fp: cmbRepSetCfgFltProject.Selected,
+                                        ft: cmbRepSetCfgFltType.Selected.Value,
+                                        fa: Coalesce(cmbRepSetCfgFltActive.Selected.Value, "All")
+                                    },
+                                    Filter(
+                                        colRepConfigs,
+                                        And(
+                                            Or(IsBlank(q), q in Lower(Title), q in Lower(Coalesce(ConfigurationNumber, "")), q in Lower(Coalesce(Project.Value, "")), q in Lower(Coalesce(ReportType.Value, ""))),
+                                            Or(IsBlank(fp), ProjectID = fp.ID),
+                                            Or(IsBlank(ft), ReportType.Value = ft),
+                                            Or(fa = "All", And(fa = "Active", IsActive), And(fa = "Inactive", Not(IsActive)))
+                                        )
+                                    )
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =44
+                              Width: =Parent.Width
+                            Children:
+                              - conRepSetCfgRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =If(ThisItem.ID = varSelectedConfig.ID, fxThemeColor("PrimaryLight"), fxThemeColor("Surface"))
+                                    Height: =Parent.TemplateHeight
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =4
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - lblRepSetCfgProject:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =32
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(Projects, ID = ThisItem.ProjectID).ProjectCode, ThisItem.Project.Value, "-")
+                                          Width: =110
+                                    - lblRepSetCfgType:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FillPortions: =1
+                                          Height: =32
+                                          Size: =12
+                                          Text: =ThisItem.ReportType
+                                          Width: =80
+                                    - lblRepSetCfgFreq:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Height: =32
+                                          Size: =12
+                                          Text: =Coalesce(ThisItem.Frequency.Value, "-")
+                                          Visible: =App.Width >= 900
+                                          Width: =100
+                                    - lblRepSetCfgPrep:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Height: =32
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(Employees, ID = ThisItem.PreparerID, FullName), "-")
+                                          Visible: =App.Width >= 1100
+                                          Width: =120
+                                    - lblRepSetCfgAct:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =If(ThisItem.IsActive, fxThemeColor("Success"), fxThemeColor("TextMuted"))
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =32
+                                          Size: =12
+                                          Text: =If(ThisItem.IsActive, "●", "○")
+                                          Width: =36
+                                    - btnRepSetCfgOpen:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Icon: ="Edit"
+                                          OnSelect: |-
+                                            =Set(varSelectedConfig, LookUp(ReportingConfigurations, ID = ThisItem.ID));
+                                            Set(varRepCfgForm, "edit")
+                                          Text: =""
+                                          Width: =36
+                  - conRepSetCfgEditor:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =Not(IsBlank(varRepCfgForm))
+                        Width: =If(App.Width < 700, Parent.Width, 440)
+                      Children:
+                        - conRepSetCfgEdHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnRepSetCfgBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepCfgForm, Blank());
+                                      Set(varSelectedConfig, Blank())
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblRepSetCfgEdTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =14
+                                    Text: |-
+                                      =If(
+                                          varRepCfgForm = "new",
+                                          If(gblLanguage = "Arabic", "تكوين جديد", "New Configuration"),
+                                          If(gblLanguage = "Arabic", "تعديل التكوين", "Edit Configuration")
+                                      )
+                                    Width: =140
+                                    Wrap: =false
+                              - btnRepSetCfgDel:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="Delete"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSetDelCfg)
+                                    Text: =""
+                                    Visible: =varRepCfgForm = "edit"
+                                    Width: =44
+                        - lblRepSetCfgFieldsHint:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =48
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "الاسم، الرقم، المشروع، النوع، التكرار، المانح، المسؤولون، الاستحقاق، والتذكير.", "Name, number, project, type, frequency, donor, owners, due rule, and reminders.")
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec1:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "1 عام", "1 General")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - txtRepSetCfgTitle:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "", Coalesce(varSelectedConfig.Title, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                              Width: =Parent.Width
+                        - txtRepSetCfgNumber:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "", Coalesce(varSelectedConfig.ConfigurationNumber, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "رقم التكوين", "Configuration number")
+                              Width: =Parent.Width
+                        - cmbRepSetCfgProject:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varRepCfgForm = "edit",
+                                    Filter(Projects, ID = Coalesce(varSelectedConfig.ProjectID, varSelectedConfig.Project.Id)),
+                                    If(Coalesce(varSelectedProject.ID, 0) > 0, Filter(Projects, ID = varSelectedProject.ID), Filter(Projects, false))
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                              Items: =Projects
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - cmbRepSetCfgType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: =If(varRepCfgForm = "edit", Filter(Choices(ReportingConfigurations.ReportType), Value = varSelectedConfig.ReportType.Value), Filter(Choices(ReportingConfigurations.ReportType), false))
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع التقرير", "Report type")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ReportingConfigurations.ReportType)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - togRepSetCfgActive:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", true, Coalesce(varSelectedConfig.IsActive, true))
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "نشط", "Is active")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec2:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "2 التكرار", "2 Frequency")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - cmbRepSetCfgFreq:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varRepCfgForm = "edit",
+                                    Filter(Choices(ReportingConfigurations.Frequency), Value = varSelectedConfig.Frequency.Value),
+                                    Filter(Choices(ReportingConfigurations.Frequency), false)
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "التكرار", "Frequency")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ReportingConfigurations.Frequency)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - txtRepSetCfgFreq:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "", Coalesce(varSelectedConfig.Frequency, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "تكرار مخصص (نص)", "Custom frequency text")
+                              Visible: =false
+                              Width: =Parent.Width
+                        - cmbRepSetCfgPeriodType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varRepCfgForm = "edit",
+                                    Filter(Choices(ReportingConfigurations.PeriodType), Value = varSelectedConfig.PeriodType.Value),
+                                    Filter(Choices(ReportingConfigurations.PeriodType), false)
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع الفترة", "Period type")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ReportingConfigurations.PeriodType)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - dteRepSetCfgStart:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              DefaultDate: =If(varRepCfgForm = "new", Today(), varSelectedConfig.StartDate)
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "تاريخ البداية", "Start date")
+                              Width: =Parent.Width
+                        - dteRepSetCfgEnd:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              DefaultDate: =If(varRepCfgForm = "new", Blank(), varSelectedConfig.EndDate)
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "تاريخ النهاية", "End date")
+                              Width: =Parent.Width
+                        - togRepSetCfgRecurring:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", true, Coalesce(varSelectedConfig.IsRecurring, false))
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "متكرر", "Is recurring")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                        - togRepSetCfgAuto:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", true, Coalesce(varSelectedConfig.AutoGenerate, false))
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "توليد تلقائي", "Auto generate")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec3:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "3 المانح", "3 Donor")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - txtRepSetCfgDonor:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "", Coalesce(varSelectedConfig.Donor, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "المانح", "Donor")
+                              Width: =Parent.Width
+                        - txtRepSetCfgDonorUrl:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "", Coalesce(varSelectedConfig.DonorTemplateUrl, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "رابط قالب المانح", "Donor template URL")
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec4:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "4 المسؤولية", "4 Responsibility")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - cmbRepSetCfgPrep:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: =If(varRepCfgForm = "edit", Filter(Employees, ID = varSelectedConfig.PreparerID), Filter(Employees, false))
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المُعِد", "Preparer")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Filter(Employees, Status.Value = "Active")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - cmbRepSetCfgRev:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: =If(varRepCfgForm = "edit", Filter(Employees, ID = varSelectedConfig.ReviewerID), Filter(Employees, false))
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "المراجع", "Reviewer")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Filter(Employees, Status.Value = "Active")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - cmbRepSetCfgEsc:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: =If(And(varRepCfgForm = "edit", Coalesce(varSelectedConfig.EscalateToID, 0) > 0), Filter(Employees, ID = varSelectedConfig.EscalateToID), Filter(Employees, false))
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "التصعيد إلى", "Escalate to")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Filter(Employees, Status.Value = "Active")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec5:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "5 الاستحقاق", "5 Due")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - cmbRepSetCfgDueRule:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varRepCfgForm = "edit",
+                                    Filter(Choices(ReportingConfigurations.DueRuleType), Value = varSelectedConfig.DueRuleType.Value),
+                                    Filter(Choices(ReportingConfigurations.DueRuleType), Value = "Days After Period End")
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "قاعدة الاستحقاق", "Due rule type")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ReportingConfigurations.DueRuleType)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - txtRepSetCfgDueDays:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "14", If(IsBlank(varSelectedConfig.DueDays), "", Text(varSelectedConfig.DueDays)))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "أيام الاستحقاق", "Due days")
+                              Width: =Parent.Width
+                        - txtRepSetCfgIntDays:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "7", If(IsBlank(varSelectedConfig.InternalDueDays), "", Text(varSelectedConfig.InternalDueDays)))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "أيام الاستحقاق الداخلي", "Internal due days")
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec6:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "6 التذكيرات", "6 Reminders")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - txtRepSetCfgRemind:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "14,7,3,1", Coalesce(varSelectedConfig.ReminderDaysBefore, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "أيام التذكير (مفصولة بفاصلة)", "Reminder days before (comma list)")
+                              Width: =Parent.Width
+                        - togRepSetCfgNotifyApp:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =true
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "إشعار داخل التطبيق", "Notify in app")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =false
+                              Width: =Parent.Width
+                        - togRepSetCfgNotifyEmail:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "إشعار بالبريد", "Notify email")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =false
+                              Width: =Parent.Width
+                        - togRepSetCfgNotifyTeams:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "إشعار Teams", "Notify Teams")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =false
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec7:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "7 التصعيد", "7 Escalation")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - txtRepSetCfgEscDays:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "3", If(IsBlank(varSelectedConfig.EscalationAfterDays), "", Text(varSelectedConfig.EscalationAfterDays)))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "أيام التصعيد بعد الاستحقاق", "Escalation after days")
+                              Width: =Parent.Width
+                        - lblRepSetCfgSec8:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Primary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =22
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "8 ملاحظات", "8 Notes")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - txtRepSetCfgNotes:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepCfgForm = "new", "", Coalesce(varSelectedConfig.Notes, ""))
+                              Height: =90
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "ملاحظات", "Notes")
+                              Type: =TextInputType.Multiline
+                              Width: =Parent.Width
+                        - btnRepSetCfgSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnRepSetSaveCfg)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =Parent.Width
+                        - btnRepSetCfgCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =Set(varRepCfgForm, Blank());
+                                Set(varSelectedConfig, Blank())
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =Parent.Width
+            - conRepSetPeriods:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 120
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =Coalesce(varRepSetTab, "Configs") = "Periods"
+                Children:
+                  - conRepSetPerList:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =Or(App.Width >= 700, IsBlank(varRepPerForm))
+                        Width: =If(App.Width < 700, Parent.Width, If(IsBlank(varRepPerForm), Parent.Width, Parent.Width - 328))
+                      Children:
+                        - conRepSetPerTools:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblRepSetPerHint:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "فترات التقارير", "Reporting periods")
+                                    Width: =140
+                                    Wrap: =false
+                              - btnRepSetPerEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    DisplayMode: =If(IsBlank(varSelectedPeriod), DisplayMode.Disabled, DisplayMode.Edit)
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varRepPerForm, "edit")
+                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Visible: =App.Width >= 700
+                                    Width: =80
+                              - btnRepSetPerCloseBar:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    DisplayMode: =If(IsBlank(varSelectedPeriod), DisplayMode.Disabled, DisplayMode.Edit)
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSetClosePer)
+                                    Text: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                                    Visible: =App.Width >= 900
+                                    Width: =80
+                              - btnRepSetPerArchBar:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    DisplayMode: =If(IsBlank(varSelectedPeriod), DisplayMode.Disabled, DisplayMode.Edit)
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSetArchPer)
+                                    Text: =If(gblLanguage = "Arabic", "أرشفة", "Archive")
+                                    Visible: =App.Width >= 900
+                                    Width: =90
+                              - btnRepSetPerNew:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    Icon: ="Add"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varSelectedPeriod, Blank());
+                                      Set(varRepPerForm, "new")
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "فترة جديدة", "New period"))
+                                    Width: =If(App.Width < 700, 44, 110)
+                        - conRepSetPerHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Background")
+                              FillPortions: =0
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingLeft: =8
+                              PaddingRight: =8
+                              Width: =Parent.Width
+                            Children:
+                              - lblRepSetPerHYear:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "السنة", "Year")
+                                    Width: =64
+                              - lblRepSetPerHType:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "النوع", "Type")
+                                    Width: =110
+                              - lblRepSetPerHNum:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FillPortions: =1
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الفترة", "Period")
+                                    Width: =80
+                              - lblRepSetPerHStart:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "البداية", "Start")
+                                    Visible: =App.Width >= 900
+                                    Width: =88
+                              - lblRepSetPerHEnd:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "النهاية", "End")
+                                    Visible: =App.Width >= 900
+                                    Width: =88
+                              - lblRepSetPerHStat:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =24
+                                    Size: =10
+                                    Text: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    Width: =90
+                        - galRepSetPer:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Fill: =fxThemeColor("Surface")
+                              Height: =Parent.Height - 80
+                              Items: =SortByColumns(colRepPeriods, "Year", SortOrder.Descending, "StartDate", SortOrder.Ascending)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =44
+                              Width: =Parent.Width
+                            Children:
+                              - conRepSetPerRow:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =If(ThisItem.ID = varSelectedPeriod.ID, fxThemeColor("PrimaryLight"), fxThemeColor("Surface"))
+                                    Height: =Parent.TemplateHeight
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =4
+                                    PaddingLeft: =8
+                                    PaddingRight: =8
+                                    Width: =Parent.TemplateWidth
+                                  Children:
+                                    - btnRepSetPerPick:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =If(ThisItem.ID = varSelectedPeriod.ID, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                                          OnSelect: =Set(varSelectedPeriod, LookUp(ReportingPeriods, ID = ThisItem.ID))
+                                          Text: =""
+                                          Width: =28
+                                    - lblRepSetPerYear:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =32
+                                          Size: =12
+                                          Text: =Text(Coalesce(ThisItem.Year, Year(ThisItem.StartDate)))
+                                          Width: =64
+                                    - lblRepSetPerType:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Height: =32
+                                          Size: =12
+                                          Text: =Coalesce(ThisItem.PeriodType.Value, "-")
+                                          Width: =110
+                                    - lblRepSetPerNum:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FillPortions: =1
+                                          Height: =32
+                                          Size: =12
+                                          Text: |-
+                                            =With(
+                                                {n: Coalesce(ThisItem.PeriodNumber, 0), kind: Lower(Coalesce(ThisItem.PeriodType.Value, ""))},
+                                                If(
+                                                    kind = "quarterly" || kind = "quarter",
+                                                    "Q" & Text(n),
+                                                    kind = "monthly" || kind = "month",
+                                                    Switch(n, 1, "Jan", 2, "Feb", 3, "Mar", 4, "Apr", 5, "May", 6, "Jun", 7, "Jul", 8, "Aug", 9, "Sep", 10, "Oct", 11, "Nov", 12, "Dec", Coalesce(ThisItem.Title, Text(n))),
+                                                    Coalesce(ThisItem.Title, Text(n))
+                                                )
+                                            )
+                                          Width: =80
+                                    - lblRepSetPerStart:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Height: =32
+                                          Size: =12
+                                          Text: =If(IsBlank(ThisItem.StartDate), "-", Text(ThisItem.StartDate, "dd mmm"))
+                                          Visible: =App.Width >= 900
+                                          Width: =88
+                                    - lblRepSetPerEnd:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Height: =32
+                                          Size: =12
+                                          Text: =If(IsBlank(ThisItem.EndDate), "-", Text(ThisItem.EndDate, "dd mmm"))
+                                          Visible: =App.Width >= 900
+                                          Width: =88
+                                    - lblRepSetPerStat:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FontWeight: =FontWeight.Semibold
+                                          Height: =32
+                                          Size: =12
+                                          Text: =Coalesce(ThisItem.Status.Value, "-")
+                                          Width: =90
+                  - conRepSetPerEditor:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =Not(IsBlank(varRepPerForm))
+                        Width: =If(App.Width < 700, Parent.Width, 320)
+                      Children:
+                        - conRepSetPerEdHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnRepSetPerBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varRepPerForm, Blank());
+                                      Set(varSelectedPeriod, Blank())
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblRepSetPerEdTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =14
+                                    Text: |-
+                                      =If(
+                                          varRepPerForm = "new",
+                                          If(gblLanguage = "Arabic", "فترة جديدة", "New Period"),
+                                          If(gblLanguage = "Arabic", "تعديل الفترة", "Edit Period")
+                                      )
+                                    Width: =140
+                                    Wrap: =false
+                        - txtRepSetPerTitle:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepPerForm = "new", "", Coalesce(varSelectedPeriod.Title, ""))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                              Width: =Parent.Width
+                        - txtRepSetPerYear:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepPerForm = "new", Text(Year(Today())), Text(Coalesce(varSelectedPeriod.Year, Year(varSelectedPeriod.StartDate))))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "السنة", "Year")
+                              Width: =Parent.Width
+                        - cmbRepSetPerType:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varRepPerForm = "edit",
+                                    Filter(Choices(ReportingPeriods.PeriodType), Value = varSelectedPeriod.PeriodType.Value),
+                                    Filter(Choices(ReportingPeriods.PeriodType), Value = "Quarter")
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع الفترة", "Period type")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ReportingPeriods.PeriodType)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - txtRepSetPerNum:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varRepPerForm = "new", "", If(IsBlank(varSelectedPeriod.PeriodNumber), "", Text(varSelectedPeriod.PeriodNumber)))
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "رقم الفترة", "Period number")
+                              Width: =Parent.Width
+                        - dteRepSetPerStart:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              DefaultDate: =If(varRepPerForm = "new", Today(), varSelectedPeriod.StartDate)
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "تاريخ البداية", "Start date")
+                              Width: =Parent.Width
+                        - dteRepSetPerEnd:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              DefaultDate: =If(varRepPerForm = "new", DateAdd(Today(), 90, TimeUnit.Days), varSelectedPeriod.EndDate)
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "تاريخ النهاية", "End date")
+                              Width: =Parent.Width
+                        - cmbRepSetPerStatus:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varRepPerForm = "edit",
+                                    Filter(Choices(ReportingPeriods.Status), Value = varSelectedPeriod.Status.Value),
+                                    Filter(Choices(ReportingPeriods.Status), Value = "Open")
+                                )
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                              IsSearchable: =false
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ReportingPeriods.Status)
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - btnRepSetPerSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnRepSetSavePer)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =Parent.Width
+                        - btnRepSetPerClose:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnRepSetClosePer)
+                              Text: =If(gblLanguage = "Arabic", "إغلاق الفترة", "Close Period")
+                              Visible: =And(varRepPerForm = "edit", Coalesce(varSelectedPeriod.Status.Value, "") <> "Closed")
+                              Width: =Parent.Width
+                        - btnRepSetPerArch:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnRepSetArchPer)
+                              Text: =If(gblLanguage = "Arabic", "أرشفة", "Archive")
+                              Visible: =And(varRepPerForm = "edit", Coalesce(varSelectedPeriod.Status.Value, "") <> "Archived")
+                              Width: =Parent.Width
+                        - btnRepSetPerCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =Set(varRepPerForm, Blank());
+                                Set(varSelectedPeriod, Blank())
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =Parent.Width
+            - conRepSetTypes:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 120
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =Coalesce(varRepSetTab, "Configs") = "Types"
+                Children:
+                  - lblRepSetTypesHint:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =12
+                        Text: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              "مرجع لأنواع التقارير (اختيارات SharePoint غير قابلة للتعديل من هنا). يُستخدم في ReportSchedules.ReportType و ProjectReports.ReportType.",
+                              "Reference labels for report types (SharePoint choices are not editable here). Used by ReportSchedules.ReportType and ProjectReports.ReportType."
+                          )
+                        Width: =Parent.Width
+                  - galRepSetTypesChoices:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Min(220, 40 + CountRows(Choices(ReportSchedules.ReportType)) * 36)
+                        Items: =Choices(ReportSchedules.ReportType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =36
+                        Width: =Parent.Width
+                      Children:
+                        - lblRepSetTypeChoice:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =32
+                              Text: =ThisItem.Value
+                              Width: =Parent.TemplateWidth - 16
+                              Wrap: =false
+                              X: =8
+                              Y: =2
+                  - lblRepSetTypesDoc:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("Primary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =24
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Text: =If(gblLanguage = "Arabic", "مرجع موثّق للأنواع الشائعة", "Documented common type reference")
+                        Width: =Parent.Width
+                        Wrap: =false
+                  - galRepSetTypesRef:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.Height - 280
+                        Items: =colRepTypeRef
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =48
+                        Width: =Parent.Width
+                      Children:
+                        - lblRepSetTypeRef:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Text: =ThisItem.k & " — " & If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                              Width: =Parent.TemplateWidth - 16
+                              Wrap: =false
+                              X: =8
+                              Y: =4
+      - conRepSetNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpRepSetNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpRepSetTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Settings"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrReporting, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "إعدادات التقارير", "Reporting Settings")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpRepSetPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 74, Module: "Reports", Title: If(gblLanguage = "Arabic", "القائمة", "Reports"), Icon: "Document", Visible: true},
+                  {ID: 75, Module: "Schedules", Title: If(gblLanguage = "Arabic", "الجداول", "Schedules"), Icon: "Calendar", Visible: true},
+                  {ID: 76, Module: "ReportingSettings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true},
+                  {ID: 60, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Reports", Navigate(scrReports, ScreenTransition.None),
+                  "Schedules", Navigate(scrReportSchedules, ScreenTransition.None),
+                  "ReportingSettings", Navigate(scrReportingSettings, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

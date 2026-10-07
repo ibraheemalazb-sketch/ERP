@@ -1,0 +1,1061 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrReportSchedules:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "Reporting");
+        Set(varNavSelectedID, 75);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        Set(varRepCalMode, Coalesce(varRepCalMode, "List"));
+        If(IsBlank(varRepSchForm), Set(varRepSchForm, "view"));
+        Set(varRepSchError, false);
+        Select(btnRepSchLoad)
+    Children:
+      - conRepSchSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnRepSchLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varRepSchError, false);
+                    Clear(colRepSchedules);
+                    IfError(
+                        Refresh(ReportSchedules);
+                        If(
+                            Coalesce(varSelectedProject.ID, Coalesce(varRepSchProject.ID, 0)) > 0,
+                            ClearCollect(
+                                colRepSchedules,
+                                Filter(
+                                    ReportSchedules,
+                                    ProjectID = Coalesce(varRepSchProject.ID, varSelectedProject.ID)
+                                )
+                            ),
+                            ClearCollect(
+                                colRepSchedules,
+                                FirstN(SortByColumns(ReportSchedules, "DueDate", SortOrder.Ascending), 500)
+                            )
+                        );
+                        Select(btnRepSchSync),
+                        Set(varRepSchError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل جداول التقارير.", "Could not load report schedules."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnRepSchSync:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =ClearCollect(
+                        colRepSchView,
+                        SortByColumns(
+                            AddColumns(
+                                Filter(
+                                    colRepSchedules,
+                                    And(
+                                        Or(IsBlank(varRepSchProject), ProjectID = varRepSchProject.ID),
+                                        Or(IsBlank(varRepSchType), ReportType.Value = varRepSchType),
+                                        Or(IsBlank(varRepSchPreparer), PreparerID = varRepSchPreparer.ID),
+                                        Or(IsBlank(varRepSchStatus), Status.Value = varRepSchStatus)
+                                    )
+                                ),
+                                DueWeekStart,
+                                If(
+                                    IsBlank(DueDate),
+                                    Blank(),
+                                    DateAdd(DueDate, 1 - Weekday(DueDate, StartOfWeek.Monday), TimeUnit.Days)
+                                ),
+                                DueMonthKey,
+                                If(IsBlank(DueDate), "", Text(DueDate, "yyyymm"))
+                            ),
+                            "DueDate",
+                            SortOrder.Ascending
+                        )
+                    );
+                    If(
+                        Not(IsBlank(varSelectedSchedule)),
+                        Set(varSelectedSchedule, LookUp(colRepSchedules, ID = varSelectedSchedule.ID))
+                    )
+                  Text: ="Sync"
+                  Visible: =false
+                  Width: =1
+            - btnRepSchStart:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            sch: varSelectedSchedule
+                        },
+                        If(
+                            IsBlank(sch),
+                            Notify(If(ar, "اختر جدولاً أولاً.", "Select a schedule first."), NotificationType.Warning),
+                            If(
+                                Coalesce(sch.ReportID, 0) > 0,
+                                Notify(If(ar, "هذا الجدول مرتبط بتقرير موجود.", "This schedule already has a linked report."), NotificationType.Information);
+                                Select(btnRepSchOpen),
+                                IfError(
+                                    Set(
+                                        varRepSchNewReport,
+                                        Patch(
+                                            ProjectReports,
+                                            Defaults(ProjectReports),
+                                            {
+                                                Title: Coalesce(sch.ReportType.Value, "") & " - " & Coalesce(sch.Project.Value, ""),
+                                                ReportNumber: "RPT-" & Text(sch.ID) & "-" & Text(Now(), "yyyymmdd"),
+                                                Project: {Id: sch.ProjectID, Value: Coalesce(sch.Project.Value, "")},
+                                                ProjectID: sch.ProjectID,
+                                                ReportType: {Value: Coalesce(sch.ReportType.Value, "")},
+                                                ReportingPeriod: If(
+                                                    Coalesce(sch.ReportingPeriodID, sch.ReportingPeriod.Id, 0) > 0,
+                                                    {Id: Coalesce(sch.ReportingPeriodID, sch.ReportingPeriod.Id), Value: Coalesce(sch.ReportingPeriod.Value, "")},
+                                                    Blank()
+                                                ),
+                                                ReportingPeriodID: Coalesce(sch.ReportingPeriodID, sch.ReportingPeriod.Id),
+                                                Schedule: {Id: sch.ID, Value: Coalesce(sch.ScheduleNumber, sch.Title, Text(sch.ID))},
+                                                ScheduleID: sch.ID,
+                                                PreparedByID: Coalesce(sch.PreparerID, sch.Preparer.Id, varMeID),
+                                                Status: {Value: "Draft"}
+                                            }
+                                        )
+                                    );
+                                    If(
+                                        IsBlank(varRepSchNewReport),
+                                        Notify(If(ar, "تعذر إنشاء التقرير.", "Could not create the report."), NotificationType.Error),
+                                        Set(
+                                            varSelectedSchedule,
+                                            Patch(
+                                                ReportSchedules,
+                                                LookUp(ReportSchedules, ID = sch.ID),
+                                                {
+                                                    ReportID: varRepSchNewReport.ID,
+                                                    Status: {Value: "In Preparation"}
+                                                }
+                                            )
+                                        );
+                                        Set(varSelectedReport, varRepSchNewReport);
+                                        Set(varReportForm, "edit");
+                                        Navigate(scrReportEditor, ScreenTransition.Cover)
+                                    ),
+                                    Notify(If(ar, "تعذر بدء التقرير.", "Could not start the report."), NotificationType.Error)
+                                )
+                            )
+                        )
+                    )
+                  Text: ="Start"
+                  Visible: =false
+                  Width: =1
+            - btnRepSchOpen:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            rid: Coalesce(varSelectedSchedule.ReportID, 0)
+                        },
+                        If(
+                            rid <= 0,
+                            Notify(If(ar, "لا يوجد تقرير مرتبط.", "No linked report."), NotificationType.Warning),
+                            Set(varSelectedReport, LookUp(ProjectReports, ID = rid));
+                            If(
+                                IsBlank(varSelectedReport),
+                                Notify(If(ar, "تعذر العثور على التقرير.", "Linked report was not found."), NotificationType.Error),
+                                If(
+                                    Or(
+                                        varSelectedReport.Status.Value = "Draft",
+                                        varSelectedReport.Status.Value = "In Preparation",
+                                        varSelectedReport.Status.Value = "Returned"
+                                    ),
+                                    Set(varReportForm, "edit");
+                                    Navigate(scrReportEditor, ScreenTransition.Cover),
+                                    Set(varReportForm, "review");
+                                    Navigate(scrReportReview, ScreenTransition.Cover)
+                                )
+                            )
+                        )
+                    )
+                  Text: ="Open"
+                  Visible: =false
+                  Width: =1
+            - btnRepSchSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", sch: varSelectedSchedule},
+                        If(
+                            IsBlank(sch),
+                            Notify(If(ar, "اختر جدولاً أولاً.", "Select a schedule first."), NotificationType.Warning),
+                            IfError(
+                                Set(
+                                    varSelectedSchedule,
+                                    Patch(
+                                        ReportSchedules,
+                                        LookUp(ReportSchedules, ID = sch.ID),
+                                        {
+                                            Title: Trim(txtRepSchEditTitle.Text),
+                                            PeriodStartDate: dteRepSchEditStart.SelectedDate,
+                                            PeriodEndDate: dteRepSchEditEnd.SelectedDate,
+                                            InternalDueDate: dteRepSchEditInternal.SelectedDate,
+                                            DueDate: dteRepSchEditDue.SelectedDate,
+                                            Preparer: If(
+                                                IsBlank(cmbRepSchEditPrep.Selected),
+                                                Blank(),
+                                                {Id: cmbRepSchEditPrep.Selected.ID, Value: cmbRepSchEditPrep.Selected.FullName}
+                                            ),
+                                            PreparerID: If(IsBlank(cmbRepSchEditPrep.Selected), Blank(), cmbRepSchEditPrep.Selected.ID),
+                                            Reviewer: If(
+                                                IsBlank(cmbRepSchEditRev.Selected),
+                                                Blank(),
+                                                {Id: cmbRepSchEditRev.Selected.ID, Value: cmbRepSchEditRev.Selected.FullName}
+                                            ),
+                                            ReviewerID: If(IsBlank(cmbRepSchEditRev.Selected), Blank(), cmbRepSchEditRev.Selected.ID),
+                                            Status: {Value: Coalesce(cmbRepSchEditStatus.Selected.Value, sch.Status.Value)},
+                                            ReminderDaysBefore: Trim(txtRepSchEditRemind.Text),
+                                            EscalationAfterDays: If(
+                                                IsBlank(Trim(txtRepSchEditEsc.Text)),
+                                                Blank(),
+                                                Value(txtRepSchEditEsc.Text)
+                                            ),
+                                            Notes: txtRepSchEditNotes.Text
+                                        }
+                                    )
+                                );
+                                Set(varRepSchForm, "view");
+                                Select(btnRepSchLoad);
+                                Notify(If(ar, "تم حفظ الجدول.", "Schedule saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ الجدول.", "Could not save the schedule."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+            - btnRepSchWaive:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {ar: gblLanguage = "Arabic", sch: varSelectedSchedule},
+                        If(
+                            IsBlank(sch),
+                            Notify(If(ar, "اختر جدولاً أولاً.", "Select a schedule first."), NotificationType.Warning),
+                            If(
+                                Confirm(If(ar, "هل تريد إعفاء هذا الجدول؟", "Waive this schedule?") & Char(10) & Coalesce(sch.ScheduleNumber, sch.Title, "")),
+                                IfError(
+                                    Set(
+                                        varSelectedSchedule,
+                                        Patch(
+                                            ReportSchedules,
+                                            LookUp(ReportSchedules, ID = sch.ID),
+                                            {Status: {Value: "Waived"}}
+                                        )
+                                    );
+                                    Select(btnRepSchLoad);
+                                    Notify(If(ar, "تم إعفاء الجدول.", "Schedule waived."), NotificationType.Success),
+                                    Notify(If(ar, "تعذر إعفاء الجدول.", "Could not waive the schedule."), NotificationType.Error)
+                                )
+                            )
+                        )
+                    )
+                  Text: ="Waive"
+                  Visible: =false
+                  Width: =1
+      - conRepSchPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpRepSchPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpRepSchTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conRepSchHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblRepSchTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "جدول التقارير", "Reporting Calendar")
+                        Width: =200
+                        Wrap: =false
+                  - btnRepSchRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnRepSchLoad)
+                        Text: =""
+                        Width: =44
+                  - btnRepSchGoSettings:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Secondary
+                        Height: =36
+                        Icon: ="Settings"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Navigate(scrReportingSettings, ScreenTransition.None)
+                        Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "الإعدادات", "Settings"))
+                        Width: =If(App.Width < 700, 44, 120)
+            - galRepSchMode:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =40
+                  Items: |-
+                    =Table(
+                        {k: "Month", en: "Month", ar: "شهر"},
+                        {k: "Week", en: "Week", ar: "أسبوع"},
+                        {k: "List", en: "List", ar: "قائمة"}
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =110
+                  Width: =Parent.Width
+                Children:
+                  - btnRepSchMode:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(ThisItem.k = Coalesce(varRepCalMode, "List"), ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =30
+                        OnSelect: =Set(varRepCalMode, ThisItem.k)
+                        Text: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+            - conRepSchFilters:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 180, 44)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =App.Width < 700
+                Children:
+                  - cmbRepSchProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        DefaultSelectedItems: =If(IsBlank(varRepSchProject), Filter(Projects, false), Filter(Projects, ID = varRepSchProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                        ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  ForAll(
+                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                      LookUp(Projects, ID = access.ProjectID)
+                                  ),
+                                  Not(IsBlank(ID))
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepSchProject, Self.Selected);
+                          Select(btnRepSchSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 200)
+                  - cmbRepSchType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "نوع التقرير", "Report type")
+                        DefaultSelectedItems: =If(IsBlank(varRepSchType), Filter(Choices(ReportSchedules.ReportType), false), Filter(Choices(ReportSchedules.ReportType), Value = varRepSchType))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأنواع", "All types")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ReportSchedules.ReportType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepSchType, Self.Selected.Value);
+                          Select(btnRepSchSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - cmbRepSchPreparer:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المُعِد", "Preparer")
+                        DefaultSelectedItems: =If(IsBlank(varRepSchPreparer), Filter(Employees, false), Filter(Employees, ID = varRepSchPreparer.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المعدين", "All preparers")
+                        ItemDisplayText: =ThisItem.FullName
+                        Items: =Filter(Employees, Status.Value = "Active")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepSchPreparer, Self.Selected);
+                          Select(btnRepSchSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbRepSchStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        DefaultSelectedItems: =If(IsBlank(varRepSchStatus), Filter(Choices(ReportSchedules.Status), false), Filter(Choices(ReportSchedules.Status), Value = varRepSchStatus))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ReportSchedules.Status)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varRepSchStatus, Self.Selected.Value);
+                          Select(btnRepSchSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 150)
+                  - btnRepSchClear:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varRepSchProject, Blank());
+                          Set(varRepSchType, Blank());
+                          Set(varRepSchPreparer, Blank());
+                          Set(varRepSchStatus, Blank());
+                          Reset(cmbRepSchProject);
+                          Reset(cmbRepSchType);
+                          Reset(cmbRepSchPreparer);
+                          Reset(cmbRepSchStatus);
+                          Select(btnRepSchSync)
+                        Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                        Width: =80
+            - lblRepSchError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varRepSchError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل بعض الجداول.", "Some schedules could not be loaded.")
+                  Visible: =varRepSchError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - lblRepSchModeHint:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("TextMuted")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(Coalesce(varRepCalMode, "List") = "List", 0, 20)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =11
+                  Text: |-
+                    =If(
+                        gblLanguage = "Arabic",
+                        "عرض مجمّع حسب أسبوع الاستحقاق (تقويم كامل اختياري لاحقاً).",
+                        "Grouped by due week for now (full calendar optional later)."
+                    )
+                  Visible: =Coalesce(varRepCalMode, "List") <> "List"
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conRepSchBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 220
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - galRepSchList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =If(App.Width < 700, 1, 1)
+                        Height: =Parent.Height
+                        Items: |-
+                          =If(
+                              Coalesce(varRepCalMode, "List") = "List",
+                              colRepSchView,
+                              SortByColumns(colRepSchView, "DueWeekStart", SortOrder.Ascending, "DueDate", SortOrder.Ascending)
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =If(App.Width < 700, 108, 96)
+                        Visible: =Or(App.Width >= 700, IsBlank(varSelectedSchedule))
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - If(IsBlank(varSelectedSchedule), 0, 328))
+                      Children:
+                        - btnRepSchRow:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Align: =Align.Left
+                              Appearance: =If(ThisItem.ID = varSelectedSchedule.ID, ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                              Height: =If(App.Width < 700, 100, 88)
+                              OnSelect: |-
+                                =Set(varSelectedSchedule, LookUp(colRepSchedules, ID = ThisItem.ID));
+                                Set(varRepSchForm, "view")
+                              Text: |-
+                                =Concatenate(
+                                    Coalesce(ThisItem.ScheduleNumber, ThisItem.Title, "#" & Text(ThisItem.ID)),
+                                    If(
+                                        And(Coalesce(varRepCalMode, "List") <> "List", Not(IsBlank(ThisItem.DueWeekStart))),
+                                        " · W" & Text(ThisItem.DueWeekStart, "yyyy-mm-dd"),
+                                        ""
+                                    ),
+                                    Char(10),
+                                    Coalesce(ThisItem.Project.Value, "-"),
+                                    " · ",
+                                    Coalesce(ThisItem.ReportType.Value, "-"),
+                                    Char(10),
+                                    Coalesce(ThisItem.ReportingPeriod.Value, "-"),
+                                    " · ",
+                                    If(IsBlank(ThisItem.PeriodStartDate), "-", Text(ThisItem.PeriodStartDate, "yyyy-mm-dd")),
+                                    "–",
+                                    If(IsBlank(ThisItem.PeriodEndDate), "-", Text(ThisItem.PeriodEndDate, "yyyy-mm-dd")),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "داخلي: ", "Internal: "),
+                                    If(IsBlank(ThisItem.InternalDueDate), "-", Text(ThisItem.InternalDueDate, "yyyy-mm-dd")),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "استحقاق: ", "Due: "),
+                                    If(IsBlank(ThisItem.DueDate), "-", Text(ThisItem.DueDate, "yyyy-mm-dd")),
+                                    Char(10),
+                                    Coalesce(ThisItem.Preparer.Value, "-"),
+                                    " / ",
+                                    Coalesce(ThisItem.Reviewer.Value, "-"),
+                                    " · ",
+                                    Coalesce(ThisItem.Status.Value, "-"),
+                                    " · R",
+                                    Text(Coalesce(ThisItem.ReminderCount, 0)),
+                                    If(Coalesce(ThisItem.IsEscalated, false), " · !", "")
+                                )
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =4
+                  - conRepSchDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =Not(IsBlank(varSelectedSchedule))
+                        Width: =If(App.Width < 700, Parent.Width, 320)
+                      Children:
+                        - conRepSchDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnRepSchBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varSelectedSchedule, Blank());
+                                      Set(varRepSchForm, "view")
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblRepSchDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =14
+                                    Text: =Coalesce(varSelectedSchedule.Title, varSelectedSchedule.ScheduleNumber, "")
+                                    Width: =120
+                                    Wrap: =false
+                        - lblRepSchDetView:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =220
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =With(
+                                    {ar: gblLanguage = "Arabic", s: varSelectedSchedule},
+                                    If(ar, "المشروع: ", "Project: ") & Coalesce(s.Project.Value, "-") & Char(10) &
+                                    If(ar, "الفترة: ", "Period: ") & Coalesce(s.ReportingPeriod.Value, "-") & Char(10) &
+                                    If(ar, "من–إلى: ", "Dates: ") &
+                                    If(IsBlank(s.PeriodStartDate), "-", Text(s.PeriodStartDate, "yyyy-mm-dd")) & " – " &
+                                    If(IsBlank(s.PeriodEndDate), "-", Text(s.PeriodEndDate, "yyyy-mm-dd")) & Char(10) &
+                                    If(ar, "داخلي: ", "Internal due: ") & If(IsBlank(s.InternalDueDate), "-", Text(s.InternalDueDate, "yyyy-mm-dd")) & Char(10) &
+                                    If(ar, "الاستحقاق: ", "Due: ") & If(IsBlank(s.DueDate), "-", Text(s.DueDate, "yyyy-mm-dd")) & Char(10) &
+                                    If(ar, "المُعِد: ", "Preparer: ") & Coalesce(s.Preparer.Value, "-") & Char(10) &
+                                    If(ar, "المراجع: ", "Reviewer: ") & Coalesce(s.Reviewer.Value, "-") & Char(10) &
+                                    If(ar, "تذكيرات قبل: ", "Reminder days before: ") & Coalesce(s.ReminderDaysBefore, "-") & Char(10) &
+                                    If(ar, "التذكير التالي: ", "Next reminder: ") & If(IsBlank(s.NextReminderDate), "-", Text(s.NextReminderDate, "yyyy-mm-dd")) & Char(10) &
+                                    If(ar, "تصعيد بعد: ", "Escalate after: ") & Text(Coalesce(s.EscalationAfterDays, 0)) & Char(10) &
+                                    If(ar, "مُصعَّد: ", "Escalated: ") & If(Coalesce(s.IsEscalated, false), If(ar, "نعم", "Yes"), If(ar, "لا", "No")) & Char(10) &
+                                    If(ar, "الحالة: ", "Status: ") & Coalesce(s.Status.Value, "-") & Char(10) &
+                                    If(ar, "ملاحظات: ", "Notes: ") & Coalesce(s.Notes, "-")
+                                )
+                              Visible: =Coalesce(varRepSchForm, "view") <> "edit"
+                              Width: =Parent.Width
+                        - conRepSchEdit:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =520
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =Coalesce(varRepSchForm, "view") = "edit"
+                            Children:
+                              - txtRepSchEditTitle:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Default: =Coalesce(varSelectedSchedule.Title, "")
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                                    Width: =Parent.Width
+                              - dteRepSchEditStart:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =varSelectedSchedule.PeriodStartDate
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "بداية الفترة", "Period start")
+                                    Width: =Parent.Width
+                              - dteRepSchEditEnd:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =varSelectedSchedule.PeriodEndDate
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "نهاية الفترة", "Period end")
+                                    Width: =Parent.Width
+                              - dteRepSchEditInternal:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =varSelectedSchedule.InternalDueDate
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "الاستحقاق الداخلي", "Internal due")
+                                    Width: =Parent.Width
+                              - dteRepSchEditDue:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =varSelectedSchedule.DueDate
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "تاريخ الاستحقاق", "Due date")
+                                    Width: =Parent.Width
+                              - cmbRepSchEditPrep:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: =Filter(Employees, ID = Coalesce(varSelectedSchedule.PreparerID, varSelectedSchedule.Preparer.Id))
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المُعِد", "Preparer")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =Filter(Employees, Status.Value = "Active")
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbRepSchEditRev:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: =Filter(Employees, ID = Coalesce(varSelectedSchedule.ReviewerID, varSelectedSchedule.Reviewer.Id))
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المراجع", "Reviewer")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =Filter(Employees, Status.Value = "Active")
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbRepSchEditStatus:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: =Filter(Choices(ReportSchedules.Status), Value = varSelectedSchedule.Status.Value)
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(ReportSchedules.Status)
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - txtRepSchEditRemind:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Default: =Coalesce(varSelectedSchedule.ReminderDaysBefore, "")
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "أيام التذكير (مفصولة بفاصلة)", "Reminder days (comma list)")
+                                    Width: =Parent.Width
+                              - txtRepSchEditEsc:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Default: =If(IsBlank(varSelectedSchedule.EscalationAfterDays), "", Text(varSelectedSchedule.EscalationAfterDays))
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "أيام التصعيد", "Escalation after days")
+                                    Width: =Parent.Width
+                              - txtRepSchEditNotes:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Default: =Coalesce(varSelectedSchedule.Notes, "")
+                                    Height: =80
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "ملاحظات", "Notes")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - btnRepSchEditSave:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSchSave)
+                                    Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                                    Width: =Parent.Width
+                              - btnRepSchEditCancel:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varRepSchForm, "view")
+                                    Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                                    Width: =Parent.Width
+                        - conRepSchActions:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =170
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =And(Not(IsBlank(varSelectedSchedule)), Coalesce(varRepSchForm, "view") <> "edit")
+                            Children:
+                              - btnRepSchActStart:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSchStart)
+                                    Text: =If(gblLanguage = "Arabic", "بدء تقرير", "Start Report")
+                                    Visible: =Coalesce(varSelectedSchedule.ReportID, 0) <= 0
+                                    Width: =Parent.Width
+                              - btnRepSchActOpen:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSchOpen)
+                                    Text: =If(gblLanguage = "Arabic", "فتح التقرير", "Open Report")
+                                    Visible: =Coalesce(varSelectedSchedule.ReportID, 0) > 0
+                                    Width: =Parent.Width
+                              - btnRepSchActEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varRepSchForm, "edit")
+                                    Text: =If(gblLanguage = "Arabic", "تعديل الجدول", "Edit Schedule")
+                                    Width: =Parent.Width
+                              - btnRepSchActWaive:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnRepSchWaive)
+                                    Text: =If(gblLanguage = "Arabic", "إعفاء", "Waive")
+                                    Visible: =Coalesce(varSelectedSchedule.Status.Value, "") <> "Waived"
+                                    Width: =Parent.Width
+      - conRepSchNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpRepSchNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpRepSchTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Chart"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrReporting, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "جدول التقارير", "Reporting Calendar")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpRepSchPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 74, Module: "Reports", Title: If(gblLanguage = "Arabic", "القائمة", "Reports"), Icon: "Document", Visible: true},
+                  {ID: 75, Module: "Schedules", Title: If(gblLanguage = "Arabic", "الجداول", "Schedules"), Icon: "Calendar", Visible: true},
+                  {ID: 76, Module: "ReportingSettings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true},
+                  {ID: 60, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Reports", Navigate(scrReports, ScreenTransition.None),
+                  "Schedules", Navigate(scrReportSchedules, ScreenTransition.None),
+                  "ReportingSettings", Navigate(scrReportingSettings, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

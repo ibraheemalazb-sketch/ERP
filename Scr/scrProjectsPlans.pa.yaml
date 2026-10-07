@@ -1,0 +1,1649 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrProjectsPlans:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Programs");
+        Set(varCurrentScreen, "Programs");
+        Set(VarProgrammodule, "PPlans");
+        Set(varNavSelectedID, 23);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        If(IsBlank(VarPlanModule), Set(VarPlanModule, "General"));
+        If(IsBlank(varGanttViewMode), Set(varGanttViewMode, "Day"));
+        If(IsBlank(varGanttDayWidth), Set(varGanttDayWidth, 28));
+        Set(varShowPlanningModal, false);
+        If(
+            And(IsBlank(gblPlanningProject), Coalesce(varSelectedProject.ID, 0) > 0),
+            Set(gblPlanningProject, varSelectedProject)
+        );
+        If(
+            !IsBlank(gblPlanningProject),
+            ClearCollect(colExpandedMain, Filter(ProjectsActivities, ProjectID = gblPlanningProject.ID && ActivityType.Value = "Main"));
+            ClearCollect(colExpandedSub, Filter(ProjectsActivities, ProjectID = gblPlanningProject.ID && ActivityType.Value = "SubActivity"))
+        );
+        Select(btnPlnLoad)
+    Children:
+      - conPlnSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnPlnLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varPlnError, false);
+                    Clear(colPlnActs);
+                    Clear(colPlnTasks);
+                    If(
+                        IsBlank(gblPlanningProject),
+                        Clear(colExpandedMain);
+                        Clear(colExpandedSub);
+                        Clear(colPlanningTree);
+                        Clear(colGanttData);
+                        Set(varGanttStartDate, Blank());
+                        Set(varGanttEndDate, Blank());
+                        Set(varGanttTotalDays, 0),
+                        IfError(
+                            ClearCollect(colPlnActs, Filter(ProjectsActivities, ProjectID = gblPlanningProject.ID));
+                            ClearCollect(colPlnTasks, Filter(ProjectsTasks, ProjectID = gblPlanningProject.ID)),
+                            Set(varPlnError, true)
+                        )
+                    );
+                    Select(btnPlnRebuild);
+                    Select(btnPlnGantt)
+                  Text: =""
+                  Visible: =false
+                  Width: =1
+            - btnPlnRebuild:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Clear(colPlanningTree);
+                    If(
+                        !IsBlank(gblPlanningProject),
+                        ForAll(
+                            SortByColumns(Filter(colPlnActs, ActivityType.Value = "Main"), "Created", SortOrder.Ascending) As MainActivity,
+                            Collect(
+                                colPlanningTree,
+                                {
+                                    RowType: "Main",
+                                    ID: MainActivity.ID,
+                                    ParentID: Blank(),
+                                    ProjectID: MainActivity.ProjectID,
+                                    Title: MainActivity.Title,
+                                    StatusText: MainActivity.Status.Value,
+                                    Level: 1,
+                                    Progress: Coalesce(MainActivity.Progress, 0),
+                                    Person: Coalesce(MainActivity.ResponsiblePerson.Value, ""),
+                                    PlannedStart: MainActivity.PlannedStart,
+                                    PlannedEnd: MainActivity.PlannedEnd,
+                                    ActualStart: MainActivity.ActualStart,
+                                    ActualEnd: MainActivity.ActualEnd,
+                                    CanExpand: CountRows(Filter(colPlnActs, ActivityType.Value = "SubActivity" && ParentActivityID = MainActivity.ID)) > 0,
+                                    IsExpanded: CountRows(Filter(colExpandedMain, ID = MainActivity.ID)) > 0
+                                }
+                            );
+                            If(
+                                CountRows(Filter(colExpandedMain, ID = MainActivity.ID)) > 0,
+                                ForAll(
+                                    SortByColumns(
+                                        Filter(colPlnActs, ActivityType.Value = "SubActivity" && ParentActivityID = MainActivity.ID),
+                                        "Created",
+                                        SortOrder.Ascending
+                                    ) As SubActivity,
+                                    Collect(
+                                        colPlanningTree,
+                                        {
+                                            RowType: "SubActivity",
+                                            ID: SubActivity.ID,
+                                            ParentID: SubActivity.ParentActivityID,
+                                            ProjectID: SubActivity.ProjectID,
+                                            Title: SubActivity.Title,
+                                            StatusText: SubActivity.Status.Value,
+                                            Level: 2,
+                                            Progress: Coalesce(SubActivity.Progress, 0),
+                                            Person: Coalesce(SubActivity.ResponsiblePerson.Value, ""),
+                                            PlannedStart: SubActivity.PlannedStart,
+                                            PlannedEnd: SubActivity.PlannedEnd,
+                                            ActualStart: SubActivity.ActualStart,
+                                            ActualEnd: SubActivity.ActualEnd,
+                                            CanExpand: CountRows(Filter(colPlnTasks, ActivityID = SubActivity.ID)) > 0,
+                                            IsExpanded: CountRows(Filter(colExpandedSub, ID = SubActivity.ID)) > 0
+                                        }
+                                    );
+                                    If(
+                                        CountRows(Filter(colExpandedSub, ID = SubActivity.ID)) > 0,
+                                        ForAll(
+                                            SortByColumns(Filter(colPlnTasks, ActivityID = SubActivity.ID), "Created", SortOrder.Ascending) As PlanningTask,
+                                            Collect(
+                                                colPlanningTree,
+                                                {
+                                                    RowType: "Task",
+                                                    ID: PlanningTask.ID,
+                                                    ParentID: PlanningTask.ActivityID,
+                                                    ProjectID: PlanningTask.ProjectID,
+                                                    Title: PlanningTask.Title,
+                                                    StatusText: PlanningTask.Status.Value,
+                                                    Level: 3,
+                                                    Progress: Coalesce(PlanningTask.Progress, 0),
+                                                    Person: Coalesce(PlanningTask.AssignedTo.Value, ""),
+                                                    PlannedStart: PlanningTask.PlannedStart,
+                                                    PlannedEnd: PlanningTask.DueDate,
+                                                    ActualStart: PlanningTask.ActualStart,
+                                                    ActualEnd: PlanningTask.CompletedDate,
+                                                    CanExpand: false,
+                                                    IsExpanded: false
+                                                }
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                  Text: =""
+                  Visible: =false
+                  Width: =1
+            - btnPlnGantt:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =If(IsBlank(varGanttViewMode), Set(varGanttViewMode, "Day"));
+                    If(IsBlank(varGanttDayWidth), Set(varGanttDayWidth, 28));
+                    Clear(colGanttData);
+                    If(
+                        !IsBlank(gblPlanningProject),
+                        ForAll(
+                            colPlanningTree As planRow,
+                            Collect(
+                                colGanttData,
+                                {
+                                    RowType: planRow.RowType,
+                                    ID: planRow.ID,
+                                    ParentID: planRow.ParentID,
+                                    Title: planRow.Title,
+                                    StatusText: planRow.StatusText,
+                                    Level: planRow.Level,
+                                    PlannedStart: planRow.PlannedStart,
+                                    PlannedEnd: planRow.PlannedEnd,
+                                    ActualStart: planRow.ActualStart,
+                                    ActualEnd: planRow.ActualEnd,
+                                    TimelineStart: Coalesce(planRow.PlannedStart, planRow.ActualStart),
+                                    TimelineEnd: Coalesce(planRow.ActualEnd, planRow.PlannedEnd, planRow.ActualStart, planRow.PlannedStart)
+                                }
+                            )
+                        )
+                    );
+                    If(
+                        CountRows(Filter(colGanttData, !IsBlank(TimelineStart))) > 0,
+                        Set(varGanttStartDate, Min(Filter(colGanttData, !IsBlank(TimelineStart)), TimelineStart));
+                        Set(varGanttEndDate, Max(Filter(colGanttData, !IsBlank(TimelineEnd)), TimelineEnd));
+                        Set(varGanttTotalDays, DateDiff(varGanttStartDate, varGanttEndDate, TimeUnit.Days) + 1),
+                        Set(varGanttStartDate, Blank());
+                        Set(varGanttEndDate, Blank());
+                        Set(varGanttTotalDays, 0)
+                    )
+                  Text: =""
+                  Visible: =false
+                  Width: =1
+            - btnPlnResetForm:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Reset(txtPlnTitle);
+                    Reset(txtPlnProgress);
+                    Reset(txtPlnDescription);
+                    Reset(txtPlnTaskDescription);
+                    Reset(txtPlnRemarks);
+                    Reset(dpPlnStart);
+                    Reset(dpPlnEnd);
+                    Reset(dpPlnActualStart);
+                    Reset(dpPlnActualEnd);
+                    Reset(cmbPlnPerson);
+                    Reset(ddPlnPriority)
+                  Text: =""
+                  Visible: =false
+                  Width: =1
+      - conPlnPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =10
+            PaddingBottom: =If(App.Width < 700, cmpPlnPhone.Height + 12, 16)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 16)
+            PaddingRight: =16
+            PaddingTop: =cmpPlnTop.Height + 12
+            Width: =Parent.Width
+          Children:
+            - conPlnHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =72
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =12
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Width: =Parent.Width
+                Children:
+                  - conPlnHeaderText:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - lblPlnTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Text")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =16
+                              Text: =If(gblLanguage = "Arabic", "خطة المشروع", "Project plan")
+                              Width: =Parent.Width
+                        - lblPlnHint:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Height: =20
+                              Size: =11
+                              Text: =If(gblLanguage = "Arabic", "الأنشطة الرئيسية والفرعية والمهام", "Main activities, sub activities, and tasks")
+                              Width: =Parent.Width
+                  - cmbPlnProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        DefaultSelectedItems: =If(IsBlank(gblPlanningProject), [], [gblPlanningProject])
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "اختر المشروع", "Select project")
+                        ItemDisplayText: =ThisItem.Title
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  Projects,
+                                  ID in Filter(colUserProjectAccess, And(AllProjects = false, IsActive = true)).ProjectID
+                              )
+                          )
+                        OnChange: |-
+                          =Set(gblPlanningProject, Self.Selected);
+                          Set(varSelectedProject, Self.Selected);
+                          Set(gblPlanningActionItem, Blank());
+                          Set(varPlanningParentActivity, Blank());
+                          Clear(colExpandedMain);
+                          Clear(colExpandedSub);
+                          If(
+                              !IsBlank(gblPlanningProject),
+                              ClearCollect(colExpandedMain, Filter(ProjectsActivities, ProjectID = gblPlanningProject.ID && ActivityType.Value = "Main"));
+                              ClearCollect(colExpandedSub, Filter(ProjectsActivities, ProjectID = gblPlanningProject.ID && ActivityType.Value = "SubActivity"))
+                          );
+                          Select(btnPlnLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, 180, 280)
+            - conPlnToolbar:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =52
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingLeft: =10
+                  PaddingRight: =10
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Width: =Parent.Width
+                Children:
+                  - lblPlnProjectName:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("Text")
+                        FillPortions: =1
+                        FontWeight: =FontWeight.Semibold
+                        Height: =32
+                        Size: =12
+                        Text: |-
+                          =If(
+                              IsBlank(gblPlanningProject),
+                              If(gblLanguage = "Arabic", "اختر مشروعاً لعرض الخطة", "Select a project to view the plan"),
+                              gblPlanningProject.Title
+                          )
+                        Width: =160
+                  - btnPlnTree:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(VarPlanModule = "General", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =34
+                        Icon: ="DocumentBulletList"
+                        OnSelect: =Set(VarPlanModule, "General")
+                        Text: =If(gblLanguage = "Arabic", "الخطة", "Plan")
+                        Width: =110
+                  - btnPlnGanttTab:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(VarPlanModule = "Gantt", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                        Height: =34
+                        Icon: ="Calendar"
+                        OnSelect: |-
+                          =Set(VarPlanModule, "Gantt");
+                          Select(btnPlnGantt)
+                        Text: =If(gblLanguage = "Arabic", "الجدول", "Gantt")
+                        Width: =110
+                  - btnPlnExpand:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Secondary
+                        Height: =34
+                        Icon: ="ChevronDown"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(gblPlanningProject),
+                              Clear(colExpandedMain);
+                              Clear(colExpandedSub),
+                              ClearCollect(colExpandedMain, Filter(colPlnActs, ActivityType.Value = "Main"));
+                              ClearCollect(colExpandedSub, Filter(colPlnActs, ActivityType.Value = "SubActivity"))
+                          );
+                          Select(btnPlnRebuild);
+                          Select(btnPlnGantt)
+                        Text: =If(gblLanguage = "Arabic", "توسيع", "Expand")
+                        Visible: =App.Width >= 700
+                        Width: =110
+                  - btnPlnCollapse:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Secondary
+                        Height: =34
+                        Icon: ="ChevronRight"
+                        OnSelect: |-
+                          =Clear(colExpandedMain);
+                          Clear(colExpandedSub);
+                          Select(btnPlnRebuild);
+                          Select(btnPlnGantt)
+                        Text: =If(gblLanguage = "Arabic", "طي", "Collapse")
+                        Visible: =App.Width >= 700
+                        Width: =110
+                  - btnPlnAddMain:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =34
+                        Icon: ="Add"
+                        OnSelect: |-
+                          =If(
+                              IsBlank(gblPlanningProject),
+                              Notify(If(gblLanguage = "Arabic", "اختر مشروعاً أولاً.", "Select a project first."), NotificationType.Warning),
+                              Set(varPlanningFormType, "Main");
+                              Set(varPlanningMode, "New");
+                              Set(varPlanningParentActivity, Blank());
+                              Set(gblPlanningActionItem, Blank());
+                              Set(gblPlanningActionType, "Main");
+                              Set(varShowPlanningModal, true);
+                              Select(btnPlnResetForm)
+                          )
+                        Text: =If(gblLanguage = "Arabic", "نشاط رئيسي", "Main activity")
+                        Width: =If(App.Width < 700, 130, 150)
+            - lblPlnError:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("Danger")
+                  Fill: =fxThemeColor("Surface")
+                  Height: =36
+                  PaddingLeft: =12
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل الخطة. أعد فتح الشاشة.", "The plan could not be loaded. Open the screen again.")
+                  Visible: =varPlnError
+                  Width: =Parent.Width
+            - conPlnTree:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Visible: =VarPlanModule = "General"
+                  Width: =Parent.Width
+                Children:
+                  - conPlnHeadRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Background")
+                        FillPortions: =0
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingLeft: =8
+                        PaddingRight: =8
+                        Width: =Parent.Width
+                      Children:
+                        - lblPlnHItem:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "البند", "Item")
+                              Width: =120
+                        - lblPlnHStart:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("TextMuted")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "البداية", "Start")
+                              Visible: =App.Width >= 900
+                              Width: =88
+                        - lblPlnHEnd:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("TextMuted")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "النهاية", "End")
+                              Visible: =App.Width >= 900
+                              Width: =88
+                        - lblPlnHPerson:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "المسؤول", "Owner")
+                              Visible: =App.Width >= 1100
+                              Width: =120
+                        - lblPlnHProg:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("TextMuted")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =10
+                              Text: ="%"
+                              Width: =48
+                        - lblPlnHStatus:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =Align.Center
+                              Color: =fxThemeColor("TextMuted")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                              Width: =96
+                        - lblPlnHAct:
+                            Control: Label@2.5.1
+                            Properties:
+                              Height: =28
+                              Text: =""
+                              Width: =120
+                  - galPlnTree:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        BorderStyle: =BorderStyle.None
+                        Fill: =fxThemeColor("Surface")
+                        Items: =colPlanningTree
+                        LayoutMinHeight: =200
+                        LayoutMinWidth: =0
+                        TemplatePadding: =0
+                        TemplateSize: =44
+                        Visible: =CountRows(colPlanningTree) > 0
+                        Width: =Parent.Width
+                      Children:
+                        - conPlnRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =If(ThisItem.RowType = "Main", fxThemeColor("Background"), fxThemeColor("Surface"))
+                              Height: =Parent.TemplateHeight
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =4
+                              PaddingLeft: =Switch(ThisItem.Level, 1, 8, 2, 28, 48)
+                              PaddingRight: =8
+                              Width: =Parent.TemplateWidth
+                            Children:
+                              - btnPlnRowExpand:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Icon: =If(ThisItem.IsExpanded, "ChevronDown", "ChevronRight")
+                                    OnSelect: |-
+                                      =If(
+                                          ThisItem.RowType = "Main",
+                                          If(
+                                              CountRows(Filter(colExpandedMain, ID = ThisItem.ID)) > 0,
+                                              RemoveIf(colExpandedMain, ID = ThisItem.ID);
+                                              RemoveIf(colExpandedSub, ID in Filter(colPlnActs, ActivityType.Value = "SubActivity" && ParentActivityID = ThisItem.ID).ID),
+                                              Collect(colExpandedMain, {ID: ThisItem.ID})
+                                          ),
+                                          If(
+                                              ThisItem.RowType = "SubActivity",
+                                              If(
+                                                  CountRows(Filter(colExpandedSub, ID = ThisItem.ID)) > 0,
+                                                  RemoveIf(colExpandedSub, ID = ThisItem.ID),
+                                                  Collect(colExpandedSub, {ID: ThisItem.ID})
+                                              )
+                                          )
+                                      );
+                                      Select(btnPlnRebuild);
+                                      If(VarPlanModule = "Gantt", Select(btnPlnGantt))
+                                    Text: =""
+                                    Visible: =ThisItem.CanExpand
+                                    Width: =32
+                              - lblPlnItem:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("Text")
+                                    FillPortions: =1
+                                    FontWeight: =If(ThisItem.RowType = "Task", FontWeight.Normal, FontWeight.Semibold)
+                                    Height: =32
+                                    Size: =12
+                                    Text: =ThisItem.Title
+                                    Width: =80
+                              - lblPlnStart:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    Height: =32
+                                    Size: =11
+                                    Text: =If(IsBlank(ThisItem.PlannedStart), "—", Text(ThisItem.PlannedStart, "dd-mmm-yy"))
+                                    Visible: =App.Width >= 900
+                                    Width: =88
+                              - lblPlnEnd:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    Height: =32
+                                    Size: =11
+                                    Text: =If(IsBlank(ThisItem.PlannedEnd), "—", Text(ThisItem.PlannedEnd, "dd-mmm-yy"))
+                                    Visible: =App.Width >= 900
+                                    Width: =88
+                              - lblPlnPerson:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Height: =32
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.Person, "")
+                                    Visible: =App.Width >= 1100
+                                    Width: =120
+                              - lblPlnProg:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("Text")
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =32
+                                    Size: =11
+                                    Text: =Text(Coalesce(ThisItem.Progress, 0), "0") & "%"
+                                    Width: =48
+                              - lblPlnStatus:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("Text")
+                                    Height: =26
+                                    Size: =10
+                                    Text: =Coalesce(ThisItem.StatusText, "")
+                                    Width: =96
+                              - btnPlnAddChild:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =30
+                                    Icon: ="Add"
+                                    OnSelect: |-
+                                      =Set(varPlanningMode, "New");
+                                      Set(gblPlanningActionItem, Blank());
+                                      Set(
+                                          varPlanningFormType,
+                                          If(ThisItem.RowType = "Main", "SubActivity", "Task")
+                                      );
+                                      Set(gblPlanningActionType, If(ThisItem.RowType = "Main", "SubActivity", "Task"));
+                                      Set(varPlanningParentActivity, LookUp(colPlnActs, ID = ThisItem.ID));
+                                      Set(varShowPlanningModal, true);
+                                      Select(btnPlnResetForm)
+                                    Text: =""
+                                    Visible: =ThisItem.RowType <> "Task"
+                                    Width: =36
+                              - btnPlnEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =30
+                                    Icon: ="Edit"
+                                    OnSelect: |-
+                                      =Set(varPlanningMode, "Edit");
+                                      Set(varPlanningFormType, ThisItem.RowType);
+                                      Set(gblPlanningActionType, ThisItem.RowType);
+                                      Set(
+                                          gblPlanningActionItem,
+                                          If(
+                                              ThisItem.RowType = "Task",
+                                              LookUp(colPlnTasks, ID = ThisItem.ID),
+                                              LookUp(colPlnActs, ID = ThisItem.ID)
+                                          )
+                                      );
+                                      Set(
+                                          varPlanningParentActivity,
+                                          If(
+                                              ThisItem.RowType = "Main",
+                                              Blank(),
+                                              LookUp(colPlnActs, ID = ThisItem.ParentID)
+                                          )
+                                      );
+                                      Set(varShowPlanningModal, true);
+                                      Select(btnPlnResetForm)
+                                    Text: =""
+                                    Width: =36
+                  - lblPlnEmpty:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =1
+                        Height: =80
+                        Text: |-
+                          =If(
+                              IsBlank(gblPlanningProject),
+                              If(gblLanguage = "Arabic", "اختر مشروعاً لعرض خطة العمل.", "Select a project to view the work plan."),
+                              If(gblLanguage = "Arabic", "لا توجد أنشطة بعد. أضف نشاطاً رئيسياً.", "No activities yet. Add a main activity.")
+                          )
+                        Visible: =CountRows(colPlanningTree) = 0
+                        Width: =Parent.Width
+            - conPlnGantt:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =8
+                  PaddingLeft: =8
+                  PaddingRight: =8
+                  PaddingTop: =8
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Visible: =VarPlanModule = "Gantt"
+                  Width: =Parent.Width
+                Children:
+                  - conPlnGanttBar:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - lblPlnGanttRange:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              Height: =28
+                              Size: =11
+                              Text: |-
+                                =If(
+                                    IsBlank(varGanttStartDate),
+                                    If(gblLanguage = "Arabic", "لا توجد تواريخ في الخطة", "No planning dates yet"),
+                                    Text(varGanttStartDate, "dd mmm yyyy") & " – " & Text(varGanttEndDate, "dd mmm yyyy")
+                                )
+                              Width: =160
+                        - btnPlnDay:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varGanttViewMode = "Day", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              Height: =30
+                              OnSelect: |-
+                                =Set(varGanttViewMode, "Day");
+                                Set(varGanttDayWidth, 28)
+                              Text: =If(gblLanguage = "Arabic", "يوم", "Day")
+                              Width: =56
+                        - btnPlnWeek:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varGanttViewMode = "Week", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              Height: =30
+                              OnSelect: |-
+                                =Set(varGanttViewMode, "Week");
+                                Set(varGanttDayWidth, 14)
+                              Text: =If(gblLanguage = "Arabic", "أسبوع", "Week")
+                              Width: =64
+                        - btnPlnMonth:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =If(varGanttViewMode = "Month", ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                              Height: =30
+                              OnSelect: |-
+                                =Set(varGanttViewMode, "Month");
+                                Set(varGanttDayWidth, 6)
+                              Text: =If(gblLanguage = "Arabic", "شهر", "Month")
+                              Width: =68
+                        - btnPlnZoomOut:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =30
+                              OnSelect: =Set(varGanttDayWidth, Max(4, varGanttDayWidth - 2))
+                              Text: ="-"
+                              Width: =36
+                        - btnPlnZoomIn:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =30
+                              OnSelect: =Set(varGanttDayWidth, Min(48, varGanttDayWidth + 2))
+                              Text: ="+"
+                              Width: =36
+                  - lblPlnGanttEmpty:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        Color: =fxThemeColor("TextMuted")
+                        Height: =48
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "وسّع الخطة أو أضف تواريحاً لرسم الجدول.", "Expand the plan or add dates to draw the chart.")
+                        Visible: =Or(IsBlank(gblPlanningProject), CountRows(colGanttData) = 0)
+                        Width: =Parent.Width
+                  - conPlnGanttHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Background")
+                        FillPortions: =0
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =varGanttTotalDays > 0
+                        Width: =Parent.Width
+                      Children:
+                        - lblPlnGanttItemH:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              FontWeight: =FontWeight.Semibold
+                              Height: =28
+                              PaddingLeft: =8
+                              Size: =10
+                              Text: =If(gblLanguage = "Arabic", "البند", "Item")
+                              Width: =If(App.Width < 700, 140, 240)
+                        - galPlnDates:
+                            Control: Gallery@2.15.0
+                            Variant: Horizontal
+                            Properties:
+                              Fill: =Color.Transparent
+                              Height: =36
+                              Items: =Sequence(Max(varGanttTotalDays, 0))
+                              ShowScrollbar: =false
+                              TemplatePadding: =0
+                              TemplateSize: =varGanttDayWidth
+                              Width: =Parent.Width - If(App.Width < 700, 140, 240)
+                            Children:
+                              - lblPlnDate:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    Color: =fxThemeColor("TextMuted")
+                                    Height: =Parent.TemplateHeight
+                                    Size: =8
+                                    Text: |-
+                                      =With(
+                                          {_d: DateAdd(varGanttStartDate, ThisItem.Value - 1, TimeUnit.Days)},
+                                          Switch(
+                                              varGanttViewMode,
+                                              "Day", Text(_d, "dd"),
+                                              "Week", If(Weekday(_d, StartOfWeek.Monday) = 1, Text(_d, "dd mmm"), ""),
+                                              Text(_d, If(Day(_d) = 1, "mmm", ""))
+                                          )
+                                      )
+                                    Width: =Parent.TemplateWidth
+                  - conPlnGanttBody:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowX: =LayoutOverflow.Scroll
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        Visible: =CountRows(colGanttData) > 0
+                        Width: =Parent.Width
+                      Children:
+                        - galPlnGanttNames:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Fill: =fxThemeColor("Surface")
+                              FillPortions: =0
+                              Height: =Max(CountRows(colGanttData) * 40, 40)
+                              Items: =colGanttData
+                              ShowScrollbar: =false
+                              TemplatePadding: =0
+                              TemplateSize: =40
+                              Width: =If(App.Width < 700, 140, 240)
+                            Children:
+                              - lblPlnGanttName:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("Text")
+                                    FontWeight: =If(ThisItem.RowType = "Task", FontWeight.Normal, FontWeight.Semibold)
+                                    Height: =Parent.TemplateHeight
+                                    PaddingLeft: =Switch(ThisItem.Level, 1, 8, 2, 20, 32)
+                                    Size: =11
+                                    Text: =ThisItem.Title
+                                    Width: =Parent.TemplateWidth
+                        - galPlnBars:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Fill: =Color.Transparent
+                              Height: =Max(CountRows(colGanttData) * 40, 40)
+                              Items: =colGanttData
+                              ShowScrollbar: =false
+                              TemplatePadding: =0
+                              TemplateSize: =40
+                              Width: =Max(varGanttTotalDays * varGanttDayWidth, 1)
+                            Children:
+                              - shpPlnPlan:
+                                  Control: Rectangle@2.3.0
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =fxThemeColor("Border")
+                                    Height: =If(ThisItem.RowType = "Main", 16, 10)
+                                    Width: |-
+                                      =If(
+                                          Or(IsBlank(ThisItem.PlannedStart), IsBlank(ThisItem.PlannedEnd)),
+                                          0,
+                                          Max(6, (DateDiff(ThisItem.PlannedStart, ThisItem.PlannedEnd, TimeUnit.Days) + 1) * varGanttDayWidth)
+                                      )
+                                    X: =If(IsBlank(ThisItem.PlannedStart), 0, DateDiff(varGanttStartDate, ThisItem.PlannedStart, TimeUnit.Days) * varGanttDayWidth)
+                                    Y: =(Parent.TemplateHeight - Self.Height) / 2
+                              - shpPlnActual:
+                                  Control: Rectangle@2.3.0
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =fxThemeColor("Primary")
+                                    Height: =6
+                                    Visible: =!IsBlank(ThisItem.ActualStart)
+                                    Width: |-
+                                      =If(
+                                          IsBlank(ThisItem.ActualStart),
+                                          0,
+                                          Max(4, (DateDiff(ThisItem.ActualStart, Coalesce(ThisItem.ActualEnd, Today()), TimeUnit.Days) + 1) * varGanttDayWidth)
+                                      )
+                                    X: =If(IsBlank(ThisItem.ActualStart), 0, DateDiff(varGanttStartDate, ThisItem.ActualStart, TimeUnit.Days) * varGanttDayWidth)
+                                    Y: =(Parent.TemplateHeight - Self.Height) / 2 + 6
+                              - shpPlnToday:
+                                  Control: Rectangle@2.3.0
+                                  Properties:
+                                    Fill: =fxThemeColor("Danger")
+                                    Height: =40
+                                    Visible: =And(!IsBlank(varGanttStartDate), Today() >= varGanttStartDate, Today() <= varGanttEndDate)
+                                    Width: =2
+                                    X: =DateDiff(varGanttStartDate, Today(), TimeUnit.Days) * varGanttDayWidth
+                  - lblPlnLegend:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Height: =22
+                        Size: =10
+                        Text: =If(gblLanguage = "Arabic", "الشريط الفاتح هو المخطط. الشريط الغامق هو التنفيذ.", "The light bar is the plan. The strong bar is actual work.")
+                        Width: =Parent.Width
+      - conPlnOverlay:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            Fill: =RGBA(15, 23, 42, 0.45)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Center
+            LayoutDirection: =LayoutDirection.Vertical
+            Visible: =varShowPlanningModal
+            Width: =Parent.Width
+          Children:
+            - conPlnForm:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  Height: =Min(Parent.Height - 40, 680)
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =gblTheme.Radius.Large
+                  RadiusBottomRight: =gblTheme.Radius.Large
+                  RadiusTopLeft: =gblTheme.Radius.Large
+                  RadiusTopRight: =gblTheme.Radius.Large
+                  Width: =Min(Parent.Width - 24, 720)
+                Children:
+                  - conPlnFormHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =48
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - lblPlnFormTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("Text")
+                              FillPortions: =1
+                              FontWeight: =FontWeight.Semibold
+                              Height: =32
+                              Size: =16
+                              Text: |-
+                                =If(gblLanguage = "Arabic",
+                                    If(varPlanningMode = "Edit", "تعديل ", "إضافة ") & Switch(varPlanningFormType, "Main", "نشاط رئيسي", "SubActivity", "نشاط فرعي", "Task", "مهمة", "بند"),
+                                    If(varPlanningMode = "Edit", "Edit ", "Add ") & Switch(varPlanningFormType, "Main", "main activity", "SubActivity", "sub activity", "Task", "task", "item")
+                                )
+                              Width: =200
+                        - btnPlnClose:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              Icon: ="Dismiss"
+                              OnSelect: |-
+                                =Set(varShowPlanningModal, false);
+                                Set(varPlanningMode, Blank());
+                                Set(varPlanningFormType, Blank());
+                                Set(varPlanningParentActivity, Blank());
+                                Set(gblPlanningActionItem, Blank())
+                              Text: =""
+                              Width: =36
+                  - lblPlnContext:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Height: =36
+                        Size: =11
+                        Text: |-
+                          =Coalesce(gblPlanningProject.Title, "") &
+                          If(
+                              varPlanningFormType = "Main" || IsBlank(varPlanningParentActivity),
+                              "",
+                              "  ·  " & Coalesce(varPlanningParentActivity.Title, "")
+                          )
+                        Width: =Parent.Width
+                  - txtPlnTitle:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                        Default: =Coalesce(gblPlanningActionItem.Title, "")
+                        Height: =40
+                        Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                        TriggerOutput: =TriggerOutput.FocusOut
+                        Width: =Parent.Width
+                  - conPlnDates:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =72
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - dpPlnStart:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "البداية المخططة", "Planned start")
+                              DefaultDate: |-
+                                =If(
+                                    varPlanningMode = "Edit",
+                                    If(varPlanningFormType = "Task", LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).PlannedStart, LookUp(colPlnActs, ID = gblPlanningActionItem.ID).PlannedStart),
+                                    Blank()
+                                )
+                              Height: =48
+                              Placeholder: =If(gblLanguage = "Arabic", "البداية", "Start")
+                              Width: =Parent.Width
+                        - dpPlnEnd:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(varPlanningFormType = "Task", If(gblLanguage = "Arabic", "الاستحقاق", "Due date"), If(gblLanguage = "Arabic", "النهاية المخططة", "Planned end"))
+                              DefaultDate: |-
+                                =If(
+                                    varPlanningMode = "Edit",
+                                    If(varPlanningFormType = "Task", LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).DueDate, LookUp(colPlnActs, ID = gblPlanningActionItem.ID).PlannedEnd),
+                                    Blank()
+                                )
+                              Height: =48
+                              Placeholder: =If(varPlanningFormType = "Task", If(gblLanguage = "Arabic", "الاستحقاق", "Due"), If(gblLanguage = "Arabic", "النهاية", "End"))
+                              Width: =Parent.Width
+                        - dpPlnActualStart:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "البداية الفعلية", "Actual start")
+                              DefaultDate: |-
+                                =If(
+                                    varPlanningMode = "Edit",
+                                    If(varPlanningFormType = "Task", LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).ActualStart, LookUp(colPlnActs, ID = gblPlanningActionItem.ID).ActualStart),
+                                    Blank()
+                                )
+                              Height: =48
+                              Placeholder: =If(gblLanguage = "Arabic", "فعلي", "Actual")
+                              Visible: =App.Width >= 700
+                              Width: =Parent.Width
+                        - dpPlnActualEnd:
+                            Control: ModernDatePicker@1.0.2
+                            Properties:
+                              AccessibleLabel: =If(varPlanningFormType = "Task", If(gblLanguage = "Arabic", "تاريخ الإنجاز", "Completed date"), If(gblLanguage = "Arabic", "النهاية الفعلية", "Actual end"))
+                              DefaultDate: |-
+                                =If(
+                                    varPlanningMode = "Edit",
+                                    If(varPlanningFormType = "Task", LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).CompletedDate, LookUp(colPlnActs, ID = gblPlanningActionItem.ID).ActualEnd),
+                                    Blank()
+                                )
+                              Height: =48
+                              Placeholder: =If(varPlanningFormType = "Task", If(gblLanguage = "Arabic", "الإنجاز", "Done"), If(gblLanguage = "Arabic", "نهاية فعلية", "Actual end"))
+                              Visible: =App.Width >= 700
+                              Width: =Parent.Width
+                  - conPlnMeta:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =72
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - cmbPlnPerson:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(varPlanningFormType = "Task", If(gblLanguage = "Arabic", "المكلف", "Assignee"), If(gblLanguage = "Arabic", "المسؤول", "Responsible"))
+                              DefaultSelectedItems: |-
+                                =If(
+                                    varPlanningMode <> "Edit",
+                                    [],
+                                    If(
+                                        varPlanningFormType = "Task",
+                                        If(
+                                            IsBlank(LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).AssignedTo),
+                                            [],
+                                            [LookUp(Employees, ID = Coalesce(LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).AssignedToID, LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).AssignedTo.Id))]
+                                        ),
+                                        If(
+                                            IsBlank(LookUp(colPlnActs, ID = gblPlanningActionItem.ID).ResponsiblePerson),
+                                            [],
+                                            [LookUp(Employees, ID = Coalesce(LookUp(colPlnActs, ID = gblPlanningActionItem.ID).ResponsiblePersonID, LookUp(colPlnActs, ID = gblPlanningActionItem.ID).ResponsiblePerson.Id))]
+                                        )
+                                    )
+                                )
+                              Height: =48
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                              ItemDisplayText: =ThisItem.FullName
+                              Items: =Employees
+                              SelectMultiple: =false
+                              Width: =Parent.Width
+                        - txtPlnProgress:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "نسبة الإنجاز", "Progress")
+                              Default: |-
+                                =If(
+                                    varPlanningMode = "Edit",
+                                    Text(
+                                        Coalesce(
+                                            If(varPlanningFormType = "Task", LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).Progress, LookUp(colPlnActs, ID = gblPlanningActionItem.ID).Progress),
+                                            0
+                                        )
+                                    ),
+                                    "0"
+                                )
+                              Height: =48
+                              Placeholder: =If(gblLanguage = "Arabic", "0 إلى 100", "0 to 100")
+                              TriggerOutput: =TriggerOutput.FocusOut
+                              Width: =120
+                        - ddPlnPriority:
+                            Control: ModernDropdown@1.0.3
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "الأولوية", "Priority")
+                              Default: |-
+                                =If(
+                                    varPlanningMode = "Edit",
+                                    LookUp(Choices(ProjectsTasks.Priority), Value = Coalesce(LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).Priority.Value, "Medium")),
+                                    LookUp(Choices(ProjectsTasks.Priority), Value = "Medium")
+                                )
+                              Height: =48
+                              ItemDisplayText: =ThisItem.Value
+                              Items: =Choices(ProjectsTasks.Priority)
+                              Visible: =varPlanningFormType = "Task"
+                              Width: =140
+                  - txtPlnDescription:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                        Default: =If(varPlanningMode = "Edit", Coalesce(LookUp(colPlnActs, ID = gblPlanningActionItem.ID).Description, ""), "")
+                        Height: =88
+                        Placeholder: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                        TriggerOutput: =TriggerOutput.FocusOut
+                        Type: =TextInputType.Multiline
+                        Visible: =varPlanningFormType <> "Task"
+                        Width: =Parent.Width
+                  - txtPlnTaskDescription:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "وصف المهمة", "Task description")
+                        Default: =If(varPlanningMode = "Edit", Coalesce(LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).TaskDescription, ""), "")
+                        Height: =72
+                        Placeholder: =If(gblLanguage = "Arabic", "وصف المهمة", "Task description")
+                        TriggerOutput: =TriggerOutput.FocusOut
+                        Type: =TextInputType.Multiline
+                        Visible: =varPlanningFormType = "Task"
+                        Width: =Parent.Width
+                  - txtPlnRemarks:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "ملاحظات", "Remarks")
+                        Default: =If(varPlanningMode = "Edit", Coalesce(LookUp(colPlnTasks, ID = gblPlanningActionItem.ID).Remarks, ""), "")
+                        Height: =72
+                        Placeholder: =If(gblLanguage = "Arabic", "ملاحظات", "Remarks")
+                        TriggerOutput: =TriggerOutput.FocusOut
+                        Type: =TextInputType.Multiline
+                        Visible: =varPlanningFormType = "Task"
+                        Width: =Parent.Width
+                  - conPlnFormFoot:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        FillPortions: =0
+                        Height: =48
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =Parent.Width
+                      Children:
+                        - conPlnFootGap:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                        - btnPlnCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Secondary
+                              Height: =40
+                              OnSelect: |-
+                                =Set(varShowPlanningModal, false);
+                                Set(varPlanningMode, Blank());
+                                Set(varPlanningFormType, Blank());
+                                Set(varPlanningParentActivity, Blank());
+                                Set(gblPlanningActionItem, Blank())
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =120
+                        - btnPlnSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =40
+                              OnSelect: |-
+                                =With(
+                                    {
+                                        _progress: Value(txtPlnProgress.Text),
+                                        _status: If(Value(txtPlnProgress.Text) <= 0, "Not Started", If(Value(txtPlnProgress.Text) >= 100, "Completed", "In Progress"))
+                                    },
+                                    If(
+                                        IsBlank(gblPlanningProject),
+                                        Notify(If(gblLanguage = "Arabic", "اختر مشروعاً.", "Select a project."), NotificationType.Error),
+                                        IsBlank(Trim(txtPlnTitle.Text)),
+                                        Notify(If(gblLanguage = "Arabic", "أدخل العنوان.", "Enter a title."), NotificationType.Error),
+                                        Or(_progress < 0, _progress > 100),
+                                        Notify(If(gblLanguage = "Arabic", "النسبة بين 0 و 100.", "Progress must be between 0 and 100."), NotificationType.Error),
+                                        And(!IsBlank(dpPlnStart.SelectedDate), !IsBlank(dpPlnEnd.SelectedDate), dpPlnEnd.SelectedDate < dpPlnStart.SelectedDate),
+                                        Notify(If(gblLanguage = "Arabic", "تاريخ النهاية قبل البداية.", "The end date is before the start date."), NotificationType.Error),
+                                        And(varPlanningFormType = "Task", IsBlank(cmbPlnPerson.Selected)),
+                                        Notify(If(gblLanguage = "Arabic", "اختر المكلف.", "Select an assignee."), NotificationType.Error),
+                                        And(varPlanningFormType <> "Main", IsBlank(varPlanningParentActivity)),
+                                        Notify(If(gblLanguage = "Arabic", "البند الأب غير محدد.", "The parent item is missing."), NotificationType.Error),
+                                        Set(varPlanningSaveMode, varPlanningMode);
+                                        Set(
+                                            varPlnSaved,
+                                            Switch(
+                                            varPlanningFormType,
+                                            "Main",
+                                            If(
+                                                varPlanningMode = "New",
+                                                Patch(
+                                                    ProjectsActivities,
+                                                    Defaults(ProjectsActivities),
+                                                    {
+                                                        Title: Trim(txtPlnTitle.Text),
+                                                        Project: {Id: gblPlanningProject.ID, Value: gblPlanningProject.Title},
+                                                        ProjectID: gblPlanningProject.ID,
+                                                        ActivityType: {Value: "Main"},
+                                                        PlannedStart: dpPlnStart.SelectedDate,
+                                                        PlannedEnd: dpPlnEnd.SelectedDate,
+                                                        ActualStart: dpPlnActualStart.SelectedDate,
+                                                        ActualEnd: dpPlnActualEnd.SelectedDate,
+                                                        ResponsiblePerson: If(IsBlank(cmbPlnPerson.Selected), Blank(), {Id: cmbPlnPerson.Selected.ID, Value: cmbPlnPerson.Selected.FullName}),
+                                                        ResponsiblePersonID: If(IsBlank(cmbPlnPerson.Selected), Blank(), cmbPlnPerson.Selected.ID),
+                                                        Progress: _progress,
+                                                        Status: LookUp(Choices(ProjectsActivities.Status), Value = _status),
+                                                        Description: txtPlnDescription.Text,
+                                                        TotalTasks: 0,
+                                                        'Completed Tasks': 0
+                                                    }
+                                                ),
+                                                Patch(
+                                                    ProjectsActivities,
+                                                    LookUp(ProjectsActivities, ID = gblPlanningActionItem.ID),
+                                                    {
+                                                        Title: Trim(txtPlnTitle.Text),
+                                                        Project: {Id: gblPlanningProject.ID, Value: gblPlanningProject.Title},
+                                                        ProjectID: gblPlanningProject.ID,
+                                                        PlannedStart: dpPlnStart.SelectedDate,
+                                                        PlannedEnd: dpPlnEnd.SelectedDate,
+                                                        ActualStart: dpPlnActualStart.SelectedDate,
+                                                        ActualEnd: dpPlnActualEnd.SelectedDate,
+                                                        ResponsiblePerson: If(IsBlank(cmbPlnPerson.Selected), Blank(), {Id: cmbPlnPerson.Selected.ID, Value: cmbPlnPerson.Selected.FullName}),
+                                                        ResponsiblePersonID: If(IsBlank(cmbPlnPerson.Selected), Blank(), cmbPlnPerson.Selected.ID),
+                                                        Progress: _progress,
+                                                        Status: LookUp(Choices(ProjectsActivities.Status), Value = _status),
+                                                        Description: txtPlnDescription.Text
+                                                    }
+                                                )
+                                            ),
+                                            "SubActivity",
+                                            If(
+                                                varPlanningMode = "New",
+                                                Patch(
+                                                    ProjectsActivities,
+                                                    Defaults(ProjectsActivities),
+                                                    {
+                                                        Title: Trim(txtPlnTitle.Text),
+                                                        Project: {Id: gblPlanningProject.ID, Value: gblPlanningProject.Title},
+                                                        ProjectID: gblPlanningProject.ID,
+                                                        ActivityType: {Value: "SubActivity"},
+                                                        ParentActivity: {Id: varPlanningParentActivity.ID, Value: varPlanningParentActivity.Title},
+                                                        ParentActivityID: varPlanningParentActivity.ID,
+                                                        PlannedStart: dpPlnStart.SelectedDate,
+                                                        PlannedEnd: dpPlnEnd.SelectedDate,
+                                                        ActualStart: dpPlnActualStart.SelectedDate,
+                                                        ActualEnd: dpPlnActualEnd.SelectedDate,
+                                                        ResponsiblePerson: If(IsBlank(cmbPlnPerson.Selected), Blank(), {Id: cmbPlnPerson.Selected.ID, Value: cmbPlnPerson.Selected.FullName}),
+                                                        ResponsiblePersonID: If(IsBlank(cmbPlnPerson.Selected), Blank(), cmbPlnPerson.Selected.ID),
+                                                        Progress: _progress,
+                                                        Status: LookUp(Choices(ProjectsActivities.Status), Value = _status),
+                                                        Description: txtPlnDescription.Text,
+                                                        TotalTasks: 0,
+                                                        'Completed Tasks': 0
+                                                    }
+                                                ),
+                                                Patch(
+                                                    ProjectsActivities,
+                                                    LookUp(ProjectsActivities, ID = gblPlanningActionItem.ID),
+                                                    {
+                                                        Title: Trim(txtPlnTitle.Text),
+                                                        Project: {Id: gblPlanningProject.ID, Value: gblPlanningProject.Title},
+                                                        ProjectID: gblPlanningProject.ID,
+                                                        ActivityType: {Value: "SubActivity"},
+                                                        ParentActivity: {Id: varPlanningParentActivity.ID, Value: varPlanningParentActivity.Title},
+                                                        ParentActivityID: varPlanningParentActivity.ID,
+                                                        PlannedStart: dpPlnStart.SelectedDate,
+                                                        PlannedEnd: dpPlnEnd.SelectedDate,
+                                                        ActualStart: dpPlnActualStart.SelectedDate,
+                                                        ActualEnd: dpPlnActualEnd.SelectedDate,
+                                                        ResponsiblePerson: If(IsBlank(cmbPlnPerson.Selected), Blank(), {Id: cmbPlnPerson.Selected.ID, Value: cmbPlnPerson.Selected.FullName}),
+                                                        ResponsiblePersonID: If(IsBlank(cmbPlnPerson.Selected), Blank(), cmbPlnPerson.Selected.ID),
+                                                        Progress: _progress,
+                                                        Status: LookUp(Choices(ProjectsActivities.Status), Value = _status),
+                                                        Description: txtPlnDescription.Text
+                                                    }
+                                                )
+                                            ),
+                                            "Task",
+                                            If(
+                                                varPlanningMode = "New",
+                                                Patch(
+                                                    ProjectsTasks,
+                                                    Defaults(ProjectsTasks),
+                                                    {
+                                                        Title: Trim(txtPlnTitle.Text),
+                                                        Project: {Id: gblPlanningProject.ID, Value: Coalesce(gblPlanningProject.ProjectCode, gblPlanningProject.Title)},
+                                                        ProjectID: gblPlanningProject.ID,
+                                                        Activity: {Id: varPlanningParentActivity.ID, Value: varPlanningParentActivity.Title},
+                                                        ActivityID: varPlanningParentActivity.ID,
+                                                        AssignedTo: {Id: cmbPlnPerson.Selected.ID, Value: cmbPlnPerson.Selected.FullName},
+                                                        AssignedToID: cmbPlnPerson.Selected.ID,
+                                                        Priority: ddPlnPriority.Selected,
+                                                        PlannedStart: dpPlnStart.SelectedDate,
+                                                        DueDate: dpPlnEnd.SelectedDate,
+                                                        ActualStart: dpPlnActualStart.SelectedDate,
+                                                        CompletedDate: dpPlnActualEnd.SelectedDate,
+                                                        Progress: _progress,
+                                                        Status: LookUp(Choices(ProjectsTasks.Status), Value = _status),
+                                                        TaskDescription: txtPlnTaskDescription.Text,
+                                                        Remarks: txtPlnRemarks.Text
+                                                    }
+                                                ),
+                                                Patch(
+                                                    ProjectsTasks,
+                                                    LookUp(ProjectsTasks, ID = gblPlanningActionItem.ID),
+                                                    {
+                                                        Title: Trim(txtPlnTitle.Text),
+                                                        Project: {Id: gblPlanningProject.ID, Value: Coalesce(gblPlanningProject.ProjectCode, gblPlanningProject.Title)},
+                                                        ProjectID: gblPlanningProject.ID,
+                                                        Activity: {Id: varPlanningParentActivity.ID, Value: varPlanningParentActivity.Title},
+                                                        ActivityID: varPlanningParentActivity.ID,
+                                                        AssignedTo: {Id: cmbPlnPerson.Selected.ID, Value: cmbPlnPerson.Selected.FullName},
+                                                        AssignedToID: cmbPlnPerson.Selected.ID,
+                                                        Priority: ddPlnPriority.Selected,
+                                                        PlannedStart: dpPlnStart.SelectedDate,
+                                                        DueDate: dpPlnEnd.SelectedDate,
+                                                        ActualStart: dpPlnActualStart.SelectedDate,
+                                                        CompletedDate: dpPlnActualEnd.SelectedDate,
+                                                        Progress: _progress,
+                                                        Status: LookUp(Choices(ProjectsTasks.Status), Value = _status),
+                                                        TaskDescription: txtPlnTaskDescription.Text,
+                                                        Remarks: txtPlnRemarks.Text
+                                                    }
+                                                )
+                                            )
+                                        )
+                                        );
+                                        fnProjLog(
+                                            If(varPlanningFormType = "Task", "Task: ", "Activity: ") & Coalesce(varPlnSaved.Title, Trim(txtPlnTitle.Text)),
+                                            gblPlanningProject.ID,
+                                            Coalesce(gblPlanningProject.Title, ""),
+                                            If(varPlanningFormType = "Task", "Task", "Activity"),
+                                            Coalesce(varPlnSaved.ID, 0),
+                                            If(varPlanningSaveMode = "Edit", "Updated", "Created"),
+                                            Coalesce(varPlnSaved.Status.Value, "")
+                                        );
+                                        If(
+                                            And(!IsBlank(cmbPlnPerson.Selected), cmbPlnPerson.Selected.ID <> Coalesce(varMeID, 0), Coalesce(varPlnSaved.ID, 0) > 0),
+                                            fnProjNotify(
+                                                cmbPlnPerson.Selected.ID,
+                                                cmbPlnPerson.Selected.FullName,
+                                                Coalesce(varPlnSaved.Title, Trim(txtPlnTitle.Text)),
+                                                If(
+                                                    gblLanguage = "Arabic",
+                                                    "هناك تحديث على خطة المشروع.",
+                                                    "A project plan item was assigned to you."
+                                                ),
+                                                If(varPlanningFormType = "Task", "Task", "Activity"),
+                                                varPlnSaved.ID,
+                                                If(varPlanningFormType = "Task", "Task", "Activity")
+                                            )
+                                        );
+                                        Refresh(ProjectsActivities);
+                                        Refresh(ProjectsTasks);
+                                        Set(varShowPlanningModal, false);
+                                        Set(varPlanningMode, Blank());
+                                        Set(varPlanningFormType, Blank());
+                                        Set(varPlanningParentActivity, Blank());
+                                        Set(gblPlanningActionItem, Blank());
+                                        Select(btnPlnLoad);
+                                        Notify(
+                                            If(
+                                                varPlanningSaveMode = "Edit",
+                                                If(gblLanguage = "Arabic", "تم تحديث البند.", "Planning item updated."),
+                                                If(gblLanguage = "Arabic", "تم إنشاء البند.", "Planning item created.")
+                                            ),
+                                            NotificationType.Success
+                                        )
+                                    )
+                                )
+                              Text: =If(varPlanningMode = "Edit", If(gblLanguage = "Arabic", "حفظ", "Save"), If(gblLanguage = "Arabic", "إنشاء", "Create"))
+                              Width: =120
+      - conPlnNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpPlnNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpPlnTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Calendar"
+            ModuleName: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrProjects, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "خطة المشروع", "Project plan")
+            ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpPlnPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 23, Module: "Plans", Title: If(gblLanguage = "Arabic", "الخطة", "Plan"), Icon: "Calendar", Visible: true},
+                  {ID: 25, Module: "Activities", Title: If(gblLanguage = "Arabic", "الأنشطة", "Activities"), Icon: "Activity", Visible: true},
+                  {ID: 24, Module: "Tasks", Title: If(gblLanguage = "Arabic", "مهامي", "My tasks"), Icon: "Grid", Visible: true},
+                  {ID: 22, Module: "Projects", Title: If(gblLanguage = "Arabic", "المشاريع", "Projects"), Icon: "Box", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Plans", Navigate(scrProjectsPlans, ScreenTransition.None),
+                  "Activities", Navigate(scrActivities, ScreenTransition.None),
+                  "Tasks", Navigate(scrMyTasks, ScreenTransition.None),
+                  "Projects", Navigate(ScrAllProjects, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

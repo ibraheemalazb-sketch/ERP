@@ -1,0 +1,1038 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrMEALActivities:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "Plans");
+        Set(varNavSelectedID, 65);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varMealActForm), Set(varMealActForm, "view"));
+        If(IsBlank(varMealActProject), Set(varMealActProject, varMealProject));
+        If(IsBlank(varMealActType), Set(varMealActType, Blank()));
+        If(IsBlank(varMealActStatus), Set(varMealActStatus, Blank()));
+        If(IsBlank(varMealActFrom), Set(varMealActFrom, Blank()));
+        If(IsBlank(varMealActTo), Set(varMealActTo, Blank()));
+        Set(varMealActError, false);
+        Select(btnMealActLoad)
+    Children:
+      - conMealActSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnMealActLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varMealActError, false);
+                    Clear(colMealActRaw);
+                    IfError(
+                        Refresh(ActivityPlans);
+                        If(
+                            Coalesce(varMealActProject.ID, 0) > 0,
+                            ClearCollect(colMealActRaw, Filter(ActivityPlans, ProjectID = varMealActProject.ID)),
+                            ClearCollect(colMealActRaw, FirstN(SortByColumns(ActivityPlans, "PlannedDate", SortOrder.Descending), 500))
+                        );
+                        ClearCollect(colMealActTypes, FirstN(ActivityTypes, 500));
+                        Select(btnMealActSync),
+                        Set(varMealActError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل خطط الأنشطة.", "Could not load activity plans."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnMealActSync:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =ClearCollect(
+                        colMealActView,
+                        SortByColumns(
+                            AddColumns(
+                                Filter(
+                                    colMealActRaw,
+                                    And(
+                                        Or(IsBlank(varMealActProject), ProjectID = varMealActProject.ID),
+                                        Or(IsBlank(varMealActType), ActivityTypeID = varMealActType.ID, ActivityType.Value = varMealActType.Title),
+                                        Or(IsBlank(varMealActStatus), Status.Value = varMealActStatus),
+                                        Or(IsBlank(varMealActFrom), And(Not(IsBlank(PlannedDate)), PlannedDate >= varMealActFrom)),
+                                        Or(IsBlank(varMealActTo), And(Not(IsBlank(PlannedDate)), PlannedDate <= varMealActTo)),
+                                        Or(
+                                            IsBlank(Trim(txtMealActSearch.Text)),
+                                            txtMealActSearch.Text in Coalesce(Title, ""),
+                                            txtMealActSearch.Text in Coalesce(Project.Value, ""),
+                                            txtMealActSearch.Text in Coalesce(ResponsiblePerson.Value, ""),
+                                            txtMealActSearch.Text in Coalesce(Location.Value, "")
+                                        )
+                                    )
+                                ),
+                                MEALFunctionLabel,
+                                Coalesce(
+                                    LookUp(colMealActTypes, ID = ActivityTypeID, MEALFunction.Value),
+                                    LookUp(colMealActTypes, ID = ActivityType.Id, MEALFunction.Value),
+                                    LookUp(colMealActTypes, Title = ActivityType.Value, MEALFunction.Value),
+                                    ""
+                                )
+                            ),
+                            "PlannedDate",
+                            SortOrder.Ascending
+                        )
+                    );
+                    If(
+                        Not(IsBlank(varSelectedActivityPlan)),
+                        Set(varSelectedActivityPlan, LookUp(colMealActRaw, ID = varSelectedActivityPlan.ID));
+                        If(Not(IsBlank(varSelectedActivityPlan)), Select(btnMealActLoadKids))
+                    )
+                  Text: ="Sync"
+                  Visible: =false
+                  Width: =1
+            - btnMealActLoadKids:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Clear(colMealActEvidence);
+                    Clear(colMealActLinkedActions);
+                    If(
+                        Coalesce(varSelectedActivityPlan.ID, 0) <= 0,
+                        false,
+                        IfError(
+                            ClearCollect(
+                                colMealActEvidence,
+                                Filter(ActivityEvidence, ActivityID = varSelectedActivityPlan.ID)
+                            ),
+                            Clear(colMealActEvidence)
+                        );
+                        IfError(
+                            ClearCollect(
+                                colMealActLinkedActions,
+                                Filter(
+                                    MELActions,
+                                    Or(
+                                        And(SourceType.Value = "Field Visit", SourceID = varSelectedActivityPlan.ID),
+                                        SourceID = varSelectedActivityPlan.ID
+                                    )
+                                )
+                            ),
+                            Clear(colMealActLinkedActions)
+                        )
+                    )
+                  Text: ="Kids"
+                  Visible: =false
+                  Width: =1
+            - btnMealActSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: varMealActForm = "new",
+                            pid: Coalesce(cmbMealActEditProject.Selected.ID, 0),
+                            ptt: Coalesce(cmbMealActEditProject.Selected.Title, "")
+                        },
+                        If(
+                            Or(IsBlank(Trim(txtMealActEditTitle.Text)), pid <= 0),
+                            Notify(If(ar, "العنوان والمشروع مطلوبان.", "Title and project are required."), NotificationType.Warning),
+                            Set(
+                                varMealActSaved,
+                                IfError(
+                                    Patch(
+                                        ActivityPlans,
+                                        If(isNew, Defaults(ActivityPlans), LookUp(ActivityPlans, ID = varSelectedActivityPlan.ID)),
+                                        {
+                                            Title: Trim(txtMealActEditTitle.Text),
+                                            Project: {Id: pid, Value: ptt},
+                                            ProjectID: pid,
+                                            ActivityType: If(
+                                                IsBlank(cmbMealActEditType.Selected),
+                                                Blank(),
+                                                {Id: cmbMealActEditType.Selected.ID, Value: Coalesce(cmbMealActEditType.Selected.Title, "")}
+                                            ),
+                                            ActivityTypeID: If(IsBlank(cmbMealActEditType.Selected), Blank(), cmbMealActEditType.Selected.ID),
+                                            ResponsiblePerson: If(
+                                                IsBlank(cmbMealActEditOwner.Selected),
+                                                Blank(),
+                                                {Id: cmbMealActEditOwner.Selected.ID, Value: cmbMealActEditOwner.Selected.FullName}
+                                            ),
+                                            ResponsiblePersonID: If(IsBlank(cmbMealActEditOwner.Selected), Blank(), cmbMealActEditOwner.Selected.ID),
+                                            Location: If(
+                                                IsBlank(cmbMealActEditLoc.Selected),
+                                                Blank(),
+                                                {
+                                                    Id: cmbMealActEditLoc.Selected.ID,
+                                                    Value: Coalesce(cmbMealActEditLoc.Selected.Title, cmbMealActEditLoc.Selected.LocationCode, Text(cmbMealActEditLoc.Selected.ID))
+                                                }
+                                            ),
+                                            LocationID: If(IsBlank(cmbMealActEditLoc.Selected), Blank(), cmbMealActEditLoc.Selected.ID),
+                                            PlannedDate: dteMealActEditDate.SelectedDate,
+                                            Description: txtMealActEditDesc.Text,
+                                            Status: {Value: Coalesce(cmbMealActEditStatus.Selected.Value, If(isNew, "Planned", varSelectedActivityPlan.Status.Value, "Planned"))}
+                                        }
+                                    ),
+                                    Blank()
+                                )
+                            );
+                            If(
+                                IsBlank(varMealActSaved),
+                                Notify(If(ar, "تعذر حفظ خطة النشاط.", "Could not save the activity plan."), NotificationType.Error),
+                                fnMealLog("Activity Plan", varMealActSaved.ID, Coalesce(varMealActSaved.Title, ""), If(isNew, "Created", "Updated"), "Info", pid, Coalesce(LookUp(Projects, ID = pid, ProjectCode), ""), "", "", "", Trim(txtMealActEditTitle.Text), false);
+                                If(
+                                    And(
+                                        Not(IsBlank(cmbMealActEditOwner.Selected)),
+                                        cmbMealActEditOwner.Selected.ID <> varMeID,
+                                        Or(isNew, cmbMealActEditOwner.Selected.ID <> Coalesce(varSelectedActivityPlan.ResponsiblePersonID, 0))
+                                    ),
+                                    fnMealNotify(
+                                        cmbMealActEditOwner.Selected.ID,
+                                        cmbMealActEditOwner.Selected.FullName,
+                                        If(ar, "أُسندت إليك خطة نشاط", "Activity plan assigned to you"),
+                                        Trim(txtMealActEditTitle.Text),
+                                        "Activity Plan",
+                                        varMealActSaved.ID,
+                                        "Unread"
+                                    )
+                                );
+                                Set(varSelectedActivityPlan, varMealActSaved);
+                                Set(varMealActForm, "view");
+                                Select(btnMealActLoad);
+                                Notify(If(ar, "تم حفظ خطة النشاط.", "Activity plan saved."), NotificationType.Success)
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+      - conMealActPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpMealActPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpMealActTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conMealActHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblMealActTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "خطط الأنشطة", "Activity Plans")
+                        Width: =180
+                        Wrap: =false
+                  - btnMealActRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnMealActLoad)
+                        Text: =""
+                        Width: =44
+                  - btnMealActNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        Icon: ="Add"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varSelectedActivityPlan, Blank());
+                          Set(varMealActForm, "new");
+                          Reset(txtMealActEditTitle);
+                          Reset(cmbMealActEditProject);
+                          Reset(cmbMealActEditType);
+                          Reset(cmbMealActEditOwner);
+                          Reset(cmbMealActEditLoc);
+                          Reset(cmbMealActEditStatus);
+                          Reset(dteMealActEditDate);
+                          Reset(txtMealActEditDesc)
+                        Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "جديد", "New"))
+                        Width: =If(App.Width < 700, 44, 100)
+            - conMealActFilters:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 220, 88)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =true
+                Children:
+                  - cmbMealActProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        DefaultSelectedItems: =If(IsBlank(varMealActProject), Filter(Projects, false), Filter(Projects, ID = varMealActProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                        ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  ForAll(
+                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                      LookUp(Projects, ID = access.ProjectID)
+                                  ),
+                                  Not(IsBlank(ID))
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealActProject, Self.Selected);
+                          Select(btnMealActLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbMealActType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "نوع النشاط", "Activity type")
+                        DefaultSelectedItems: =If(IsBlank(varMealActType), Filter(colMealActTypes, false), Filter(colMealActTypes, ID = varMealActType.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأنواع", "All types")
+                        ItemDisplayText: =Coalesce(ThisItem.Title, Text(ThisItem.ID))
+                        Items: =colMealActTypes
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealActType, Self.Selected);
+                          Select(btnMealActSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 160)
+                  - cmbMealActStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        DefaultSelectedItems: =If(IsBlank(varMealActStatus), Filter(Choices(ActivityPlans.Status), false), Filter(Choices(ActivityPlans.Status), Value = varMealActStatus))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ActivityPlans.Status)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealActStatus, Self.Selected.Value);
+                          Select(btnMealActSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - dteMealActFrom:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "من تاريخ", "From date")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealActFrom, Self.SelectedDate);
+                          Select(btnMealActSync)
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - dteMealActTo:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إلى تاريخ", "To date")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealActTo, Self.SelectedDate);
+                          Select(btnMealActSync)
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - txtMealActSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "بحث", "Search")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Select(btnMealActSync)
+                        Placeholder: =If(gblLanguage = "Arabic", "ابحث بالعنوان أو المشروع", "Search title or project")
+                        Width: =If(App.Width < 700, Parent.Width, 200)
+                  - btnMealActClear:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varMealActProject, Blank());
+                          Set(varMealActType, Blank());
+                          Set(varMealActStatus, Blank());
+                          Set(varMealActFrom, Blank());
+                          Set(varMealActTo, Blank());
+                          Reset(cmbMealActProject);
+                          Reset(cmbMealActType);
+                          Reset(cmbMealActStatus);
+                          Reset(dteMealActFrom);
+                          Reset(dteMealActTo);
+                          Reset(txtMealActSearch);
+                          Select(btnMealActLoad)
+                        Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                        Width: =80
+            - lblMealActError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varMealActError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل بعض الخطط.", "Some activity plans could not be loaded.")
+                  Visible: =varMealActError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conMealActBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  Height: =Parent.Height - 180
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - galMealActList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.Height
+                        Items: =colMealActView
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =88
+                        Visible: =Or(App.Width >= 700, And(IsBlank(varSelectedActivityPlan), varMealActForm <> "new"))
+                        Width: =If(App.Width < 700, Parent.Width, Parent.Width - If(Or(Not(IsBlank(varSelectedActivityPlan)), varMealActForm = "new"), 360, 0))
+                      Children:
+                        - btnMealActRow_1:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Align: =Align.Left
+                              Appearance: =If(ThisItem.ID = varSelectedActivityPlan.ID, ButtonAppearance.Primary, ButtonAppearance.Transparent)
+                              Height: =80
+                              OnSelect: |-
+                                =Set(varSelectedActivityPlan, LookUp(colMealActRaw, ID = ThisItem.ID));
+                                Set(varMealActForm, "view");
+                                Select(btnMealActLoadKids)
+                              Text: |-
+                                =Concatenate(
+                                    Coalesce(ThisItem.Title, "#" & Text(ThisItem.ID)),
+                                    Char(10),
+                                    Coalesce(ThisItem.Project.Value, "-"),
+                                    " · ",
+                                    Coalesce(ThisItem.ActivityType.Value, "-"),
+                                    If(IsBlank(ThisItem.MEALFunctionLabel), "", " · " & ThisItem.MEALFunctionLabel),
+                                    Char(10),
+                                    If(IsBlank(ThisItem.PlannedDate), "-", Text(ThisItem.PlannedDate, "yyyy-mm-dd")),
+                                    " · ",
+                                    Coalesce(ThisItem.Status.Value, "-"),
+                                    " · ",
+                                    Coalesce(ThisItem.ResponsiblePerson.Value, "-")
+                                )
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =4
+                  - conMealActDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =0
+                        Height: =Parent.Height
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        LayoutOverflowY: =LayoutOverflow.Scroll
+                        PaddingBottom: =12
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Visible: =Or(Not(IsBlank(varSelectedActivityPlan)), varMealActForm = "new")
+                        Width: =If(App.Width < 700, Parent.Width, 352)
+                      Children:
+                        - conMealActDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnMealActBack:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="ArrowLeft"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Set(varSelectedActivityPlan, Blank());
+                                      Set(varMealActForm, "view")
+                                    Text: =""
+                                    Visible: =App.Width < 700
+                                    Width: =44
+                              - lblMealActDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =14
+                                    Text: |-
+                                      =If(
+                                          varMealActForm = "new",
+                                          If(gblLanguage = "Arabic", "خطة جديدة", "New plan"),
+                                          varMealActForm = "edit",
+                                          If(gblLanguage = "Arabic", "تعديل الخطة", "Edit plan"),
+                                          Coalesce(varSelectedActivityPlan.Title, If(gblLanguage = "Arabic", "التفاصيل", "Details"))
+                                      )
+                                    Width: =120
+                                    Wrap: =false
+                              - btnMealActEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    Icon: ="Edit"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealActForm, "edit")
+                                    Text: =""
+                                    Visible: =And(varMealActForm = "view", Not(IsBlank(varSelectedActivityPlan)))
+                                    Width: =44
+                        - lblMealActInfo:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =140
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =Concatenate(
+                                    If(gblLanguage = "Arabic", "المشروع: ", "Project: "), Coalesce(varSelectedActivityPlan.Project.Value, "-"), Char(10),
+                                    If(gblLanguage = "Arabic", "النوع: ", "Type: "), Coalesce(varSelectedActivityPlan.ActivityType.Value, "-"), Char(10),
+                                    If(gblLanguage = "Arabic", "وظيفة MEAL: ", "MEAL function: "),
+                                    Coalesce(
+                                        LookUp(colMealActTypes, ID = varSelectedActivityPlan.ActivityTypeID, MEALFunction.Value),
+                                        LookUp(colMealActTypes, ID = varSelectedActivityPlan.ActivityType.Id, MEALFunction.Value),
+                                        "-"
+                                    ),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "المسؤول: ", "Owner: "), Coalesce(varSelectedActivityPlan.ResponsiblePerson.Value, "-"), Char(10),
+                                    If(gblLanguage = "Arabic", "الموقع: ", "Location: "), Coalesce(varSelectedActivityPlan.Location.Value, "-"), Char(10),
+                                    If(gblLanguage = "Arabic", "التاريخ: ", "Date: "), If(IsBlank(varSelectedActivityPlan.PlannedDate), "-", Text(varSelectedActivityPlan.PlannedDate, "yyyy-mm-dd")), Char(10),
+                                    If(gblLanguage = "Arabic", "الحالة: ", "Status: "), Coalesce(varSelectedActivityPlan.Status.Value, "-"), Char(10),
+                                    Coalesce(varSelectedActivityPlan.Description, "")
+                                )
+                              Visible: =And(varMealActForm = "view", Not(IsBlank(varSelectedActivityPlan)))
+                              Width: =Parent.Width - 24
+                        - lblMealActEvHdr:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.SemiBold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "الأدلة", "Evidence")
+                              Visible: =And(varMealActForm = "view", Not(IsBlank(varSelectedActivityPlan)))
+                              Width: =Parent.Width - 24
+                        - galMealActEvidence:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              FillPortions: =0
+                              Height: =Min(160, Max(48, CountRows(colMealActEvidence) * 44 + 4))
+                              Items: =colMealActEvidence
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =40
+                              Visible: =And(varMealActForm = "view", Not(IsBlank(varSelectedActivityPlan)))
+                              Width: =Parent.Width - 24
+                            Children:
+                              - btnMealActEvRow:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Align: =Align.Left
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    OnSelect: |-
+                                      =Set(varSelectedActivityEvidence, ThisItem);
+                                      Navigate(scrMEALEvidence, ScreenTransition.None)
+                                    Text: =Coalesce(ThisItem.Title, ThisItem.EvidenceType.Value, "#" & Text(ThisItem.ID))
+                                    Width: =Parent.TemplateWidth - 4
+                                    X: =2
+                                    Y: =2
+                        - lblMealActLinkHdr:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.SemiBold
+                              Height: =24
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: =If(gblLanguage = "Arabic", "إجراءات مرتبطة", "Linked MEL actions")
+                              Visible: =And(varMealActForm = "view", Not(IsBlank(varSelectedActivityPlan)))
+                              Width: =Parent.Width - 24
+                        - galMealActLinked:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              FillPortions: =0
+                              Height: =Min(140, Max(48, CountRows(colMealActLinkedActions) * 44 + 4))
+                              Items: =colMealActLinkedActions
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =40
+                              Visible: =And(varMealActForm = "view", Not(IsBlank(varSelectedActivityPlan)))
+                              Width: =Parent.Width - 24
+                            Children:
+                              - btnMealActLinkRow:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Align: =Align.Left
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =36
+                                    OnSelect: =Navigate(scrMELActions, ScreenTransition.None)
+                                    Text: =Coalesce(ThisItem.Title, "#" & Text(ThisItem.ID)) & " · " & Coalesce(ThisItem.Status.Value, "")
+                                    Width: =Parent.TemplateWidth - 4
+                                    X: =2
+                                    Y: =2
+                        - conMealActEditor:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =720
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =Or(varMealActForm = "new", varMealActForm = "edit")
+                            Children:
+                              - txtMealActEditTitle:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Default: =If(varMealActForm = "edit", Coalesce(varSelectedActivityPlan.Title, ""), "")
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                                    Width: =Parent.Width
+                              - cmbMealActEditProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          varMealActForm = "edit",
+                                          Filter(Projects, ID = varSelectedActivityPlan.ProjectID),
+                                          If(IsBlank(varMealActProject), Filter(Projects, false), Filter(Projects, ID = varMealActProject.ID))
+                                      )
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                                    Items: |-
+                                      =If(
+                                          varUserHasAllProjects,
+                                          Projects,
+                                          Filter(
+                                              ForAll(
+                                                  Filter(colUserProjectAccess, AllProjects = false) As access,
+                                                  LookUp(Projects, ID = access.ProjectID)
+                                              ),
+                                              Not(IsBlank(ID))
+                                          )
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbMealActEditType:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          varMealActForm = "edit",
+                                          Filter(colMealActTypes, Or(ID = varSelectedActivityPlan.ActivityTypeID, ID = varSelectedActivityPlan.ActivityType.Id)),
+                                          Filter(colMealActTypes, false)
+                                      )
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع النشاط", "Activity type")
+                                    ItemDisplayText: =Coalesce(ThisItem.Title, "") & If(IsBlank(ThisItem.MEALFunction.Value), "", " · " & ThisItem.MEALFunction.Value)
+                                    Items: =colMealActTypes
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbMealActEditOwner:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          varMealActForm = "edit",
+                                          Filter(Employees, ID = varSelectedActivityPlan.ResponsiblePersonID),
+                                          Filter(Employees, false)
+                                      )
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المسؤول", "Responsible person")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =Filter(Employees, Status.Value = "Active")
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbMealActEditLoc:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          varMealActForm = "edit",
+                                          Filter(Locations, ID = varSelectedActivityPlan.LocationID),
+                                          Filter(Locations, false)
+                                      )
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموقع", "Location")
+                                    ItemDisplayText: =Coalesce(ThisItem.Title, ThisItem.LocationCode, Text(ThisItem.ID))
+                                    Items: =Locations
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - dteMealActEditDate:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =If(varMealActForm = "edit", varSelectedActivityPlan.PlannedDate, Blank())
+                                    Height: =36
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Width: =Parent.Width
+                              - cmbMealActEditStatus:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          varMealActForm = "edit",
+                                          Filter(
+                                              Table(
+                                                  {Value: "Planned"},
+                                                  {Value: "Ongoing"},
+                                                  {Value: "Completed"},
+                                                  {Value: "Cancelled"}
+                                              ),
+                                              Value = Coalesce(varSelectedActivityPlan.Status.Value, "Planned")
+                                          ),
+                                          Filter(Table({Value: "Planned"}), true)
+                                      )
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: |-
+                                      =Table(
+                                          {Value: "Planned"},
+                                          {Value: "Ongoing"},
+                                          {Value: "Completed"},
+                                          {Value: "Cancelled"}
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - txtMealActEditDesc:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    Default: =If(varMealActForm = "edit", Coalesce(varSelectedActivityPlan.Description, ""), "")
+                                    Height: =100
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Placeholder: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - conMealActEditBtns:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =44
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutJustifyContent: =LayoutJustifyContent.End
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - btnMealActCancel:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Height: =36
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          OnSelect: |-
+                                            =If(
+                                                varMealActForm = "new",
+                                                Set(varSelectedActivityPlan, Blank());
+                                                Set(varMealActForm, "view"),
+                                                Set(varMealActForm, "view")
+                                            )
+                                          Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                                          Width: =90
+                                    - btnMealActSaveUI:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Height: =36
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          OnSelect: =Select(btnMealActSave)
+                                          Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                                          Width: =90
+      - conMealActNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpMealActNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpMealActTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="File"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrMEAL, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "خطط الأنشطة", "Activity Plans")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpMealActPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 61, Module: "MEAL", Title: If(gblLanguage = "Arabic", "لوحة", "Dashboard"), Icon: "Dashboard", Visible: true},
+                  {ID: 65, Module: "Plans", Title: If(gblLanguage = "Arabic", "الخطط", "Plans"), Icon: "File", Visible: true},
+                  {ID: 68, Module: "Evidence", Title: If(gblLanguage = "Arabic", "الأدلة", "Evidence"), Icon: "Folder", Visible: true},
+                  {ID: 64, Module: "Reporting", Title: If(gblLanguage = "Arabic", "التقارير", "Reports"), Icon: "Document", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Plans", Navigate(scrMEALActivities, ScreenTransition.None),
+                  "Evidence", Navigate(scrMEALEvidence, ScreenTransition.None),
+                  "Reporting", Navigate(scrReporting, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

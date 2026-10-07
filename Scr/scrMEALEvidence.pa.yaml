@@ -1,0 +1,861 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrMEALEvidence:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "Documents");
+        Set(varNavSelectedID, 68);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varMealEvProject), Set(varMealEvProject, Coalesce(varMealProject, varMealActProject)));
+        If(IsBlank(varMealEvType), Set(varMealEvType, Blank()));
+        If(IsBlank(varMealEvActivity), Set(varMealEvActivity, varSelectedActivityPlan));
+        If(IsBlank(varMealEvIndicatorID), Set(varMealEvIndicatorID, Blank()));
+        If(IsBlank(varMealEvFrom), Set(varMealEvFrom, Blank()));
+        If(IsBlank(varMealEvTo), Set(varMealEvTo, Blank()));
+        If(IsBlank(varMealEvForm), Set(varMealEvForm, "browse"));
+        Set(varMealEvError, false);
+        Select(btnMealEvLoad)
+    Children:
+      - conMealEvSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnMealEvLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varMealEvError, false);
+                    Clear(colMealEvRaw);
+                    IfError(
+                        Refresh(ActivityEvidence);
+                        If(
+                            Coalesce(varMealEvProject.ID, 0) > 0,
+                            ClearCollect(colMealEvRaw, Filter(ActivityEvidence, ProjectID = varMealEvProject.ID)),
+                            If(
+                                Coalesce(varMealEvActivity.ID, 0) > 0,
+                                ClearCollect(colMealEvRaw, Filter(ActivityEvidence, ActivityID = varMealEvActivity.ID)),
+                                ClearCollect(colMealEvRaw, FirstN(SortByColumns(ActivityEvidence, "UploadDate", SortOrder.Descending), 500))
+                            )
+                        );
+                        If(
+                            Coalesce(varMealEvActivity.ID, 0) > 0,
+                            ClearCollect(
+                                colMealEvActivities,
+                                Filter(ActivityPlans, Or(ID = varMealEvActivity.ID, ProjectID = Coalesce(varMealEvProject.ID, varMealEvActivity.ProjectID, 0)))
+                            ),
+                            If(
+                                Coalesce(varMealEvProject.ID, 0) > 0,
+                                ClearCollect(colMealEvActivities, Filter(ActivityPlans, ProjectID = varMealEvProject.ID)),
+                                ClearCollect(colMealEvActivities, FirstN(SortByColumns(ActivityPlans, "PlannedDate", SortOrder.Descending), 200))
+                            )
+                        );
+                        Select(btnMealEvSync),
+                        Set(varMealEvError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل مكتبة الأدلة.", "Could not load the evidence library."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnMealEvSync:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =ClearCollect(
+                        colMealEvView,
+                        SortByColumns(
+                            Filter(
+                                colMealEvRaw,
+                                And(
+                                    Or(IsBlank(varMealEvProject), ProjectID = varMealEvProject.ID),
+                                    Or(IsBlank(varMealEvType), EvidenceType.Value = varMealEvType),
+                                    Or(IsBlank(varMealEvActivity), ActivityID = varMealEvActivity.ID),
+                                    Or(IsBlank(varMealEvIndicatorID), IndicatorID = varMealEvIndicatorID),
+                                    Or(IsBlank(varMealEvFrom), And(Not(IsBlank(UploadDate)), UploadDate >= varMealEvFrom)),
+                                    Or(IsBlank(varMealEvTo), And(Not(IsBlank(UploadDate)), UploadDate <= DateAdd(varMealEvTo, 1, TimeUnit.Days))),
+                                    Or(
+                                        IsBlank(Trim(txtMealEvSearch.Text)),
+                                        txtMealEvSearch.Text in Coalesce(Title, ""),
+                                        txtMealEvSearch.Text in Coalesce(Project.Value, ""),
+                                        txtMealEvSearch.Text in Coalesce(Activity.Value, ""),
+                                        txtMealEvSearch.Text in Coalesce(EvidenceType.Value, ""),
+                                        txtMealEvSearch.Text in Text(Coalesce(IndicatorID, 0)),
+                                        txtMealEvSearch.Text in Coalesce(Author.DisplayName, Author.Email, "")
+                                    )
+                                )
+                            ),
+                            "UploadDate",
+                            SortOrder.Descending
+                        )
+                    );
+                    If(
+                        Not(IsBlank(varSelectedActivityEvidence)),
+                        Set(varSelectedActivityEvidence, LookUp(colMealEvRaw, ID = varSelectedActivityEvidence.ID))
+                    )
+                  Text: ="Sync"
+                  Visible: =false
+                  Width: =1
+            - btnMealEvSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            pid: Coalesce(cmbMealEvUpProject.Selected.ID, 0),
+                            ptt: Coalesce(cmbMealEvUpProject.Selected.Title, ""),
+                            aid: Coalesce(cmbMealEvUpActivity.Selected.ID, 0),
+                            att: Coalesce(cmbMealEvUpActivity.Selected.Title, ""),
+                            ind: If(IsBlank(Trim(txtMealEvUpInd.Text)), Blank(), Value(Trim(txtMealEvUpInd.Text)))
+                        },
+                        If(
+                            Or(IsBlank(Trim(txtMealEvUpTitle.Text)), pid <= 0),
+                            Notify(If(ar, "العنوان والمشروع مطلوبان.", "Title and project are required."), NotificationType.Warning),
+                            IsBlank(cmbMealEvUpType.Selected),
+                            Notify(If(ar, "اختر نوع الدليل.", "Select an evidence type."), NotificationType.Warning),
+                            Set(
+                                varMealEvSaved,
+                                IfError(
+                                    Patch(
+                                        ActivityEvidence,
+                                        Defaults(ActivityEvidence),
+                                        {
+                                            Title: Trim(txtMealEvUpTitle.Text),
+                                            Description: txtMealEvUpDesc.Text,
+                                            EvidenceType: {Value: cmbMealEvUpType.Selected.Value},
+                                            Project: {Id: pid, Value: ptt},
+                                            ProjectID: pid,
+                                            Activity: If(aid > 0, {Id: aid, Value: att}, Blank()),
+                                            ActivityID: If(aid > 0, aid, Blank()),
+                                            IndicatorID: ind,
+                                            UploadDate: Now()
+                                        }
+                                    ),
+                                    Blank()
+                                )
+                            );
+                            If(
+                                IsBlank(varMealEvSaved),
+                                Notify(If(ar, "تعذر إنشاء سجل الدليل.", "Could not create the evidence record."), NotificationType.Error),
+                                fnMealLog("Evidence", varMealEvSaved.ID, Coalesce(varMealEvSaved.Title, ""), "Created", "Info", pid, Coalesce(LookUp(Projects, ID = pid, ProjectCode), ""), "", "", "", Coalesce(cmbMealEvUpType.Selected.Value, ""), false);
+                                Set(varSelectedActivityEvidence, varMealEvSaved);
+                                Set(varMealEvForm, "browse");
+                                Reset(txtMealEvUpTitle);
+                                Reset(txtMealEvUpDesc);
+                                Reset(cmbMealEvUpType);
+                                Reset(cmbMealEvUpProject);
+                                Reset(cmbMealEvUpActivity);
+                                Reset(txtMealEvUpInd);
+                                Select(btnMealEvLoad);
+                                Notify(
+                                    If(
+                                        ar,
+                                        "تم حفظ بيانات الدليل. أرفق الملف من SharePoint إن لزم (رفع الملفات محدود في YAML).",
+                                        "Evidence metadata saved. Attach the file in SharePoint if needed (file upload is limited in YAML)."
+                                    ),
+                                    NotificationType.Success
+                                )
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+      - conMealEvPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpMealEvPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpMealEvTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conMealEvHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblMealEvTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "مكتبة أدلة الأنشطة", "Activity Evidence Library")
+                        Width: =220
+                        Wrap: =false
+                  - btnMealEvRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        Icon: ="ArrowClockwise"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Select(btnMealEvLoad)
+                        Text: =""
+                        Width: =44
+                  - btnMealEvUploadToggle:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =If(varMealEvForm = "upload", ButtonAppearance.Secondary, ButtonAppearance.Primary)
+                        Height: =36
+                        Icon: ="Add"
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =If(
+                              varMealEvForm = "upload",
+                              Set(varMealEvForm, "browse"),
+                              Set(varMealEvForm, "upload");
+                              Reset(txtMealEvUpTitle);
+                              Reset(txtMealEvUpDesc);
+                              Reset(cmbMealEvUpType);
+                              Reset(cmbMealEvUpProject);
+                              Reset(cmbMealEvUpActivity);
+                              Reset(txtMealEvUpInd)
+                          )
+                        Text: =If(App.Width < 700, "", If(varMealEvForm = "upload", If(gblLanguage = "Arabic", "إغلاق", "Close"), If(gblLanguage = "Arabic", "رفع", "Upload")))
+                        Width: =If(App.Width < 700, 44, 110)
+            - conMealEvFilters:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 240, 88)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =true
+                  Visible: =varMealEvForm <> "upload"
+                Children:
+                  - cmbMealEvProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        DefaultSelectedItems: =If(IsBlank(varMealEvProject), Filter(Projects, false), Filter(Projects, ID = varMealEvProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                        ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  ForAll(
+                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                      LookUp(Projects, ID = access.ProjectID)
+                                  ),
+                                  Not(IsBlank(ID))
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealEvProject, Self.Selected);
+                          Select(btnMealEvLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbMealEvType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "نوع الدليل", "Evidence type")
+                        DefaultSelectedItems: =If(IsBlank(varMealEvType), Filter(Choices(ActivityEvidence.EvidenceType), false), Filter(Choices(ActivityEvidence.EvidenceType), Value = varMealEvType))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأنواع", "All types")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ActivityEvidence.EvidenceType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealEvType, Self.Selected.Value);
+                          Select(btnMealEvSync)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 150)
+                  - cmbMealEvActivity:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "النشاط", "Activity")
+                        DefaultSelectedItems: =If(IsBlank(varMealEvActivity), Filter(colMealEvActivities, false), Filter(colMealEvActivities, ID = varMealEvActivity.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأنشطة", "All activities")
+                        ItemDisplayText: =Coalesce(ThisItem.Title, Text(ThisItem.ID))
+                        Items: =colMealEvActivities
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealEvActivity, Self.Selected);
+                          Select(btnMealEvLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - txtMealEvIndFilter:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "معرّف المؤشر", "Indicator ID")
+                        Default: =If(IsBlank(varMealEvIndicatorID), "", Text(varMealEvIndicatorID))
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(
+                              varMealEvIndicatorID,
+                              If(Or(IsBlank(Trim(Self.Text)), Not(IsNumeric(Self.Text))), Blank(), Value(Trim(Self.Text)))
+                          );
+                          Select(btnMealEvSync)
+                        Placeholder: =If(gblLanguage = "Arabic", "معرّف المؤشر", "Indicator ID")
+                        Width: =If(App.Width < 700, Parent.Width, 120)
+                  - dteMealEvFrom:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "من تاريخ", "From date")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealEvFrom, Self.SelectedDate);
+                          Select(btnMealEvSync)
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - dteMealEvTo:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إلى تاريخ", "To date")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =Set(varMealEvTo, Self.SelectedDate);
+                          Select(btnMealEvSync)
+                        Width: =If(App.Width < 700, Parent.Width, 140)
+                  - txtMealEvSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "بحث", "Search")
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Select(btnMealEvSync)
+                        Placeholder: =If(gblLanguage = "Arabic", "ابحث بالعنوان أو المشروع", "Search title or project")
+                        Width: =If(App.Width < 700, Parent.Width, 200)
+                  - btnMealEvClear:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varMealEvProject, Blank());
+                          Set(varMealEvType, Blank());
+                          Set(varMealEvActivity, Blank());
+                          Set(varMealEvIndicatorID, Blank());
+                          Set(varMealEvFrom, Blank());
+                          Set(varMealEvTo, Blank());
+                          Reset(cmbMealEvProject);
+                          Reset(cmbMealEvType);
+                          Reset(cmbMealEvActivity);
+                          Reset(txtMealEvIndFilter);
+                          Reset(dteMealEvFrom);
+                          Reset(dteMealEvTo);
+                          Reset(txtMealEvSearch);
+                          Select(btnMealEvLoad)
+                        Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                        Width: =80
+            - lblMealEvError:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varMealEvError, 24, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل بعض الأدلة.", "Some evidence records could not be loaded.")
+                  Visible: =varMealEvError
+                  Width: =Parent.Width
+                  Wrap: =false
+            - conMealEvUpload:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =460
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =12
+                  RadiusBottomLeft: =gblTheme.Radius.Medium
+                  RadiusBottomRight: =gblTheme.Radius.Medium
+                  RadiusTopLeft: =gblTheme.Radius.Medium
+                  RadiusTopRight: =gblTheme.Radius.Medium
+                  Visible: =varMealEvForm = "upload"
+                Children:
+                  - lblMealEvUpHdr:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.SemiBold
+                        Height: =28
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =14
+                        Text: =If(gblLanguage = "Arabic", "رفع / إنشاء سجل دليل", "Upload / create evidence metadata")
+                        Width: =Parent.Width
+                  - lblMealEvUpNote:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =11
+                        Text: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              "يحفظ هذا النموذج البيانات الوصفية فقط. أرفق الملف من عنصر SharePoint بعد الإنشاء إن لزم.",
+                              "This form saves metadata only. Attach the file from the SharePoint item after create if needed."
+                          )
+                        Width: =Parent.Width
+                  - txtMealEvUpTitle:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                        Width: =Parent.Width
+                  - txtMealEvUpDesc:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Height: =80
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                        Width: =Parent.Width
+                  - cmbMealEvUpType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع الدليل", "Evidence type")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: =Choices(ActivityEvidence.EvidenceType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - cmbMealEvUpProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealEvProject), Filter(Projects, false), Filter(Projects, ID = varMealEvProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  ForAll(
+                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                      LookUp(Projects, ID = access.ProjectID)
+                                  ),
+                                  Not(IsBlank(ID))
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =If(
+                              Coalesce(Self.Selected.ID, 0) > 0,
+                              ClearCollect(colMealEvActivities, Filter(ActivityPlans, ProjectID = Self.Selected.ID))
+                          )
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - cmbMealEvUpActivity:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealEvActivity), Filter(colMealEvActivities, false), Filter(colMealEvActivities, ID = varMealEvActivity.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "النشاط (اختياري)", "Activity (optional)")
+                        ItemDisplayText: =Coalesce(ThisItem.Title, Text(ThisItem.ID))
+                        Items: =colMealEvActivities
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - txtMealEvUpInd:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "معرّف المؤشر (اختياري)", "Indicator ID (optional)")
+                        Width: =Parent.Width
+                  - conMealEvUpBtns:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnMealEvUpCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealEvForm, "browse")
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =90
+                        - btnMealEvUpSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealEvSave)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =90
+            - galMealEvList:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "قائمة الأدلة", "Evidence list")
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  Fill: =fxThemeColor("Surface")
+                  Height: =Parent.Height - 200
+                  Items: =colMealEvView
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =108
+                  Visible: =varMealEvForm <> "upload"
+                  Width: =Parent.Width
+                Children:
+                  - conMealEvRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =If(ThisItem.ID = varSelectedActivityEvidence.ID, ColorFade(fxThemeColor("Primary"), 0.92), fxThemeColor("Surface"))
+                        Height: =Parent.TemplateHeight - 8
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =4
+                        PaddingBottom: =8
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =8
+                        RadiusBottomLeft: =gblTheme.Radius.Small
+                        RadiusBottomRight: =gblTheme.Radius.Small
+                        RadiusTopLeft: =gblTheme.Radius.Small
+                        RadiusTopRight: =gblTheme.Radius.Small
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+                        Y: =4
+                      Children:
+                        - btnMealEvSelect:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Align: =Align.Left
+                              Appearance: =ButtonAppearance.Subtle
+                              FillPortions: =1
+                              Height: =56
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varSelectedActivityEvidence, ThisItem)
+                              Text: |-
+                                =Concatenate(
+                                    Coalesce(ThisItem.Title, "#" & Text(ThisItem.ID)),
+                                    " · ",
+                                    Coalesce(ThisItem.EvidenceType.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "مشروع: ", "Project: "), Coalesce(ThisItem.Project.Value, "-"),
+                                    " · ",
+                                    If(gblLanguage = "Arabic", "نشاط: ", "Activity: "), Coalesce(ThisItem.Activity.Value, "-"),
+                                    Char(10),
+                                    If(gblLanguage = "Arabic", "مؤشر: ", "Indicator: "), Text(Coalesce(ThisItem.IndicatorID, "-")),
+                                    " · ",
+                                    If(IsBlank(ThisItem.UploadDate), "-", Text(ThisItem.UploadDate, "yyyy-mm-dd hh:mm")),
+                                    " · ",
+                                    Coalesce(ThisItem.Author.DisplayName, ThisItem.Author.Email, "-")
+                                )
+                              Width: =Parent.Width
+                        - conMealEvRowActions:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =36
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutJustifyContent: =LayoutJustifyContent.End
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - btnMealEvOpen:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =With(
+                                          {
+                                              ar: gblLanguage = "Arabic",
+                                              link: Coalesce(
+                                                  ThisItem.'Link to item',
+                                                  ThisItem.'{Link}',
+                                                  ThisItem.Link,
+                                                  If(Not(IsBlank(ThisItem.File)), ThisItem.File.Link, Blank()),
+                                                  If(Not(IsBlank(ThisItem.File)), ThisItem.File.Url, Blank())
+                                              )
+                                          },
+                                          If(
+                                              IsBlank(link),
+                                              Notify(If(ar, "لا يوجد رابط أو ملف لهذا الدليل.", "No link or file is available for this evidence."), NotificationType.Warning),
+                                              Launch(link)
+                                          )
+                                      )
+                                    Text: =If(gblLanguage = "Arabic", "فتح", "Open")
+                                    Width: =90
+            - lblMealEvEmpty:
+                Control: Label@2.5.1
+                Properties:
+                  AutoHeight: =true
+                  Color: =fxThemeColor("TextMuted")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(And(varMealEvForm <> "upload", CountRows(colMealEvView) = 0), 28, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Size: =12
+                  Text: =If(gblLanguage = "Arabic", "لا توجد أدلة مطابقة.", "No matching evidence records.")
+                  Visible: =And(varMealEvForm <> "upload", CountRows(colMealEvView) = 0)
+                  Width: =Parent.Width
+                  Wrap: =false
+      - conMealEvNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpMealEvNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpMealEvTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Folder"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrMEAL, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "مكتبة الأدلة", "Evidence Library")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpMealEvPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 61, Module: "MEAL", Title: If(gblLanguage = "Arabic", "لوحة", "Dashboard"), Icon: "Dashboard", Visible: true},
+                  {ID: 65, Module: "Plans", Title: If(gblLanguage = "Arabic", "الخطط", "Plans"), Icon: "File", Visible: true},
+                  {ID: 68, Module: "Evidence", Title: If(gblLanguage = "Arabic", "الأدلة", "Evidence"), Icon: "Folder", Visible: true},
+                  {ID: 64, Module: "Reporting", Title: If(gblLanguage = "Arabic", "التقارير", "Reports"), Icon: "Document", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Plans", Navigate(scrMEALActivities, ScreenTransition.None),
+                  "Evidence", Navigate(scrMEALEvidence, ScreenTransition.None),
+                  "Reporting", Navigate(scrReporting, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height
