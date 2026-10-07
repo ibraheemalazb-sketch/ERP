@@ -400,7 +400,11 @@ Screens:
                   DropShadow: =DropShadow.None
                   Fill: =Color.Transparent
                   FillPortions: =0
-                  Height: =If(App.Width < 700, 460 + 12 + 360 + 12 + 220, 400)
+                  Height: |-
+                    =With(
+                        {rows: Max(1, CountRows(Distinct(colProjectScope, Sector.Value)))},
+                        If(App.Width < 700, 460 + 12 + (96 + rows * 64), Max(420, 96 + rows * 64))
+                    )
                   LayoutAlignItems: =LayoutAlignItems.Stretch
                   LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
                   LayoutGap: =12
@@ -431,7 +435,7 @@ Screens:
                         RadiusBottomRight: =gblTheme.Radius.XL
                         RadiusTopLeft: =gblTheme.Radius.XL
                         RadiusTopRight: =gblTheme.Radius.XL
-                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
                       Children:
                         - lblProjectHealth:
                             Control: ModernText@1.0.0
@@ -493,74 +497,74 @@ Screens:
                         Data: |-
                           =ForAll(
                               Distinct(colProjectScope, Sector.Value) As sector,
-                              {
-                                  Label: If(
-                                      IsBlank(sector.Value),
-                                      If(gblLanguage = "Arabic", "بدون قطاع", "No sector"),
-                                      sector.Value
-                                  ),
-                                  Value: If(
-                                      IsBlank(sector.Value),
-                                      CountIf(colProjectScope, IsBlank(Sector.Value)),
-                                      CountRows(Filter(colProjectScope, Sector.Value = sector.Value))
-                                  ),
-                                  Subtitle: If(gblLanguage = "Arabic", "مشروع", "Projects"),
-                                  Icon: "Flag",
-                                  Color: "",
-                                  isHidden: false
-                              }
+                              With(
+                                  {
+                                      name: Coalesce(sector.Value, ""),
+                                      rows: If(
+                                          IsBlank(sector.Value),
+                                          Filter(colProjectScope, IsBlank(Sector.Value)),
+                                          Filter(colProjectScope, Sector.Value = sector.Value)
+                                      ),
+                                      dark: gblTheme.Mode = "Dark"
+                                  },
+                                  {
+                                      Label: If(name = "", If(gblLanguage = "Arabic", "بدون قطاع", "No sector"), name),
+                                      Value: CountRows(rows),
+                                      Subtitle: Text(Round(Coalesce(Average(rows, Progress), 0), 0), "0") & If(gblLanguage = "Arabic", "% تقدم", "% progress"),
+                                      Icon: Switch(
+                                          name,
+                                          "Education", "Graduation",
+                                          "Health", "Heart",
+                                          "Nutrition", "Apple",
+                                          "Protection", "Shield",
+                                          "Child Protection", "UserPlus",
+                                          "Gender", "Users",
+                                          "Shelter", "Home",
+                                          "WASH", "Droplet",
+                                          "Food Security", "ShoppingCart",
+                                          "Livelihood", "Performance",
+                                          "Cash Assistance", "Wallet",
+                                          "Early Recovery", "Refresh",
+                                          "Multi-Sector", "Layers",
+                                          "Other", "Flag",
+                                          "Flag"
+                                      ),
+                                      Color: Switch(
+                                          name,
+                                          "Education", If(dark, "#FBBF24", "#CA8A04"),
+                                          "Health", If(dark, "#FB7185", "#E11D48"),
+                                          "Nutrition", If(dark, "#FDA4AF", "#F43F5E"),
+                                          "Protection", If(dark, "#22D3EE", "#0891B2"),
+                                          "Child Protection", If(dark, "#FDBA74", "#EA580C"),
+                                          "Gender", If(dark, "#6EE7B7", "#059669"),
+                                          "Shelter", If(dark, "#93C5FD", "#2563EB"),
+                                          "WASH", If(dark, "#C4B5FD", "#7C3AED"),
+                                          "Food Security", If(dark, "#60A5FA", "#1D4ED8"),
+                                          "Livelihood", If(dark, "#DDD6FE", "#6D28D9"),
+                                          "Cash Assistance", If(dark, "#D8B4FE", "#9333EA"),
+                                          "Early Recovery", If(dark, "#D1D5DB", "#6B7280"),
+                                          "Multi-Sector", If(dark, "#79B0FF", "#1B56E5"),
+                                          "Other", If(dark, "#4ADE80", "#15803D"),
+                                          If(dark, "#79B0FF", "#1B56E5")
+                                      ),
+                                      isHidden: false
+                                  }
+                              )
                           )
                         EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد مشاريع", "No projects")
-                        Height: =If(App.Width < 700, 360, Parent.Height)
-                        IsLoading: =false
-                        LayoutMinHeight: =0
-                        LayoutMinWidth: =0
-                        OnBarClick: =
-                        Palette: =
-                        ShowRowSubtitle: =false
-                        Subtitle: =If(gblLanguage = "Arabic", "عدد المشاريع", "Project count")
-                        Theme: =gblTheme.Mode
-                        Title: =If(gblLanguage = "Arabic", "المشاريع حسب القطاع", "Projects by Sector")
-                        ValueFormat: ="Number"
-                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
-                  - cmpProjectBudgetSpent:
-                      Control: CanvasComponent
-                      ComponentName: cmpBarList
-                      Properties:
-                        AbbreviateAt: =10000
-                        Currency: ="USD"
-                        Data: |-
-                          =Table(
-                              {
-                                  Label: If(gblLanguage = "Arabic", "الميزانية", "Budget"),
-                                  Value: Sum(colProjectScope, Budget),
-                                  Subtitle: If(gblLanguage = "Arabic", "إجمالي الميزانية", "Total budget"),
-                                  Icon: "Wallet",
-                                  Color: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5"),
-                                  isHidden: false
-                              },
-                              {
-                                  Label: If(gblLanguage = "Arabic", "المنصرف", "Spent"),
-                                  Value: Sum(colProjectScope, Spent),
-                                  Subtitle: If(gblLanguage = "Arabic", "إجمالي المنصرف", "Total spent"),
-                                  Icon: "Money",
-                                  Color: If(gblTheme.Mode = "Dark", "#FB923C", "#C2410C"),
-                                  isHidden: false
-                              }
-                          )
-                        EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد أرقام", "No figures")
-                        Height: =If(App.Width < 700, 220, Parent.Height)
+                        Height: |-
+                          =96 + Max(1, CountRows(Distinct(colProjectScope, Sector.Value))) * 64
                         IsLoading: =false
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
                         OnBarClick: =
                         Palette: =
                         ShowRowSubtitle: =true
-                        Subtitle: =If(gblLanguage = "Arabic", "ضمن صلاحيتك", "In your scope")
+                        Subtitle: =If(gblLanguage = "Arabic", "العدد ومتوسط التقدم", "Count and average progress")
                         Theme: =gblTheme.Mode
-                        Title: =If(gblLanguage = "Arabic", "الميزانية والمنصرف", "Budget and Spent")
-                        ValueFormat: ="Currency"
-                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 24) / 3)
+                        Title: =If(gblLanguage = "Arabic", "المشاريع حسب القطاع", "Projects by Sector")
+                        ValueFormat: ="Number"
+                        Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 12) / 2)
             - conProjectLower:
                 Control: GroupContainer@1.5.0
                 Variant: AutoLayout
