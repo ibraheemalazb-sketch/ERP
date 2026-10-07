@@ -1,0 +1,192 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpUtilizationBar:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      BarHeight:
+        PropertyKind: Input
+        Description: Bar thickness in px
+        DataType: Number
+        Default: =10
+      Budgeted:
+        PropertyKind: Input
+        Description: Budgets.TotalAmount (display name BudgetedAmount) or project budget
+        DataType: Number
+        Default: =10000
+      Committed:
+        PropertyKind: Input
+        Description: Budgets.CommittedAmount (Flow)
+        DataType: Number
+        Default: =2500
+      CommittedRatio:
+        PropertyKind: Output
+        Description: Committed / Budgeted
+        DataType: Number
+      Currency:
+        PropertyKind: Input
+        Description: Currency for the legend/tooltip
+        DataType: Text
+        Default: ="USD"
+      DesiredHeight:
+        PropertyKind: Output
+        Description: Height needed
+        DataType: Number
+      ShowLabel:
+        PropertyKind: Input
+        Description: Show % label + icon at the end
+        DataType: Boolean
+        Default: =true
+      ShowLegend:
+        PropertyKind: Input
+        Description: Show spent / committed / remaining line under the bar
+        DataType: Boolean
+        Default: =false
+      Spent:
+        PropertyKind: Input
+        Description: Budgets.SpentAmount (Flow)
+        DataType: Number
+        Default: =5000
+      SpentRatio:
+        PropertyKind: Output
+        Description: Spent / Budgeted
+        DataType: Number
+      Tone:
+        PropertyKind: Output
+        Description: Tone from fnUtilTone (thresholds utilWarnAt / utilDangerAt / utilOverAt)
+        DataType: Text
+      Utilization:
+        PropertyKind: Output
+        Description: (Committed + Spent) / Budgeted
+        DataType: Number
+    Properties:
+      CommittedRatio: =If(Coalesce(cmpUtilizationBar.Budgeted, 0) <= 0, 0, Max(0, Coalesce(cmpUtilizationBar.Committed, 0)) / cmpUtilizationBar.Budgeted)
+      DesiredHeight: =Max(cmpUtilizationBar.BarHeight, 20) + If(cmpUtilizationBar.ShowLegend, 4 + 18, 0)
+      Height: =cmpUtilizationBar.DesiredHeight
+      SpentRatio: =If(Coalesce(cmpUtilizationBar.Budgeted, 0) <= 0, 0, Max(0, Coalesce(cmpUtilizationBar.Spent, 0)) / cmpUtilizationBar.Budgeted)
+      Tone: =fnUtilTone(cmpUtilizationBar.Utilization)
+      Utilization: =fnUtilRatio(cmpUtilizationBar.Budgeted, cmpUtilizationBar.Committed, cmpUtilizationBar.Spent)
+      Width: =260
+    Children:
+      - conUtilRoot:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =4
+            RadiusBottomLeft: =0
+            RadiusBottomRight: =0
+            RadiusTopLeft: =0
+            RadiusTopRight: =0
+            Width: =Parent.Width
+          Children:
+            - conUtilRow:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  FillPortions: =0
+                  Height: =Max(cmpUtilizationBar.BarHeight, 20)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  RadiusBottomLeft: =0
+                  RadiusBottomRight: =0
+                  RadiusTopLeft: =0
+                  RadiusTopRight: =0
+                Children:
+                  - conUtilTrack:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderColor: =FinTheme.Border
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =FinTheme.Background
+                        Height: =cmpUtilizationBar.BarHeight
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        RadiusBottomLeft: =cmpUtilizationBar.BarHeight / 2
+                        RadiusBottomRight: =cmpUtilizationBar.BarHeight / 2
+                        RadiusTopLeft: =cmpUtilizationBar.BarHeight / 2
+                        RadiusTopRight: =cmpUtilizationBar.BarHeight / 2
+                      Children:
+                        - rectUtilSpent:
+                            Control: Rectangle@2.3.0
+                            Properties:
+                              Fill: =fnToneAccent(cmpUtilizationBar.Tone)
+                              Height: =Parent.Height
+                              Width: =Parent.Width * Min(cmpUtilizationBar.SpentRatio, 1)
+                              X: =If(isRTL, Parent.Width - Self.Width, 0)
+                        - rectUtilCommitted:
+                            Control: Rectangle@2.3.0
+                            Properties:
+                              Fill: =ColorFade(fnToneAccent(cmpUtilizationBar.Tone), If(themeIsDark, -0.45, 0.55))
+                              Height: =Parent.Height
+                              Width: =Parent.Width * Max(0, Min(cmpUtilizationBar.CommittedRatio, 1 - Min(cmpUtilizationBar.SpentRatio, 1)))
+                              X: =If(isRTL, Parent.Width - rectUtilSpent.Width - Self.Width, rectUtilSpent.Width)
+                  - icoUtil:
+                      Control: Classic/Icon@2.5.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        Color: =fnToneText(cmpUtilizationBar.Tone)
+                        FocusedBorderColor: =FinTheme.Focus
+                        Height: =16
+                        Icon: =Coalesce(LookUp(tblStatusMap, Domain = "Utilization" && Status = cmpUtilizationBar.Tone, Ico), Icon.HorizontalLine)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =cmpUtilizationBar.ShowLabel
+                        Width: =16
+                  - lblUtilPct:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =alignNumber
+                        AlignInContainer: =AlignInContainer.Stretch
+                        Color: =fnToneText(cmpUtilizationBar.Tone)
+                        Font: =fontBase
+                        FontWeight: =FontWeight.Semibold
+                        Height: =20
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =fsCaption
+                        Text: =fnPct(cmpUtilizationBar.Utilization)
+                        Tooltip: =fnT("util.spent", "Spent") & " " & fnMoney(cmpUtilizationBar.Spent, cmpUtilizationBar.Currency) & " | " & fnT("util.committed", "Committed") & " " & fnMoney(cmpUtilizationBar.Committed, cmpUtilizationBar.Currency) & " | " & fnT("util.remaining", "Remaining") & " " & fnMoney(cmpUtilizationBar.Budgeted - cmpUtilizationBar.Committed - cmpUtilizationBar.Spent, cmpUtilizationBar.Currency)
+                        Visible: =cmpUtilizationBar.ShowLabel
+                        Width: =56
+                        Wrap: =false
+            - lblUtilLegend:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =alignStart
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =FinTheme.TextSecondary
+                  Font: =fontBase
+                  Height: =18
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =fsCaption
+                  Text: =fnT("util.spent", "Spent") & " " & fnMoney(cmpUtilizationBar.Spent, cmpUtilizationBar.Currency) & " | " & fnT("util.committed", "Committed") & " " & fnMoney(cmpUtilizationBar.Committed, cmpUtilizationBar.Currency) & " | " & fnT("util.remaining", "Remaining") & " " & fnMoney(cmpUtilizationBar.Budgeted - cmpUtilizationBar.Committed - cmpUtilizationBar.Spent, cmpUtilizationBar.Currency)
+                  Tooltip: =fnT("util.spent", "Spent") & " " & fnMoney(cmpUtilizationBar.Spent, cmpUtilizationBar.Currency) & " | " & fnT("util.committed", "Committed") & " " & fnMoney(cmpUtilizationBar.Committed, cmpUtilizationBar.Currency) & " | " & fnT("util.remaining", "Remaining") & " " & fnMoney(cmpUtilizationBar.Budgeted - cmpUtilizationBar.Committed - cmpUtilizationBar.Spent, cmpUtilizationBar.Currency)
+                  Visible: =cmpUtilizationBar.ShowLegend
+                  Wrap: =false

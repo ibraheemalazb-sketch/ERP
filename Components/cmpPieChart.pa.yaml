@@ -1,0 +1,327 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpPieChart:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      Animate:
+        PropertyKind: Input
+        DisplayName: Animate
+        Description: Kept for existing screens. The image does not run CSS animation.
+        DataType: Boolean
+        Default: =false
+      AnimationDuration:
+        PropertyKind: Input
+        DisplayName: AnimationDuration
+        Description: Kept for existing screens.
+        DataType: Number
+        Default: =0
+      ChartData:
+        PropertyKind: Input
+        DisplayName: ChartData
+        Description: Rows with Label, Value, and optional Color.
+        DataType: Table
+        Default: |-
+          =Table(
+              {Label: "Marketing", Value: 35, Color: "#1B56E5"},
+              {Label: "Sales", Value: 28, Color: "#16A34A"},
+              {Label: "Engineering", Value: 22, Color: "#D97706"},
+              {Label: "Operations", Value: 15, Color: "#DC2626"}
+          )
+      ChartTitle:
+        PropertyKind: Input
+        DisplayName: ChartTitle
+        DataType: Text
+        Default: =""
+      DefaultColors:
+        PropertyKind: Input
+        DisplayName: DefaultColors
+        Description: Palette used when a row has no Color.
+        DataType: Table
+        Default: |-
+          =Table(
+              {Color: "#1B56E5"},
+              {Color: "#16A34A"},
+              {Color: "#D97706"},
+              {Color: "#DC2626"},
+              {Color: "#0E7490"},
+              {Color: "#7C3AED"},
+              {Color: "#DB2777"},
+              {Color: "#65A30D"}
+          )
+      DonutMode:
+        PropertyKind: Input
+        DisplayName: DonutMode
+        Description: True draws a ring. False draws a pie.
+        DataType: Boolean
+        Default: =true
+      DonutThickness:
+        PropertyKind: Input
+        DisplayName: DonutThickness
+        Description: Ring thickness from 0.18 to 0.4 of the radius. A smaller number leaves a larger center for the total.
+        DataType: Number
+        Default: =0.24
+      ShowLabels:
+        PropertyKind: Input
+        DisplayName: ShowLabels
+        Description: Shows the percent on a slice when the slice is at least 8 percent and the legend is hidden.
+        DataType: Boolean
+        Default: =false
+      ShowLegend:
+        PropertyKind: Input
+        DisplayName: ShowLegend
+        Description: Shows the legend.
+        DataType: Boolean
+        Default: =true
+      ShowPercentages:
+        PropertyKind: Input
+        DisplayName: ShowPercentages
+        Description: Shows percentages in the legend.
+        DataType: Boolean
+        Default: =true
+      ShowTitle:
+        PropertyKind: Input
+        DisplayName: ShowTitle
+        Description: Shows ChartTitle.
+        DataType: Boolean
+        Default: =true
+      ShowValues:
+        PropertyKind: Input
+        DisplayName: ShowValues
+        Description: Shows the raw value in the legend.
+        DataType: Boolean
+        Default: =false
+      Theme:
+        PropertyKind: Input
+        DisplayName: Theme
+        Description: Kept for existing screens. Colors follow gblTheme.Mode.
+        DataType: Text
+        Default: ="Light"
+    Properties:
+      Fill: =Color.Transparent
+      Height: =460
+      Width: =480
+    Children:
+      - imgPieChart:
+          Control: Image@2.2.3
+          Properties:
+            AccessibleLabel: |-
+              =If(
+                  IsBlank(cmpPieChart.ChartTitle),
+                  If(gblLanguage = "Arabic", "مخطط", "Chart"),
+                  cmpPieChart.ChartTitle
+              )
+            BorderStyle: =BorderStyle.None
+            Height: =cmpPieChart.Height
+            Image: |-
+              ="data:image/svg+xml;utf8," & EncodeUrl(
+                  With(
+                      {
+                          src: cmpPieChart.ChartData,
+                          palette: cmpPieChart.DefaultColors,
+                          showLegend: cmpPieChart.ShowLegend,
+                          showTitle: cmpPieChart.ShowTitle && !IsBlank(cmpPieChart.ChartTitle),
+                          showPct: cmpPieChart.ShowPercentages,
+                          showVals: cmpPieChart.ShowValues,
+                          showLabels: cmpPieChart.ShowLabels,
+                          donut: cmpPieChart.DonutMode,
+                          thick: Min(Max(Coalesce(cmpPieChart.DonutThickness, 0.24), 0.18), 0.32),
+                          dark: gblTheme.Mode = "Dark"
+                      },
+                      With(
+                          {
+                              n: CountRows(src),
+                              total: Sum(src, Value),
+                              vbW: 640,
+                              maxLen: If(
+                                  CountRows(src) < 1,
+                                  1,
+                                  Max(src, Len(Coalesce(Label, "")))
+                              ),
+                              pi: 3.14159265359,
+                              titleColor: If(dark, "#EDF1F5", "#111827"),
+                              textColor: If(dark, "#C9D1D9", "#374151"),
+                              muted: If(dark, "#8B949E", "#6B7280"),
+                              hole: If(dark, "#161B22", "#FFFFFF")
+                          },
+                          With(
+                              {
+                                  cols: If(
+                                      n <= 1,
+                                      1,
+                                      Min(
+                                          n,
+                                          Max(
+                                              If(n >= 3, 2, 1),
+                                              RoundDown(
+                                                  (vbW - 16) / Max(
+                                                      maxLen * 9.2 + 22 + If(showPct, 42, 0) + If(showVals, 50, 0),
+                                                      1
+                                                  ),
+                                                  0
+                                              )
+                                          )
+                                      )
+                                  ),
+                                  radius: If(showLegend, 240, 250),
+                                  cx: 320,
+                                  cy: If(showTitle, 56, 18) + If(showLegend, 240, 250)
+                              },
+                              With(
+                                  {
+                                      vbH: cy + radius + If(
+                                          showLegend,
+                                          22 + RoundUp(Max(n, 1) / cols, 0) * 36 + 12,
+                                          20
+                                      ),
+                                      innerR: If(donut, radius * (1 - thick), 0),
+                                  slices: If(
+                                      n < 1,
+                                      Table({i: 1, label: "", value: 0, color: "#1B56E5", percent: 0, start: 0, sweep: 0}),
+                                      ForAll(
+                                      Sequence(n) As slice,
+                                      With(
+                                          {
+                                              idx: slice.Value,
+                                              row: Index(src, slice.Value),
+                                              rawColor: IfError(Index(src, slice.Value).Color, "")
+                                          },
+                                          {
+                                              i: idx,
+                                              label: Coalesce(row.Label, ""),
+                                              value: Coalesce(row.Value, 0),
+                                              color: If(
+                                                  IsBlank(rawColor),
+                                                  If(
+                                                      CountRows(palette) > 0,
+                                                      Index(palette, Mod(idx - 1, CountRows(palette)) + 1).Color,
+                                                      "#1B56E5"
+                                                  ),
+                                                  rawColor
+                                              ),
+                                              percent: If(total > 0, Coalesce(row.Value, 0) / total * 100, 0),
+                                              start: If(
+                                                  idx <= 1 || total <= 0,
+                                                  -90,
+                                                  Sum(FirstN(src, idx - 1), Value) / total * 360 - 90
+                                              ),
+                                              sweep: If(total > 0, Coalesce(row.Value, 0) / total * 360, 0)
+                                          }
+                                      )
+                                  )
+                                  )
+                              },
+                              If(
+                                  n < 1 || total <= 0,
+                                  "<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%' viewBox='0 0 " & vbW & " " & vbH & "'><text x='320' y='" & Text(vbH / 2, "[$-en-US]0") & "' text-anchor='middle' fill='" & muted & "' font-family='Segoe UI,sans-serif' font-size='18'>" & If(gblLanguage = "Arabic", "لا توجد بيانات", "No data") & "</text></svg>",
+                                  "<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%' viewBox='0 0 " & vbW & " " & vbH & "'>" &
+                                  If(
+                                      showTitle,
+                                      "<text x='24' y='32' fill='" & titleColor & "' font-family='Segoe UI,sans-serif' font-size='20' font-weight='600'>" & Substitute(Substitute(Substitute(cmpPieChart.ChartTitle, "&", "&amp;"), "<", "&lt;"), ">", "&gt;") & "</text>",
+                                      ""
+                                  ) &
+                                  Concat(
+                                      slices,
+                                      With(
+                                          {
+                                              startRad: start * pi / 180,
+                                              endRad: (start + sweep) * pi / 180,
+                                              midRad: (start + sweep / 2) * pi / 180,
+                                              largeArc: If(sweep > 180, 1, 0),
+                                              rText: Text(radius, "[$-en-US]0.0"),
+                                              iText: Text(innerR, "[$-en-US]0.0")
+                                          },
+                                          With(
+                                              {
+                                                  x1: Text(cx + radius * Cos(startRad), "[$-en-US]0.0"),
+                                                  y1: Text(cy + radius * Sin(startRad), "[$-en-US]0.0"),
+                                                  x2: Text(cx + radius * Cos(endRad), "[$-en-US]0.0"),
+                                                  y2: Text(cy + radius * Sin(endRad), "[$-en-US]0.0"),
+                                                  ix1: Text(cx + innerR * Cos(startRad), "[$-en-US]0.0"),
+                                                  iy1: Text(cy + innerR * Sin(startRad), "[$-en-US]0.0"),
+                                                  ix2: Text(cx + innerR * Cos(endRad), "[$-en-US]0.0"),
+                                                  iy2: Text(cy + innerR * Sin(endRad), "[$-en-US]0.0"),
+                                                  lx: Text(cx + If(donut, (radius + innerR) / 2, radius * 0.62) * Cos(midRad), "[$-en-US]0.0"),
+                                                  ly: Text(cy + If(donut, (radius + innerR) / 2, radius * 0.62) * Sin(midRad), "[$-en-US]0.0")
+                                              },
+                                              If(
+                                                  sweep >= 359.9,
+                                                  "<circle cx='" & Text(cx, "[$-en-US]0") & "' cy='" & Text(cy, "[$-en-US]0") & "' r='" & rText & "' fill='" & color & "'/>" & If(donut, "<circle cx='" & Text(cx, "[$-en-US]0") & "' cy='" & Text(cy, "[$-en-US]0") & "' r='" & iText & "' fill='" & hole & "'/>", ""),
+                                                  If(
+                                                      donut,
+                                                      "<path d='M " & x1 & " " & y1 & " A " & rText & " " & rText & " 0 " & largeArc & " 1 " & x2 & " " & y2 & " L " & ix2 & " " & iy2 & " A " & iText & " " & iText & " 0 " & largeArc & " 0 " & ix1 & " " & iy1 & " Z' fill='" & color & "'/>",
+                                                      "<path d='M " & Text(cx, "[$-en-US]0") & " " & Text(cy, "[$-en-US]0") & " L " & x1 & " " & y1 & " A " & rText & " " & rText & " 0 " & largeArc & " 1 " & x2 & " " & y2 & " Z' fill='" & color & "'/>"
+                                                  )
+                                              ) &
+                                              If(
+                                                  showLabels && !showLegend && percent >= 8,
+                                                  "<text x='" & lx & "' y='" & ly & "' text-anchor='middle' fill='#FFFFFF' font-family='Segoe UI,sans-serif' font-size='14' font-weight='600'>" & Text(Round(percent, 0)) & "%</text>",
+                                                  ""
+                                              )
+                                          )
+                                      )
+                                  ) &
+                                  If(
+                                      donut,
+                                      "<circle cx='" & Text(cx, "[$-en-US]0") & "' cy='" & Text(cy, "[$-en-US]0") & "' r='" & Text(innerR - 1, "[$-en-US]0.0") & "' fill='" & hole & "'/>" &
+                                      With(
+                                          {
+                                              numText: Text(total, "#,##0"),
+                                              numSize: Min(64, Max(22, innerR * 1.55 / Max(Len(Text(total, "#,##0")), 1)))
+                                          },
+                                          "<text x='" & Text(cx, "[$-en-US]0") & "' y='" & Text(cy - 6, "[$-en-US]0") & "' text-anchor='middle' dominant-baseline='middle' fill='" & titleColor & "' font-family='Segoe UI,sans-serif' font-size='" & Text(Round(numSize, 0), "[$-en-US]0") & "' font-weight='700'>" & numText & "</text>" &
+                                          "<text x='" & Text(cx, "[$-en-US]0") & "' y='" & Text(cy + numSize * 0.42, "[$-en-US]0") & "' text-anchor='middle' fill='" & muted & "' font-family='Segoe UI,sans-serif' font-size='13'>" & If(gblLanguage = "Arabic", "الإجمالي", "Total") & "</text>"
+                                      ),
+                                      ""
+                                  ) &
+                                  If(
+                                      showLegend,
+                                      Concat(
+                                          slices,
+                                          With(
+                                              {
+                                                  row: RoundDown((i - 1) / cols, 0),
+                                                  col: Mod(i - 1, cols),
+                                                  slot: (vbW - 16) / cols
+                                              },
+                                              With(
+                                                  {
+                                                      inRow: If(
+                                                          row = RoundDown((n - 1) / cols, 0),
+                                                          n - row * cols,
+                                                          cols
+                                                      ),
+                                                      yRect: cy + radius + 20 + row * 36
+                                                  },
+                                                  With(
+                                                      {
+                                                          x0: (vbW - inRow * slot) / 2 + If(gblIsRTL, inRow - 1 - col, col) * slot
+                                                      },
+                                                      "<rect x='" & Text(If(gblIsRTL, x0 + slot - 18, x0 + 2), "[$-en-US]0.0") & "' y='" & Text(yRect, "[$-en-US]0.0") & "' width='14' height='14' rx='3' fill='" & color & "'/>" &
+                                                      "<text x='" & Text(If(gblIsRTL, x0 + slot - 24, x0 + 22), "[$-en-US]0.0") & "' y='" & Text(yRect + 12, "[$-en-US]0.0") & "' text-anchor='" & If(gblIsRTL, "end", "start") & "' fill='" & textColor & "' font-family='Segoe UI,sans-serif' font-size='17'>" &
+                                                      Substitute(Substitute(Substitute(label, "&", "&amp;"), "<", "&lt;"), ">", "&gt;") &
+                                                      If(showPct, "  " & Text(Round(percent, 0)) & "%", "") &
+                                                      If(showVals, "  " & Text(value, "#,##0"), "") &
+                                                      "</text>"
+                                                  )
+                                              )
+                                          )
+                                      ),
+                                      ""
+                                  ) &
+                                  "</svg>"
+                              )
+                          )
+                      )
+                  )
+              )
+              )
+            Tooltip: =Self.AccessibleLabel
+            Width: =cmpPieChart.Width

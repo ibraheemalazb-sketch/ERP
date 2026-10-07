@@ -1,0 +1,1229 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpSendEmail:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      AudienceDepartmentID:
+        PropertyKind: Output
+        DisplayName: AudienceDepartmentID
+        Description: Department chosen in the dialog, or 0. The To line already lists those employees. This is not the record the mail is about.
+        DataType: Number
+      AudienceProjectID:
+        PropertyKind: Output
+        DisplayName: AudienceProjectID
+        Description: Project chosen in the dialog, or 0. The To line already lists those employees. This is not the record the mail is about.
+        DataType: Number
+      Body:
+        PropertyKind: Output
+        DisplayName: Body
+        Description: Finished HTML body. Read this in OnSend. The note is escaped before it is inserted.
+        DataType: Text
+      Busy:
+        PropertyKind: Input
+        DisplayName: Busy
+        Description: Set true while the screen is sending and false when it finishes. The component does not send mail and does not clear Busy.
+        DataType: Boolean
+        Default: =false
+      CcAddresses:
+        PropertyKind: Output
+        DisplayName: CcAddresses
+        Description: Semicolon separated. Blank addresses are dropped, duplicates collapse, and anyone already on To is removed.
+        DataType: Text
+      Config:
+        PropertyKind: Input
+        DisplayName: Config
+        Description: Width is the card width. MaxNote caps the note. ShowPriority, ShowCc, and ShowAudience hide those sections. LockSubject makes the subject read only.
+        DataType: Record
+        Default: |-
+          ={
+              Width: 520,
+              MaxNote: 2000,
+              ShowPriority: true,
+              ShowCc: true,
+              ShowAudience: true,
+              LockSubject: false
+          }
+      ContextHtml:
+        PropertyKind: Input
+        DisplayName: ContextHtml
+        Description: HTML placed above the note. Escape user-typed text before you pass it.
+        DataType: Text
+        Default: =""
+      ContextLine:
+        PropertyKind: Input
+        DisplayName: ContextLine
+        Description: One line under the title. It is not included in the mail.
+        DataType: Text
+        Default: =""
+      DefaultSubject:
+        PropertyKind: Input
+        DisplayName: DefaultSubject
+        Description: Prefills the subject. LockSubject makes it read only.
+        DataType: Text
+        Default: =""
+      Directory:
+        PropertyKind: Input
+        DisplayName: Directory
+        Description: People for the pickers. Columns are DisplayName, Mail, and JobTitle.
+        DataType: Table
+        Default: |-
+          =Filter(
+              Table(
+                  {
+                      DisplayName: "",
+                      Mail: "",
+                      JobTitle: ""
+                  }
+              ),
+              false
+          )
+      Note:
+        PropertyKind: Output
+        DisplayName: Note
+        Description: Plain note the sender typed. Log this rather than Body.
+        DataType: Text
+      OnCancel:
+        PropertyKind: Event
+        DisplayName: OnCancel
+        Description: Dismissed without sending. Clear the open flag and Reset this instance.
+        ReturnType: None
+        Default: =false
+      OnSend:
+        PropertyKind: Event
+        DisplayName: OnSend
+        Description: Send was pressed and the outputs are ready. Set Busy, send, then set Busy false and Reset this instance.
+        ReturnType: None
+        Default: =false
+      Priority:
+        PropertyKind: Output
+        DisplayName: Priority
+        Description: Urgent, FYI, Reminder, or blank.
+        DataType: Text
+      RecipientCount:
+        PropertyKind: Output
+        DisplayName: RecipientCount
+        Description: Usable To addresses after blanks and duplicates are removed.
+        DataType: Number
+      SearchText:
+        PropertyKind: Output
+        DisplayName: SearchText
+        Description: Text in the open picker. Cc wins when it is not blank. Bind Directory to a formula that reads this for a live search.
+        DataType: Text
+      Signature:
+        PropertyKind: Input
+        DisplayName: Signature
+        Description: Plain text appended under the note. Blank omits it.
+        DataType: Text
+        Default: =""
+      Subject:
+        PropertyKind: Output
+        DisplayName: Subject
+        Description: Subject as sent, with the priority prefix when one is selected.
+        DataType: Text
+      Title:
+        PropertyKind: Input
+        DisplayName: Title
+        Description: Dialog heading.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "رسالة جديدة", "New message")
+      ToAddresses:
+        PropertyKind: Output
+        DisplayName: ToAddresses
+        Description: Semicolon separated. Blank addresses are dropped and duplicates collapse.
+        DataType: Text
+    Properties:
+      AudienceDepartmentID: =Coalesce(cmbSeDepartment.Selected.ID, 0)
+      AudienceProjectID: =Coalesce(cmbSeProject.Selected.ID, 0)
+      Body: =_cmpSeBody
+      CcAddresses: =_cmpSeCc
+      Fill: =fxThemeColor("Transparent")
+      Height: =768
+      Note: =_cmpSeNote
+      OnReset: |-
+        =Set(_cmpSePriority, "");
+        Set(_cmpSeShowCc, false);
+        Set(_cmpSeTouched, false);
+        Set(_cmpSeNote, "");
+        Set(_cmpSeSubject, cmpSendEmail.DefaultSubject);
+        Set(_cmpSeTo, "");
+        Set(_cmpSeCc, "");
+        Set(_cmpSeBody, "");
+        Set(_cmpSeCount, 0);
+        Clear(colCmpSeAudience);
+        Clear(colCmpSeAudienceRows);
+        Reset(cmbSeTo);
+        Reset(cmbSeCc);
+        Reset(cmbSeProject);
+        Reset(cmbSeDepartment);
+        Reset(txtSeSubject);
+        Reset(txtSeNote)
+      Priority: =_cmpSePriority
+      RecipientCount: =_cmpSeCount
+      SearchText: =If(Not(IsBlank(cmbSeCc.SearchText)), cmbSeCc.SearchText, cmbSeTo.SearchText)
+      Subject: =_cmpSeSubject
+      ToAddresses: =_cmpSeTo
+      Width: =1366
+    Children:
+      - conSeScrim:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =FinTheme.Overlay
+            Height: =Parent.Height
+            Width: =Parent.Width
+          Children:
+            - btnSeDismiss:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =fxThemeColor("Transparent")
+                  BorderThickness: =0
+                  Color: =fxThemeColor("Transparent")
+                  DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                  Fill: =fxThemeColor("Transparent")
+                  FocusedBorderThickness: =0
+                  Height: =Parent.Height
+                  HoverColor: =fxThemeColor("Transparent")
+                  HoverFill: =fxThemeColor("Transparent")
+                  OnSelect: =cmpSendEmail.OnCancel()
+                  PressedColor: =fxThemeColor("Transparent")
+                  PressedFill: =fxThemeColor("Transparent")
+                  TabIndex: =-1
+                  Text: =""
+                  Width: =Parent.Width
+      - conSeCard:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            BorderColor: =fxThemeColor("Border")
+            BorderThickness: =1
+            DropShadow: =DropShadow.ExtraBold
+            Fill: =fxThemeColor("Surface")
+            Height: =conSeHeader.Height + conSeBody.Height + conSeFooter.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            RadiusBottomLeft: =gblTheme.Radius.XL
+            RadiusBottomRight: =gblTheme.Radius.XL
+            RadiusTopLeft: =gblTheme.Radius.XL
+            RadiusTopRight: =gblTheme.Radius.XL
+            Width: =Min(Parent.Width - 32, Coalesce(cmpSendEmail.Config.Width, 480))
+            X: =(Parent.Width - Self.Width) / 2
+            Y: =Max(24, (Parent.Height - Self.Height) / 2)
+          Children:
+            - conSeHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  FillPortions: =0
+                  Height: |-
+                    =Max(
+                        48,
+                        lblSeTitle.Height + If(IsBlank(cmpSendEmail.ContextLine), 0, lblSeContext.Height) + 32
+                    )
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =16
+                  PaddingLeft: =20
+                  PaddingRight: =12
+                  PaddingTop: =16
+                Children:
+                  - conSeHeaderText:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Transparent")
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =2
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - lblSeTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.CardTitle
+                              Text: |-
+                                =If(
+                                    cmpSendEmail.Busy,
+                                    If(gblLanguage = "Arabic", "جارٍ الإرسال", "Sending"),
+                                    cmpSendEmail.Title
+                                )
+                              Wrap: =false
+                        - lblSeContext:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =cmpSendEmail.ContextLine
+                              Visible: =Not(IsBlank(cmpSendEmail.ContextLine))
+                              Wrap: =false
+                  - btnSeClose:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderColor: =fxThemeColor("Transparent")
+                        BorderThickness: =0
+                        Color: =fxThemeColor("TextMuted")
+                        DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                        Fill: =fxThemeColor("Transparent")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =32
+                        HoverColor: =fxThemeColor("TextMuted")
+                        HoverFill: =fxThemeColor("SurfaceHover")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =cmpSendEmail.OnCancel()
+                        PressedColor: =fxThemeColor("TextMuted")
+                        PressedFill: =fxThemeColor("SurfaceSelected")
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Size: =gblTheme.Typography.Body
+                        Text: ="✕"
+                        Tooltip: =If(gblLanguage = "Arabic", "إغلاق دون إرسال", "Close without sending")
+                        Width: =32
+            - conSeBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =fxThemeColor("Transparent")
+                  FillPortions: =0
+                  Height: |-
+                    =Min(
+                        conSePriority.Height + conSeAudience.Height + lblSeToLabel.Height + 36 + lblSeToSummary.Height + conSeCcRow.Height + lblSeSubjLabel.Height + 36 + lblSeNoteLabel.Height + 144 + lblSeCounter.Height + (10 * Self.LayoutGap) + Self.PaddingTop + Self.PaddingBottom,
+                        App.Height - conSeHeader.Height - conSeFooter.Height - 96
+                    )
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutOverflowY: =LayoutOverflow.Scroll
+                  PaddingBottom: =4
+                  PaddingLeft: =20
+                  PaddingRight: =20
+                  PaddingTop: =5
+                Children:
+                  - conSePriority:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Transparent")
+                        FillPortions: =0
+                        Height: |-
+                          =If(
+                              Coalesce(cmpSendEmail.Config.ShowPriority, true),
+                              32 + Self.PaddingTop + Self.PaddingBottom,
+                              0
+                          )
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =4
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        PaddingTop: =4
+                        Visible: =Coalesce(cmpSendEmail.Config.ShowPriority, true)
+                      Children:
+                        - btnSePriUrgent:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              BorderColor: =If(_cmpSePriority = "Urgent", fxThemeColor("Transparent"), fxThemeColor("Border"))
+                              BorderThickness: =1
+                              Color: =If(_cmpSePriority = "Urgent", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                              Fill: =If(_cmpSePriority = "Urgent", fxThemeColor("Danger"), fxThemeColor("Transparent"))
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =32
+                              HoverColor: =If(_cmpSePriority = "Urgent", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              HoverFill: =If(_cmpSePriority = "Urgent", ColorFade(fxThemeColor("Danger"), -0.12), fxThemeColor("SurfaceHover"))
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(_cmpSePriority, If(_cmpSePriority = "Urgent", "", "Urgent"))
+                              PressedColor: =If(_cmpSePriority = "Urgent", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              PressedFill: =If(_cmpSePriority = "Urgent", ColorFade(fxThemeColor("Danger"), -0.24), fxThemeColor("SurfaceSelected"))
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(gblLanguage = "Arabic", "عاجل", "Urgent")
+                              Tooltip: |-
+                                =If(
+                                    _cmpSePriority = "Urgent",
+                                    If(gblLanguage = "Arabic", "عاجل. اضغط مرة أخرى للإلغاء.", "Urgent, selected. Select again to clear."),
+                                    If(gblLanguage = "Arabic", "تعليم الرسالة كعاجلة", "Mark this message urgent")
+                                )
+                        - btnSePriFyi:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              BorderColor: =If(_cmpSePriority = "FYI", fxThemeColor("Transparent"), fxThemeColor("Border"))
+                              BorderThickness: =1
+                              Color: =If(_cmpSePriority = "FYI", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                              Fill: =If(_cmpSePriority = "FYI", fxThemeColor("Primary"), fxThemeColor("Transparent"))
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =32
+                              HoverColor: =If(_cmpSePriority = "FYI", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              HoverFill: =If(_cmpSePriority = "FYI", fxThemeColor("PrimaryHover"), fxThemeColor("SurfaceHover"))
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(_cmpSePriority, If(_cmpSePriority = "FYI", "", "FYI"))
+                              PressedColor: =If(_cmpSePriority = "FYI", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              PressedFill: =If(_cmpSePriority = "FYI", fxThemeColor("PrimaryPressed"), fxThemeColor("SurfaceSelected"))
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(gblLanguage = "Arabic", "للعلم", "FYI")
+                              Tooltip: |-
+                                =If(
+                                    _cmpSePriority = "FYI",
+                                    If(gblLanguage = "Arabic", "للعلم. اضغط مرة أخرى للإلغاء.", "FYI, selected. Select again to clear."),
+                                    If(gblLanguage = "Arabic", "تعليم الرسالة للعلم", "Mark this message informational")
+                                )
+                        - btnSePriReminder:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              BorderColor: =If(_cmpSePriority = "Reminder", fxThemeColor("Transparent"), fxThemeColor("Border"))
+                              BorderThickness: =1
+                              Color: =If(_cmpSePriority = "Reminder", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                              Fill: =If(_cmpSePriority = "Reminder", fxThemeColor("Warning"), fxThemeColor("Transparent"))
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =32
+                              HoverColor: =If(_cmpSePriority = "Reminder", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              HoverFill: =If(_cmpSePriority = "Reminder", ColorFade(fxThemeColor("Warning"), -0.12), fxThemeColor("SurfaceHover"))
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(_cmpSePriority, If(_cmpSePriority = "Reminder", "", "Reminder"))
+                              PressedColor: =If(_cmpSePriority = "Reminder", fxThemeColor("TextOnPrimary"), fxThemeColor("TextSecondary"))
+                              PressedFill: =If(_cmpSePriority = "Reminder", ColorFade(fxThemeColor("Warning"), -0.24), fxThemeColor("SurfaceSelected"))
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(gblLanguage = "Arabic", "تذكير", "Reminder")
+                              Tooltip: |-
+                                =If(
+                                    _cmpSePriority = "Reminder",
+                                    If(gblLanguage = "Arabic", "تذكير. اضغط مرة أخرى للإلغاء.", "Reminder, selected. Select again to clear."),
+                                    If(gblLanguage = "Arabic", "تعليم الرسالة كتذكير", "Mark this message a reminder")
+                                )
+                  - conSeAudience:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Transparent")
+                        FillPortions: =0
+                        Height: |-
+                          =If(
+                              Not(Coalesce(cmpSendEmail.Config.ShowAudience, true)),
+                              0,
+                              lblSeAudienceLabel.Height + conSeAudiencePick.Height + lblSeAudienceSummary.Height + (2 * Self.LayoutGap)
+                          )
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =Coalesce(cmpSendEmail.Config.ShowAudience, true)
+                      Children:
+                        - lblSeAudienceLabel:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(gblLanguage = "Arabic", "مشروع أو قسم", "PROJECT OR DEPARTMENT")
+                              Wrap: =false
+                        - conSeAudiencePick:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Transparent")
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 78, 36)
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - cmbSeProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    Appearance: =Appearance.Outline
+                                    Color: =fxThemeColor("TextPrimary")
+                                    DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                                    FillPortions: =If(App.Width < 700, 0, 1)
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل موظفي المشروع", "Everyone on a project")
+                                    ItemDisplayText: =Coalesce(ThisItem.Label, "")
+                                    Items: |-
+                                      =ForAll(
+                                          Filter(
+                                              If(
+                                                  varUserHasAllProjects,
+                                                  Projects,
+                                                  ForAll(
+                                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                                      LookUp(Projects, ID = access.ProjectID)
+                                                  )
+                                              ),
+                                              !IsBlank(ID)
+                                          ) As proj,
+                                          {
+                                              ID: proj.ID,
+                                              Label: If(
+                                                  IsBlank(proj.ProjectCode),
+                                                  Coalesce(proj[@Title], ""),
+                                                  Coalesce(proj.ProjectCode, "") & " · " & Coalesce(proj[@Title], "")
+                                              )
+                                          }
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnChange: |-
+                                      =Set(_cmpSeTouched, true);
+                                      Select(btnSeAudience)
+                                    SelectMultiple: =false
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Width: =If(App.Width < 700, Parent.Width, 160)
+                              - cmbSeDepartment:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "القسم", "Department")
+                                    Appearance: =Appearance.Outline
+                                    Color: =fxThemeColor("TextPrimary")
+                                    DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                                    FillPortions: =If(App.Width < 700, 0, 1)
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =36
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل موظفي القسم", "Everyone in a department")
+                                    ItemDisplayText: =Coalesce(ThisItem[@Title], "")
+                                    Items: =Departments
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnChange: |-
+                                      =Set(_cmpSeTouched, true);
+                                      Select(btnSeAudience)
+                                    SelectMultiple: =false
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Width: =If(App.Width < 700, Parent.Width, 160)
+                        - lblSeAudienceSummary:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextMuted")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: |-
+                                =With(
+                                    {
+                                        pid: Coalesce(cmbSeProject.Selected.ID, 0),
+                                        did: Coalesce(cmbSeDepartment.Selected.ID, 0),
+                                        mailed: CountRows(Distinct(Filter(colCmpSeAudience, Not(IsBlank(Addr))), Addr)),
+                                        nomail: CountRows(Filter(colCmpSeAudience, IsBlank(Addr)))
+                                    },
+                                    If(
+                                        And(pid <= 0, did <= 0),
+                                        If(
+                                            gblLanguage = "Arabic",
+                                            "اختر مشروعاً ليصل إلى كل موظفيه، أو قسماً، أو الاثنين معاً.",
+                                            "Pick a project to reach everyone on it, a department, or both."
+                                        ),
+                                        If(
+                                            mailed = 0,
+                                            If(
+                                                gblLanguage = "Arabic",
+                                                "لا يوجد موظف لديه بريد في هذا الاختيار.",
+                                                "Nobody in this selection has an email."
+                                            ),
+                                            Concatenate(
+                                                Text(mailed),
+                                                If(
+                                                    mailed = 1,
+                                                    If(gblLanguage = "Arabic", " موظف لديه بريد", " employee with an email"),
+                                                    If(gblLanguage = "Arabic", " موظفين لديهم بريد", " employees with an email")
+                                                ),
+                                                If(
+                                                    And(pid > 0, did > 0),
+                                                    If(gblLanguage = "Arabic", " في هذا المشروع وهذا القسم", " on this project and in this department"),
+                                                    If(
+                                                        pid > 0,
+                                                        If(gblLanguage = "Arabic", " في هذا المشروع", " on this project"),
+                                                        If(gblLanguage = "Arabic", " في هذا القسم", " in this department")
+                                                    )
+                                                ),
+                                                If(
+                                                    nomail > 0,
+                                                    Concatenate(
+                                                        If(gblLanguage = "Arabic", " · ", " · "),
+                                                        Text(nomail),
+                                                        If(gblLanguage = "Arabic", " بلا بريد، سيتم تخطيهم", " with no email, they will be skipped")
+                                                    ),
+                                                    ""
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                  - lblSeToLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "إلى", "TO")
+                        Wrap: =false
+                  - cmbSeTo:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "إلى", "To")
+                        Appearance: =Appearance.Outline
+                        Color: =fxThemeColor("TextPrimary")
+                        DelayOutput: =true
+                        DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "ابحث عن شخص", "Search people")
+                        ItemDisplayText: =Concatenate(ThisItem.DisplayName, " - ", ThisItem.Mail)
+                        Items: =cmpSendEmail.Directory
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        MultiValueDelimiter: ="; "
+                        OnChange: =Set(_cmpSeTouched, true)
+                        Size: =gblTheme.Typography.BodySmall
+                        ValidationState: |-
+                          =If(
+                              And(
+                                  _cmpSeTouched,
+                                  IsEmpty(Self.SelectedItems),
+                                  IsEmpty(Filter(colCmpSeAudience, Not(IsBlank(Addr))))
+                              ),
+                              ValidationState.Error,
+                              ValidationState.None
+                          )
+                  - lblSeToSummary:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: |-
+                          =If(
+                              And(
+                                  _cmpSeTouched,
+                                  IsEmpty(cmbSeTo.SelectedItems),
+                                  IsEmpty(Filter(colCmpSeAudience, Not(IsBlank(Addr))))
+                              ),
+                              fxThemeColor("Danger"),
+                              fxThemeColor("TextMuted")
+                          )
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: |-
+                          =With(
+                              {
+                                  picked: CountRows(cmbSeTo.SelectedItems),
+                                  nomail: CountRows(Filter(cmbSeTo.SelectedItems, IsBlank(Mail))),
+                                  audience: CountRows(Distinct(Filter(colCmpSeAudience, Not(IsBlank(Addr))), Addr))
+                              },
+                              If(
+                                  picked = 0,
+                                  If(
+                                      audience > 0,
+                                      If(
+                                          gblLanguage = "Arabic",
+                                          "سيُضاف موظفو المشروع أو القسم إلى المستلمين.",
+                                          "People in the project or department are included."
+                                      ),
+                                      If(
+                                          _cmpSeTouched,
+                                          If(gblLanguage = "Arabic", "اختر شخصاً، أو مشروعاً، أو قسماً.", "Pick a person, a project, or a department."),
+                                          If(gblLanguage = "Arabic", "لم يتم اختيار أحد.", "Nobody selected yet.")
+                                      )
+                                  ),
+                                  Concatenate(
+                                      Text(picked),
+                                      If(
+                                          picked = 1,
+                                          If(gblLanguage = "Arabic", " مستلم", " recipient"),
+                                          If(gblLanguage = "Arabic", " مستلمين", " recipients")
+                                      ),
+                                      If(
+                                          nomail > 0,
+                                          Concatenate(
+                                              If(gblLanguage = "Arabic", " · ", " · "),
+                                              Text(nomail),
+                                              If(gblLanguage = "Arabic", " بلا عنوان، سيتم تخطيهم", " with no address, they will be skipped")
+                                          ),
+                                          ""
+                                      )
+                                  )
+                              )
+                          )
+                  - conSeCcRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        Fill: =fxThemeColor("Transparent")
+                        FillPortions: =0
+                        Height: |-
+                          =If(
+                              Not(Coalesce(cmpSendEmail.Config.ShowCc, true)),
+                              0,
+                              If(_cmpSeShowCc, 28 + 36 + Self.LayoutGap, 28)
+                          )
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =Coalesce(cmpSendEmail.Config.ShowCc, true)
+                      Children:
+                        - btnSeToggleCc:
+                            Control: Classic/Button@2.2.0
+                            Properties:
+                              Align: =Align.Left
+                              BorderColor: =fxThemeColor("Transparent")
+                              BorderThickness: =0
+                              Color: =fxThemeColor("Primary")
+                              DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                              Fill: =fxThemeColor("Transparent")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =28
+                              HoverColor: =fxThemeColor("Primary")
+                              HoverFill: =fxThemeColor("SurfaceHover")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =Set(_cmpSeShowCc, Not(_cmpSeShowCc));
+                                If(Not(_cmpSeShowCc), Reset(cmbSeCc))
+                              PressedColor: =fxThemeColor("Primary")
+                              PressedFill: =fxThemeColor("SurfaceSelected")
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Size: =gblTheme.Typography.Caption
+                              Text: |-
+                                =If(
+                                    _cmpSeShowCc,
+                                    If(gblLanguage = "Arabic", "إخفاء النسخة", "Hide CC"),
+                                    If(gblLanguage = "Arabic", "إضافة نسخة", "Add CC")
+                                )
+                              Tooltip: |-
+                                =If(
+                                    _cmpSeShowCc,
+                                    If(gblLanguage = "Arabic", "إخفاء النسخة ومسحها", "Hide and clear the CC line"),
+                                    If(gblLanguage = "Arabic", "إظهار النسخة", "Show the CC line")
+                                )
+                              Width: =120
+                        - cmbSeCc:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "نسخة، اختياري", "Cc, optional")
+                              Appearance: =Appearance.Outline
+                              Color: =fxThemeColor("TextPrimary")
+                              DelayOutput: =true
+                              DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =36
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "ابحث لإضافة نسخة", "Search people to CC")
+                              ItemDisplayText: =Concatenate(ThisItem.DisplayName, " - ", ThisItem.Mail)
+                              Items: =cmpSendEmail.Directory
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              MultiValueDelimiter: ="; "
+                              Size: =gblTheme.Typography.BodySmall
+                              Visible: =_cmpSeShowCc
+                  - lblSeSubjLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: |-
+                          =If(
+                              Coalesce(cmpSendEmail.Config.LockSubject, false),
+                              If(gblLanguage = "Arabic", "الموضوع (ثابت)", "SUBJECT (FIXED)"),
+                              If(gblLanguage = "Arabic", "الموضوع", "SUBJECT")
+                          )
+                        Wrap: =false
+                  - txtSeSubject:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Color: =fxThemeColor("TextPrimary")
+                        Default: =cmpSendEmail.DefaultSubject
+                        DisplayMode: |-
+                          =If(
+                              Or(cmpSendEmail.Busy, Coalesce(cmpSendEmail.Config.LockSubject, false)),
+                              DisplayMode.View,
+                              DisplayMode.Edit
+                          )
+                        Fill: |-
+                          =If(
+                              Coalesce(cmpSendEmail.Config.LockSubject, false),
+                              fxThemeColor("Background"),
+                              fxThemeColor("Surface")
+                          )
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =36
+                        HintText: =If(gblLanguage = "Arabic", "موضوع الرسالة", "What is this message about")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Size: =gblTheme.Typography.BodySmall
+                  - lblSeNoteLabel:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "الرسالة", "MESSAGE")
+                        Wrap: =false
+                  - txtSeNote:
+                      Control: Classic/TextInput@2.3.2
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Color: =fxThemeColor("TextPrimary")
+                        Default: =""
+                        DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                        Fill: =fxThemeColor("Surface")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =144
+                        HintText: =If(gblLanguage = "Arabic", "ماذا تريد أن يعرفوا", "What do you want them to know")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        MaxLength: =Coalesce(cmpSendEmail.Config.MaxNote, 2000)
+                        Mode: =TextMode.MultiLine
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Size: =gblTheme.Typography.BodySmall
+                  - lblSeCounter:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Right
+                        AutoHeight: =true
+                        Color: |-
+                          =If(
+                              Len(txtSeNote.Text) >= Coalesce(cmpSendEmail.Config.MaxNote, 2000),
+                              fxThemeColor("Danger"),
+                              If(
+                                  Len(txtSeNote.Text) > Coalesce(cmpSendEmail.Config.MaxNote, 2000) * 0.9,
+                                  fxThemeColor("Warning"),
+                                  fxThemeColor("TextMuted")
+                              )
+                          )
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: |-
+                          =Concatenate(
+                              Text(Len(txtSeNote.Text)),
+                              " / ",
+                              Text(Coalesce(cmpSendEmail.Config.MaxNote, 2000))
+                          )
+                        Wrap: =false
+            - conSeFooter:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  Fill: =fxThemeColor("Transparent")
+                  FillPortions: =0
+                  Height: =64
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutJustifyContent: =LayoutJustifyContent.End
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =16
+                  PaddingLeft: =20
+                  PaddingRight: =20
+                  PaddingTop: =12
+                Children:
+                  - btnSeCancel:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Color: =fxThemeColor("TextSecondary")
+                        DisplayMode: =If(cmpSendEmail.Busy, DisplayMode.Disabled, DisplayMode.Edit)
+                        Fill: =fxThemeColor("Transparent")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =36
+                        HoverColor: =fxThemeColor("TextSecondary")
+                        HoverFill: =fxThemeColor("SurfaceHover")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =cmpSendEmail.OnCancel()
+                        PressedColor: =fxThemeColor("TextSecondary")
+                        PressedFill: =fxThemeColor("SurfaceSelected")
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Size: =gblTheme.Typography.BodySmall
+                        Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                        Tooltip: =If(gblLanguage = "Arabic", "تجاهل هذه الرسالة", "Discard this message")
+                        Width: =96
+                  - btnSeSend:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderColor: =fxThemeColor("Transparent")
+                        BorderThickness: =0
+                        Color: =fxThemeColor("TextOnPrimary")
+                        DisplayMode: |-
+                          =If(
+                              Or(
+                                  cmpSendEmail.Busy,
+                                  And(
+                                      IsEmpty(Filter(cmbSeTo.SelectedItems, Not(IsBlank(Mail)))),
+                                      IsEmpty(Filter(colCmpSeAudience, Not(IsBlank(Addr))))
+                                  )
+                              ),
+                              DisplayMode.Disabled,
+                              DisplayMode.Edit
+                          )
+                        Fill: =fxThemeColor("Primary")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =36
+                        HoverColor: =fxThemeColor("TextOnPrimary")
+                        HoverFill: =fxThemeColor("PrimaryHover")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(_cmpSeTouched, true);
+                          Select(btnSeAudience);
+                          Clear(colCmpSeTo);
+                          ForAll(
+                              cmbSeTo.SelectedItems As p,
+                              Collect(colCmpSeTo, {Addr: Lower(Trim(p.Mail))})
+                          );
+                          ForAll(
+                              colCmpSeAudience As a,
+                              Collect(colCmpSeTo, {Addr: a.Addr})
+                          );
+                          Clear(colCmpSeCc);
+                          If(
+                              And(_cmpSeShowCc, Coalesce(cmpSendEmail.Config.ShowCc, true)),
+                              ForAll(
+                                  cmbSeCc.SelectedItems As c,
+                                  Collect(colCmpSeCc, {Addr: Lower(Trim(c.Mail))})
+                              )
+                          );
+                          Set(
+                              _cmpSeTo,
+                              Concat(Distinct(Filter(colCmpSeTo, Not(IsBlank(Addr))), Addr), Value, ";")
+                          );
+                          Set(
+                              _cmpSeCc,
+                              Concat(
+                                  Distinct(
+                                      Filter(
+                                          colCmpSeCc As x,
+                                          And(
+                                              Not(IsBlank(x.Addr)),
+                                              IsBlank(LookUp(colCmpSeTo, Addr = x.Addr))
+                                          )
+                                      ),
+                                      Addr
+                                  ),
+                                  Value,
+                                  ";"
+                              )
+                          );
+                          Set(
+                              _cmpSeCount,
+                              CountRows(Distinct(Filter(colCmpSeTo, Not(IsBlank(Addr))), Addr))
+                          );
+                          Set(_cmpSeNote, Trim(txtSeNote.Text));
+                          Set(
+                              _cmpSeSubject,
+                              Concatenate(
+                                  If(IsBlank(_cmpSePriority), "", Concatenate(_cmpSePriority, " - ")),
+                                  Trim(txtSeSubject.Text)
+                              )
+                          );
+                          Set(
+                              _cmpSeBody,
+                              With(
+                                  {
+                                      acc: "#1B56E5",
+                                      head: Trim(txtSeSubject.Text)
+                                  },
+                                  With(
+                                      {
+                                          badge: Switch(
+                                              _cmpSePriority,
+                                              "Urgent", "#DC2626",
+                                              "Reminder", "#D97706",
+                                              acc
+                                          ),
+                                          safeHead: Substitute(Substitute(Substitute(head, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"),
+                                          safeNote: Substitute(Substitute(Substitute(Substitute(_cmpSeNote, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), Char(10), "<br>"),
+                                          safeSig: Substitute(Substitute(Substitute(cmpSendEmail.Signature, "&", "&amp;"), "<", "&lt;"), ">", "&gt;")
+                                      },
+                                      Concatenate(
+                                          "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' bgcolor='#F1F5F9' style='background-color:#F1F5F9;padding:24px 12px;'><tr><td align='center'>",
+                                          "<table role='presentation' width='600' cellpadding='0' cellspacing='0' border='0' bgcolor='#FFFFFF' style='width:600px;max-width:600px;background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;font-family:Segoe UI,Helvetica,Arial,sans-serif;'>",
+                                          "<tr><td bgcolor='", acc, "' style='height:4px;line-height:4px;font-size:0;background-color:", acc, ";'>&nbsp;</td></tr>",
+                                          "<tr><td style='padding:24px 24px 8px 24px;'>",
+                                          If(
+                                              IsBlank(_cmpSePriority),
+                                              "",
+                                              Concatenate(
+                                                  "<span style='display:inline-block;padding:4px 11px;border-radius:999px;background-color:",
+                                                  badge,
+                                                  ";color:#FFFFFF;font-size:11px;font-weight:600;letter-spacing:0.5px;'>",
+                                                  Upper(_cmpSePriority),
+                                                  "</span><br><br>"
+                                              )
+                                          ),
+                                          "<div style='font-size:20px;font-weight:600;color:#0F172A;line-height:1.3;'>",
+                                          safeHead,
+                                          "</div></td></tr>",
+                                          If(
+                                              IsBlank(cmpSendEmail.ContextHtml),
+                                              "",
+                                              Concatenate(
+                                                  "<tr><td style='padding:8px 24px 0 24px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0'><tr><td bgcolor='#F8FAFC' style='background-color:#F8FAFC;border-left:3px solid ",
+                                                  acc,
+                                                  ";border-radius:6px;padding:14px 16px;font-size:13px;color:#334155;line-height:1.6;'>",
+                                                  cmpSendEmail.ContextHtml,
+                                                  "</td></tr></table></td></tr>"
+                                              )
+                                          ),
+                                          If(
+                                              IsBlank(safeNote),
+                                              "",
+                                              Concatenate(
+                                                  "<tr><td style='padding:20px 24px 4px 24px;font-size:15px;color:#0F172A;line-height:1.65;'>",
+                                                  safeNote,
+                                                  "</td></tr>"
+                                              )
+                                          ),
+                                          If(
+                                              IsBlank(safeSig),
+                                              "",
+                                              Concatenate(
+                                                  "<tr><td style='padding:20px 24px 24px 24px;'><table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0'><tr><td style='border-top:1px solid #E2E8F0;padding-top:14px;font-size:12px;color:#64748B;line-height:1.5;'>",
+                                                  safeSig,
+                                                  "</td></tr></table></td></tr>"
+                                              )
+                                          ),
+                                          "</table></td></tr></table>"
+                                      )
+                                  )
+                              )
+                          );
+                          If(
+                              IsBlank(_cmpSeTo),
+                              Notify(
+                                  If(
+                                      gblLanguage = "Arabic",
+                                      "لا يملك أحد في هذا الاختيار عنوان بريد. لم يُرسل شيء.",
+                                      "Nobody in this selection has an email address. Nothing was sent."
+                                  ),
+                                  NotificationType.Error
+                              ),
+                              cmpSendEmail.OnSend()
+                          )
+                        PressedColor: =fxThemeColor("TextOnPrimary")
+                        PressedFill: =fxThemeColor("PrimaryPressed")
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Size: =gblTheme.Typography.BodySmall
+                        Text: |-
+                          =With(
+                              {
+                                  ready: CountRows(Distinct(Filter(colCmpSeAudience, Not(IsBlank(Addr))), Addr)) + CountRows(Filter(cmbSeTo.SelectedItems, Not(IsBlank(Mail))))
+                              },
+                              If(
+                                  cmpSendEmail.Busy,
+                                  If(gblLanguage = "Arabic", "جارٍ الإرسال", "Sending"),
+                                  If(
+                                      ready = 0,
+                                      If(gblLanguage = "Arabic", "إرسال", "Send"),
+                                      Concatenate(
+                                          If(gblLanguage = "Arabic", "إرسال إلى ", "Send to "),
+                                          Text(ready)
+                                      )
+                                  )
+                              )
+                          )
+                        Tooltip: |-
+                          =If(
+                              And(
+                                  IsEmpty(Filter(cmbSeTo.SelectedItems, Not(IsBlank(Mail)))),
+                                  IsEmpty(Filter(colCmpSeAudience, Not(IsBlank(Addr))))
+                              ),
+                              If(gblLanguage = "Arabic", "اختر شخصاً، أو مشروعاً، أو قسماً", "Pick a person, a project, or a department"),
+                              If(gblLanguage = "Arabic", "إرسال هذه الرسالة", "Send this message")
+                          )
+      - btnSeAudience:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =fxThemeColor("Transparent")
+            BorderThickness: =0
+            Color: =fxThemeColor("Transparent")
+            Fill: =fxThemeColor("Transparent")
+            Height: =1
+            OnSelect: |-
+              =With(
+                  {
+                      pid: Coalesce(cmbSeProject.Selected.ID, 0),
+                      did: Coalesce(cmbSeDepartment.Selected.ID, 0)
+                  },
+                  If(
+                      And(pid <= 0, did <= 0),
+                      Clear(colCmpSeAudienceRows);
+                      Clear(colCmpSeAudience),
+                      If(
+                          pid > 0,
+                          IfError(
+                              ClearCollect(
+                                  colCmpSeAudienceRows,
+                                  Filter(Employees, ProjectID = pid)
+                              ),
+                              Clear(colCmpSeAudienceRows);
+                              Notify(
+                                  If(
+                                      gblLanguage = "Arabic",
+                                      "تعذر قراءة موظفي هذا المشروع.",
+                                      "People on that project could not be read."
+                                  ),
+                                  NotificationType.Error
+                              )
+                          ),
+                          Clear(colCmpSeAudienceRows);
+                          IfError(
+                              ForAll(
+                                  If(
+                                      varUserHasAllProjects,
+                                      Projects,
+                                      Filter(
+                                          ForAll(
+                                              Filter(colUserProjectAccess, AllProjects = false) As access,
+                                              LookUp(Projects, ID = access.ProjectID)
+                                          ),
+                                          !IsBlank(ID)
+                                      )
+                                  ) As proj,
+                                  Collect(
+                                      colCmpSeAudienceRows,
+                                      Filter(Employees, ProjectID = proj.ID)
+                                  )
+                              ),
+                              Notify(
+                                  If(
+                                      gblLanguage = "Arabic",
+                                      "تعذر قراءة موظفي هذا القسم.",
+                                      "People in that department could not be read."
+                                  ),
+                                  NotificationType.Error
+                              )
+                          )
+                      );
+                      IfError(
+                          ClearCollect(
+                              colCmpSeAudience,
+                              ForAll(
+                                  Filter(
+                                      colCmpSeAudienceRows,
+                                      And(
+                                          Or(did <= 0, Coalesce(Department.Id, 0) = did),
+                                          Or(IsBlank(Status.Value), Status.Value <> "Inactive")
+                                      )
+                                  ) As emp,
+                                  {Addr: Lower(Trim(Coalesce(emp.Email, "")))}
+                              )
+                          ),
+                          Clear(colCmpSeAudience);
+                          Notify(
+                              If(
+                                  gblLanguage = "Arabic",
+                                  "تعذر تجهيز عناوين هذا الاختيار.",
+                                  "Addresses for that selection could not be prepared."
+                              ),
+                              NotificationType.Error
+                          )
+                      )
+                  )
+              )
+            Text: =""
+            Visible: =false
+            Width: =1

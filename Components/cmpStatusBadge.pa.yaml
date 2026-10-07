@@ -1,0 +1,148 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpStatusBadge:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      Compact:
+        PropertyKind: Input
+        Description: Smaller badge for dense tables
+        DataType: Boolean
+        Default: =false
+      DesiredWidth:
+        PropertyKind: Output
+        Description: Width the badge needs for its text
+        DataType: Number
+      DisplayText:
+        PropertyKind: Output
+        Description: Text shown in the badge
+        DataType: Text
+      Domain:
+        PropertyKind: Input
+        Description: 'Key in tblStatusMap: PaymentRequest | PaymentStatus | PurchaseOrder | POStatus | ApprovalDecision | PayrollRun | DonorFunding | Ledger | Utilization'
+        DataType: Text
+        Default: ="PaymentRequest"
+      LabelOverride:
+        PropertyKind: Input
+        Description: Optional text to show instead of the status
+        DataType: Text
+        Default: =""
+      Status:
+        PropertyKind: Input
+        Description: Exact SharePoint choice text, e.g. ThisItem.Status.Value
+        DataType: Text
+        Default: ="Pending"
+      Tone:
+        PropertyKind: Output
+        Description: neutral | info | warning | success | danger | successStrong | dangerStrong
+        DataType: Text
+      ToneColor:
+        PropertyKind: Output
+        Description: Accent colour for the tone (for host charts/bars)
+        DataType: Color
+      UtilizationValue:
+        PropertyKind: Input
+        Description: Ratio (0.85 = 85%). Used only when Domain = "Utilization"
+        DataType: Number
+        Default: =Blank()
+    Properties:
+      DesiredWidth: =Min(260, 8 + 14 + 4 + Len(cmpStatusBadge.DisplayText) * If(cmpStatusBadge.Compact, 6.6, 7.4) + 8 + 4)
+      DisplayText: |-
+        =Coalesce(
+            cmpStatusBadge.LabelOverride,
+            If(
+                cmpStatusBadge.Domain = "Utilization",
+                fnPct(cmpStatusBadge.UtilizationValue) & If(cmpStatusBadge.Tone = "dangerStrong", " " & fnT("status.overBudget", "over budget"), ""),
+                fnT("status." & cmpStatusBadge.Status, Coalesce(cmpStatusBadge.Status, "-"))
+            )
+        )
+      Height: =If(cmpStatusBadge.Compact, 22, 26)
+      Tone: =If(cmpStatusBadge.Domain = "Utilization", fnUtilTone(cmpStatusBadge.UtilizationValue), fnStatusTone(cmpStatusBadge.Domain, cmpStatusBadge.Status))
+      ToneColor: =fnToneAccent(cmpStatusBadge.Tone)
+      Width: =cmpStatusBadge.DesiredWidth
+    Children:
+      - conBadge:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =fnToneBg(cmpStatusBadge.Tone)
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Center
+            LayoutDirection: =LayoutDirection.Horizontal
+            LayoutGap: =4
+            LayoutJustifyContent: =LayoutJustifyContent.Center
+            PaddingLeft: =8
+            PaddingRight: =8
+            RadiusBottomLeft: =Self.Height / 2
+            RadiusBottomRight: =Self.Height / 2
+            RadiusTopLeft: =Self.Height / 2
+            RadiusTopRight: =Self.Height / 2
+            Width: =Parent.Width
+          Children:
+            - icoBadgeStart:
+                Control: Classic/Icon@2.5.0
+                Properties:
+                  AlignInContainer: =AlignInContainer.Center
+                  Color: =fnToneFg(cmpStatusBadge.Tone)
+                  FocusedBorderColor: =FinTheme.Focus
+                  Height: =14
+                  Icon: |-
+                    =Coalesce(
+                        LookUp(
+                            tblStatusMap,
+                            Domain = cmpStatusBadge.Domain && Status = If(cmpStatusBadge.Domain = "Utilization", cmpStatusBadge.Tone, cmpStatusBadge.Status),
+                            Ico
+                        ),
+                        LookUp(tblToneIcon, Tone = cmpStatusBadge.Tone, Ico)
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =!isRTL
+                  Width: =14
+            - lblBadge:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Color: =fnToneFg(cmpStatusBadge.Tone)
+                  FillPortions: =1
+                  Font: =fontBase
+                  FontWeight: =FontWeight.Semibold
+                  Height: =20
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =If(cmpStatusBadge.Compact, 11, fsCaption)
+                  Text: =cmpStatusBadge.DisplayText
+                  Wrap: =false
+            - icoBadgeEnd:
+                Control: Classic/Icon@2.5.0
+                Properties:
+                  AlignInContainer: =AlignInContainer.Center
+                  Color: =fnToneFg(cmpStatusBadge.Tone)
+                  FocusedBorderColor: =FinTheme.Focus
+                  Height: =14
+                  Icon: |-
+                    =Coalesce(
+                        LookUp(
+                            tblStatusMap,
+                            Domain = cmpStatusBadge.Domain && Status = If(cmpStatusBadge.Domain = "Utilization", cmpStatusBadge.Tone, cmpStatusBadge.Status),
+                            Ico
+                        ),
+                        LookUp(tblToneIcon, Tone = cmpStatusBadge.Tone, Ico)
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =isRTL
+                  Width: =14

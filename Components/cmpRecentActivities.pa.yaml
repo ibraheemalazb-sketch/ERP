@@ -1,0 +1,470 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpRecentActivities:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      CardRadius:
+        PropertyKind: Output
+        DisplayName: CardRadius
+        Description: Card corner radius from gblTheme.
+        DataType: Number
+      IsCompact:
+        PropertyKind: Output
+        DisplayName: IsCompact
+        Description: True when the card or the app is narrow.
+        DataType: Boolean
+      Items:
+        PropertyKind: Input
+        DisplayName: Items
+        Description: Activity rows. Columns used are ID, Module, ActivityType, Action, Title, Description, ActorName, ActivityDate, RecordType, RecordID, Status, and Icon.
+        DataType: Table
+        Default: |-
+          =Filter(
+              Table(
+                  {
+                      ID: 0,
+                      Module: "",
+                      ActivityType: "",
+                      Action: "",
+                      Title: "",
+                      Description: "",
+                      ActorName: "",
+                      ActivityDate: Now(),
+                      RecordType: "",
+                      RecordID: 0,
+                      Status: "",
+                      Icon: ""
+                  }
+              ),
+              false
+          )
+      MaxItems:
+        PropertyKind: Input
+        DisplayName: MaxItems
+        Description: How many activities to show, newest first.
+        DataType: Number
+        Default: =8
+      OnSelect:
+        PropertyKind: Event
+        DisplayName: OnSelect
+        Description: Fires after the clicked row is stored in SelectedActivity.
+        ReturnType: None
+        Default: =false
+      OnViewAll:
+        PropertyKind: Event
+        DisplayName: OnViewAll
+        Description: Fires when View all is pressed.
+        ReturnType: None
+        Default: =false
+      Palette:
+        PropertyKind: Output
+        DisplayName: Palette
+        Description: Active gblTheme color record.
+        DataType: Record
+      Refresh:
+        PropertyKind: Event
+        DisplayName: Refresh
+        Description: Fires when refresh is pressed.
+        ReturnType: None
+        Default: =false
+      SelectedActivity:
+        PropertyKind: Output
+        DisplayName: SelectedActivity
+        Description: Last clicked activity. Read it in OnSelect.
+        DataType: Record
+      ShowSummary:
+        PropertyKind: Input
+        DisplayName: ShowSummary
+        Description: Shows the today and 7-day counts.
+        DataType: Boolean
+        Default: =true
+      ShowViewAll:
+        PropertyKind: Input
+        DisplayName: ShowViewAll
+        Description: Shows View all.
+        DataType: Boolean
+        Default: =true
+      Title:
+        PropertyKind: Input
+        DisplayName: Title
+        Description: Card heading.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "آخر الأنشطة", "Recent activity")
+    Properties:
+      CardRadius: =gblTheme.Radius.XL
+      Height: =420
+      IsCompact: =cmpRecentActivities.Width < 420 || App.Width < 700
+      Palette: =If(gblTheme.Mode = "Dark", gblTheme.Dark.Colors, gblTheme.Light.Colors)
+      SelectedActivity: =_selActivity
+      Width: =360
+    Children:
+      - conActivityCard:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            BorderColor: =cmpRecentActivities.Palette.Border
+            BorderThickness: =1
+            DropShadow: =DropShadow.None
+            Fill: =cmpRecentActivities.Palette.Surface
+            Height: =cmpRecentActivities.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            PaddingBottom: =8
+            PaddingLeft: =8
+            PaddingRight: =8
+            PaddingTop: =8
+            RadiusBottomLeft: =cmpRecentActivities.CardRadius
+            RadiusBottomRight: =cmpRecentActivities.CardRadius
+            RadiusTopLeft: =cmpRecentActivities.CardRadius
+            RadiusTopRight: =cmpRecentActivities.CardRadius
+            Width: =cmpRecentActivities.Width
+          Children:
+            - conActivityHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =36
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =36
+                  LayoutMinWidth: =0
+                Children:
+                  - imgActivityHead:
+                      Control: Image@2.2.3
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: =fxSvg("Clock", fxThemeInk("Primary"))
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        Width: =16
+                  - lblActivityTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =cmpRecentActivities.Palette.TextPrimary
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =24
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =Coalesce(cmpRecentActivities.Title, "")
+                        Tooltip: =Self.Text
+                        Wrap: =false
+                  - imgActivityRefresh:
+                      Control: Image@2.2.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: =fxSvg("Refresh", fxThemeInk("Muted"))
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        OnSelect: =cmpRecentActivities.Refresh()
+                        Tooltip: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        Width: =16
+                  - btnActivityAll:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "عرض الكل", "View all")
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =ButtonAppearance.Transparent
+                        FillPortions: =1
+                        Height: =28
+                        LayoutMinHeight: =28
+                        LayoutMinWidth: =72
+                        OnSelect: =cmpRecentActivities.OnViewAll()
+                        Text: =If(gblLanguage = "Arabic", "عرض الكل", "View all")
+                        Tooltip: =If(gblLanguage = "Arabic", "عرض كل الأنشطة", "View all activities")
+                        Visible: =cmpRecentActivities.ShowViewAll
+                        Width: =72
+            - lblActivitySummary:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(gblIsRTL, Align.Right, Align.Left)
+                  AlignInContainer: =AlignInContainer.Stretch
+                  BorderStyle: =BorderStyle.None
+                  Color: =cmpRecentActivities.Palette.TextMuted
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =18
+                  LayoutMinHeight: =18
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =24
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =gblTheme.Typography.Caption
+                  Text: |-
+                    =With(
+                        {
+                            todayCount: CountRows(Filter(cmpRecentActivities.Items, ActivityDate >= Today())),
+                            weekCount: CountRows(Filter(cmpRecentActivities.Items, ActivityDate >= DateAdd(Today(), -7, TimeUnit.Days)))
+                        },
+                        If(
+                            gblLanguage = "Arabic",
+                            todayCount & " اليوم  ·  " & weekCount & " خلال 7 أيام",
+                            todayCount & " today  ·  " & weekCount & " in 7 days"
+                        )
+                    )
+                  Visible: =cmpRecentActivities.ShowSummary && !IsEmpty(cmpRecentActivities.Items)
+                  Wrap: =false
+            - conActivityEmpty:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutJustifyContent: =LayoutJustifyContent.Center
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =IsEmpty(cmpRecentActivities.Items)
+                Children:
+                  - imgActivityEmpty:
+                      Control: Image@2.2.3
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "لا توجد أنشطة", "No activities")
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =28
+                        Image: =fxSvg("Clock", fxThemeInk("Muted"))
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Width: =28
+                  - lblActivityEmpty:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =cmpRecentActivities.Palette.TextSecondary
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =22
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.BodySmall
+                        Text: =If(gblLanguage = "Arabic", "لا توجد أنشطة حديثة", "No recent activity")
+                        Width: =240
+                  - lblActivityEmptyHint:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =cmpRecentActivities.Palette.TextMuted
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: |-
+                          =If(
+                              gblLanguage = "Arabic",
+                              "ستظهر الأنشطة الجديدة هنا.",
+                              "New activity will appear here."
+                          )
+                        Width: =240
+            - galActivities:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "قائمة الأنشطة", "Activity list")
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Items: |-
+                    =FirstN(
+                        SortByColumns(
+                            cmpRecentActivities.Items,
+                            "ActivityDate",
+                            SortOrder.Descending
+                        ),
+                        Max(1, Coalesce(cmpRecentActivities.MaxItems, 8))
+                    )
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  TemplatePadding: =0
+                  TemplateSize: =64
+                  Visible: =!IsEmpty(cmpRecentActivities.Items)
+                Children:
+                  - conActivityRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =galActivities.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        PaddingLeft: =4
+                        PaddingRight: =4
+                        Width: =galActivities.TemplateWidth
+                      Children:
+                        - conActivityIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =ColorFade(
+                                    Switch(
+                                        ThisItem.Status,
+                                        "Success", cmpRecentActivities.Palette.Success,
+                                        "Warning", cmpRecentActivities.Palette.Warning,
+                                        "Important", cmpRecentActivities.Palette.Warning,
+                                        "Error", cmpRecentActivities.Palette.Danger,
+                                        "Danger", cmpRecentActivities.Palette.Danger,
+                                        "Critical", cmpRecentActivities.Palette.Danger,
+                                        "Approval", cmpRecentActivities.Palette.Primary,
+                                        "Reminder", cmpRecentActivities.Palette.Info,
+                                        cmpRecentActivities.Palette.TextMuted
+                                    ),
+                                    If(gblTheme.Mode = "Dark", -0.75, 0.86)
+                                )
+                              FillPortions: =0
+                              Height: =36
+                              LayoutMinHeight: =36
+                              LayoutMinWidth: =36
+                              RadiusBottomLeft: =10
+                              RadiusBottomRight: =10
+                              RadiusTopLeft: =10
+                              RadiusTopRight: =10
+                              Width: =36
+                            Children:
+                              - imgActivityIcon:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    AccessibleLabel: =Coalesce(ThisItem.Title, "")
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =18
+                                    Image: |-
+                                      =fxSvg(
+                                          fxActivityIcon(Coalesce(ThisItem.Icon, ThisItem.ActivityType)),
+                                          fxStatusInk(ThisItem.Status)
+                                      )
+                                    Width: =18
+                                    X: =9
+                                    Y: =9
+                        - conActivityText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =44
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblActivityItemTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    BorderStyle: =BorderStyle.None
+                                    Color: =cmpRecentActivities.Palette.TextPrimary
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: =Coalesce(ThisItem.Title, "")
+                                    Wrap: =false
+                              - lblActivityMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    BorderStyle: =BorderStyle.None
+                                    Color: =cmpRecentActivities.Palette.TextMuted
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =With(
+                                          {
+                                              mins: DateDiff(ThisItem.ActivityDate, Now(), TimeUnit.Minutes),
+                                              actor: Coalesce(ThisItem.ActorName, "")
+                                          },
+                                          actor & If(
+                                              !IsBlank(actor) && !IsBlank(ThisItem.ActivityDate),
+                                              "  ·  ",
+                                              ""
+                                          ) & If(
+                                              IsBlank(ThisItem.ActivityDate),
+                                              "",
+                                              If(
+                                                  mins < 1,
+                                                  If(gblLanguage = "Arabic", "الآن", "Just now"),
+                                                  mins < 60,
+                                                  If(gblLanguage = "Arabic", "منذ " & mins & " د", mins & " min"),
+                                                  mins < 1440,
+                                                  If(
+                                                      gblLanguage = "Arabic",
+                                                      "منذ " & RoundDown(mins / 60, 0) & " س",
+                                                      RoundDown(mins / 60, 0) & " hr"
+                                                  ),
+                                                  Text(
+                                                      ThisItem.ActivityDate,
+                                                      "dd mmm",
+                                                      If(gblLanguage = "Arabic", "ar-EG", "en-US")
+                                                  )
+                                              )
+                                          )
+                                      )
+                                    Wrap: =false
+                  - btnActivityOpen:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =Coalesce(ThisItem.Title, "")
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =galActivities.TemplateHeight
+                        OnSelect: |-
+                          =Set(_selActivity, ThisItem);
+                          cmpRecentActivities.OnSelect()
+                        Text: =""
+                        Tooltip: |-
+                          =Coalesce(ThisItem.Title, "") & If(
+                              IsBlank(ThisItem.Description),
+                              "",
+                              " — " & ThisItem.Description
+                          )
+                        Width: =galActivities.TemplateWidth
