@@ -496,12 +496,65 @@ ComponentDefinitions:
                         AccessibleLabel: =Self.Text
                         Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
                         Color: |-
-                          =IfError(
-                              ColorValue(ThisItem.IconColor),
-                              If(
-                                  gblTheme.Mode = "Dark",
-                                  gblTheme.Dark.Colors.Primary,
-                                  gblTheme.Light.Colors.Primary
+                          =With(
+                              {
+                                  ink: If(
+                                      IsBlank(ThisItem.IconColor),
+                                      fxThemeInk("Primary"),
+                                      ThisItem.IconColor
+                                  )
+                              },
+                              IfError(
+                                  ColorValue(ink),
+                                  With(
+                                      {
+                                          openAt: Find("(", ink),
+                                          closeAt: Find(")", ink)
+                                      },
+                                      With(
+                                          {
+                                              body: If(
+                                                  And(openAt > 0, closeAt > openAt),
+                                                  Mid(ink, openAt + 1, closeAt - openAt - 1),
+                                                  ""
+                                              )
+                                          },
+                                          With(
+                                              {
+                                                  comma1: Find(",", body),
+                                                  after1: Mid(body, Find(",", body) + 1, 80)
+                                              },
+                                              With(
+                                                  {comma2: Find(",", after1)},
+                                                  If(
+                                                      Or(comma1 < 1, comma2 < 1),
+                                                      If(
+                                                          gblTheme.Mode = "Dark",
+                                                          gblTheme.Dark.Colors.Primary,
+                                                          gblTheme.Light.Colors.Primary
+                                                      ),
+                                                      RGBA(
+                                                          Value(Trim(Left(body, comma1 - 1))),
+                                                          Value(Trim(Left(after1, comma2 - 1))),
+                                                          Value(
+                                                              Trim(
+                                                                  If(
+                                                                      Find(",", Mid(after1, comma2 + 1, 20)) > 0,
+                                                                      Left(
+                                                                          Mid(after1, comma2 + 1, 20),
+                                                                          Find(",", Mid(after1, comma2 + 1, 20)) - 1
+                                                                      ),
+                                                                      Mid(after1, comma2 + 1, 20)
+                                                                  )
+                                                              )
+                                                          ),
+                                                          1
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                      )
+                                  )
                               )
                           )
                         Font: =gblTheme.Typography.FontFamily
