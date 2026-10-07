@@ -1,0 +1,1437 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrFieldVisits:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "FieldVisits");
+        Set(varNavSelectedID, 63);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varMealFVMode), Set(varMealFVMode, "list"));
+        If(IsBlank(varMealFVQ), Set(varMealFVQ, ""));
+        If(IsBlank(varMealFVPane), Set(varMealFVPane, "Info"));
+        If(IsBlank(varMealFVChild), Set(varMealFVChild, Blank()));
+        Set(varMealFVError, false);
+        ClearCollect(
+            colMealFVStatusUI,
+            {k: "Draft", en: "Draft", ar: "مسودة"},
+            {k: "Pending Approval", en: "Pending Approval", ar: "بانتظار الاعتماد"},
+            {k: "Approved", en: "Approved", ar: "معتمدة"},
+            {k: "In Progress", en: "In Progress", ar: "قيد التنفيذ"},
+            {k: "Report Submitted", en: "Report Submitted", ar: "تقرير مُرسل"},
+            {k: "Report Approved", en: "Report Approved", ar: "تقرير معتمد"},
+            {k: "Closed", en: "Closed", ar: "مغلقة"},
+            {k: "Rejected", en: "Rejected", ar: "مرفوضة"}
+        );
+        ClearCollect(
+            colMealFVTypeUI,
+            {k: "Monitoring", en: "Monitoring", ar: "متابعة"},
+            {k: "Supervision", en: "Supervision", ar: "إشراف"},
+            {k: "Assessment", en: "Assessment", ar: "تقييم"},
+            {k: "Distribution", en: "Distribution", ar: "توزيع"},
+            {k: "Coordination", en: "Coordination", ar: "تنسيق"},
+            {k: "Other", en: "Other", ar: "أخرى"}
+        );
+        Select(btnMealFVLoad)
+    Children:
+      - conMealFVSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnMealFVLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varMealFVError, false);
+                    IfError(
+                        Concurrent(
+                            ClearCollect(
+                                colMealFVList,
+                                FirstN(
+                                    SortByColumns(
+                                        If(
+                                            Coalesce(varMealFVFltProject.ID, 0) > 0,
+                                            Filter(FieldVisits, ProjectID = varMealFVFltProject.ID),
+                                            FieldVisits
+                                        ),
+                                        "Modified",
+                                        SortOrder.Descending
+                                    ),
+                                    500
+                                )
+                            ),
+                            ClearCollect(
+                                colMealFVPeople,
+                                FirstN(SortByColumns(Filter(Employees, Status.Value = "Active"), "FullName", SortOrder.Ascending), 300)
+                            )
+                        );
+                        ClearCollect(
+                            colMealFVView,
+                            Filter(
+                                colMealFVList,
+                                And(
+                                    Or(
+                                        IsBlank(Trim(Coalesce(varMealFVQ, ""))),
+                                        Trim(varMealFVQ) in Coalesce(VisitNumber, ""),
+                                        Trim(varMealFVQ) in Coalesce(Title, ""),
+                                        Trim(varMealFVQ) in Coalesce(Project.Value, "")
+                                    ),
+                                    Or(IsBlank(varMealFVFltType), VisitType.Value = varMealFVFltType.k),
+                                    Or(IsBlank(varMealFVFltStatus), Status.Value = varMealFVFltStatus.k)
+                                )
+                            )
+                        );
+                        If(
+                            Coalesce(varSelectedVisit.ID, 0) > 0,
+                            Set(varSelectedVisit, LookUp(FieldVisits, ID = varSelectedVisit.ID));
+                            Select(btnMealFVLoadKids)
+                        ),
+                        Set(varMealFVError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل الزيارات الميدانية.", "Could not load field visits."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnMealFVLoadKids:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {vid: Coalesce(varSelectedVisit.ID, 0), pid: Coalesce(varSelectedVisit.ProjectID, 0)},
+                        If(
+                            vid <= 0,
+                            Clear(colMealFVMembers);
+                            Clear(colMealFVObjectives);
+                            Clear(colMealFVEvidence);
+                            Clear(colMealFVActions),
+                            Concurrent(
+                                ClearCollect(colMealFVMembers, Filter(FieldVisitMembers, FieldVisitID = vid)),
+                                ClearCollect(colMealFVObjectives, Filter(FieldVisitObjectives, FieldVisitID = vid)),
+                                ClearCollect(
+                                    colMealFVEvidence,
+                                    If(pid > 0, Filter(ActivityEvidence, ProjectID = pid), Filter(ActivityEvidence, ID = -1))
+                                ),
+                                ClearCollect(
+                                    colMealFVActions,
+                                    Filter(MELActions, And(SourceType.Value = "Field Visit", SourceID = vid))
+                                )
+                            )
+                        )
+                    )
+                  Text: ="Kids"
+                  Visible: =false
+                  Width: =1
+            - btnMealFVSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varMealFVMode, "") = "new",
+                            proj: cmbMealFVEdProject.Selected,
+                            lead: cmbMealFVEdLeader.Selected,
+                            req: cmbMealFVEdRequested.Selected,
+                            vtype: Coalesce(cmbMealFVEdType.Selected.Value, ""),
+                            pstart: dteMealFVEdStart.SelectedDate
+                        },
+                        If(
+                            Or(IsBlank(proj), Coalesce(proj.ID, 0) <= 0, IsBlank(vtype), IsBlank(pstart), IsBlank(lead), Coalesce(lead.ID, 0) <= 0),
+                            Notify(If(ar, "المشروع ونوع الزيارة وتاريخ البداية وقائد الفريق مطلوبة.", "Project, visit type, planned start, and team leader are required."), NotificationType.Error),
+                            IfError(
+                                Set(
+                                    varSelectedVisit,
+                                    Patch(
+                                        FieldVisits,
+                                        If(isNew, Defaults(FieldVisits), LookUp(FieldVisits, ID = varSelectedVisit.ID)),
+                                        {
+                                            Title: Coalesce(Trim(txtMealFVEdTitle.Text), proj.Title & " - " & vtype),
+                                            VisitNumber: Trim(txtMealFVEdNumber.Text),
+                                            Project: {Id: proj.ID, Value: Coalesce(proj.Title, "")},
+                                            ProjectID: proj.ID,
+                                            VisitType: {Value: vtype},
+                                            Status: {Value: Coalesce(cmbMealFVEdStatus.Selected.Value, If(isNew, "Draft", varSelectedVisit.Status.Value, "Draft"))},
+                                            PlannedStartDate: pstart,
+                                            PlannedEndDate: dteMealFVEdEnd.SelectedDate,
+                                            ActualStartDate: dteMealFVEdActStart.SelectedDate,
+                                            ActualEndDate: dteMealFVEdActEnd.SelectedDate,
+                                            TeamLeader: {Id: lead.ID, Value: Coalesce(lead.FullName, "")},
+                                            TeamLeaderID: lead.ID,
+                                            RequestedBy: If(IsBlank(req), Blank(), {Id: req.ID, Value: Coalesce(req.FullName, "")}),
+                                            RequestedByID: If(IsBlank(req), Blank(), req.ID),
+                                            Governorate: Trim(txtMealFVEdGov.Text),
+                                            District: Trim(txtMealFVEdDist.Text),
+                                            EstimatedBudget: If(IsBlank(Trim(txtMealFVEdBudget.Text)), Blank(), Value(txtMealFVEdBudget.Text)),
+                                            OverallComments: txtMealFVEdComments.Text
+                                        }
+                                    )
+                                );
+                                If(
+                                    isNew,
+                                    fnMealLog("Field Visit", varSelectedVisit.ID, Coalesce(varSelectedVisit.VisitNumber, ""), "Created", "Info", proj.ID, Coalesce(proj.ProjectCode, ""), "", "", "", "New field visit", false);
+                                    fnMealNotify(
+                                        lead.ID,
+                                        Coalesce(lead.FullName, ""),
+                                        If(ar, "زيارة ميدانية جديدة", "New field visit"),
+                                        Coalesce(varSelectedVisit.Title, ""),
+                                        "Field Visit",
+                                        varSelectedVisit.ID,
+                                        "Unread"
+                                    )
+                                );
+                                Set(varMealFVMode, "list");
+                                Select(btnMealFVLoad);
+                                Notify(If(ar, "تم حفظ الزيارة.", "Visit saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ الزيارة.", "Could not save the visit."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+            - btnMealFVWF:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            t: varSelectedVisit,
+                            next: varMealFVNextStatus
+                        },
+                        If(
+                            Or(IsBlank(t), IsBlank(next)),
+                            Notify(If(ar, "اختر زيارة وحالة تالية.", "Select a visit and next status."), NotificationType.Warning),
+                            IfError(
+                                Set(varSelectedVisit, Patch(FieldVisits, LookUp(FieldVisits, ID = t.ID), {Status: {Value: next}}));
+                                fnMealLog("Field Visit", t.ID, Coalesce(t.VisitNumber, ""), "Status Changed", "Info", Coalesce(t.ProjectID, 0), "", "Status", Coalesce(t.Status.Value, ""), next, "", false);
+                                If(
+                                    Coalesce(t.TeamLeaderID, 0) > 0,
+                                    fnMealNotify(
+                                        t.TeamLeaderID,
+                                        Coalesce(t.TeamLeader.Value, ""),
+                                        If(ar, "تحديث حالة الزيارة", "Visit status updated"),
+                                        Coalesce(t.Title, "") & " → " & next,
+                                        "Field Visit",
+                                        t.ID,
+                                        "Unread"
+                                    )
+                                );
+                                Select(btnMealFVLoad);
+                                Notify(If(ar, "تم تحديث الحالة.", "Status updated."), NotificationType.Success),
+                                Notify(If(ar, "تعذر تحديث الحالة.", "Could not update status."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="WF"
+                  Visible: =false
+                  Width: =1
+            - btnMealFVSaveMem:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varMealFVChild, "") = "mem-new",
+                            emp: cmbMealFVMemEmp.Selected,
+                            vid: Coalesce(varSelectedVisit.ID, 0),
+                            days: If(IsBlank(Trim(txtMealFVMemDays.Text)), Blank(), Value(txtMealFVMemDays.Text)),
+                            rate: If(IsBlank(Trim(txtMealFVMemRate.Text)), Blank(), Value(txtMealFVMemRate.Text))
+                        },
+                        If(
+                            Or(vid <= 0, IsBlank(emp), Coalesce(emp.ID, 0) <= 0),
+                            Notify(If(ar, "اختر موظفاً والزيارة.", "Select an employee and visit."), NotificationType.Error),
+                            IfError(
+                                Patch(
+                                    FieldVisitMembers,
+                                    If(isNew, Defaults(FieldVisitMembers), LookUp(FieldVisitMembers, ID = varMealFVMemRow.ID)),
+                                    {
+                                        Title: Coalesce(emp.FullName, ""),
+                                        FieldVisit: {Id: vid, Value: Coalesce(varSelectedVisit.Title, "")},
+                                        FieldVisitID: vid,
+                                        Employee: {Id: emp.ID, Value: Coalesce(emp.FullName, "")},
+                                        EmployeeID: emp.ID,
+                                        PerDiemPerDay: rate,
+                                        PlannedDays: days,
+                                        TotalPerDiem: If(Or(IsBlank(rate), IsBlank(days)), Blank(), rate * days)
+                                    }
+                                );
+                                Set(varMealFVChild, Blank());
+                                Set(varMealFVMemRow, Blank());
+                                fnMealLog("Field Visit", vid, Coalesce(varSelectedVisit.VisitNumber, ""), "Updated", "Info", Coalesce(varSelectedVisit.ProjectID, 0), "", "Member", "", Coalesce(emp.FullName, ""), "", false);
+                                Select(btnMealFVLoadKids);
+                                Notify(If(ar, "تم حفظ العضو.", "Member saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ العضو.", "Could not save the member."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="SaveMem"
+                  Visible: =false
+                  Width: =1
+            - btnMealFVSaveObj:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varMealFVChild, "") = "obj-new",
+                            vid: Coalesce(varSelectedVisit.ID, 0),
+                            pid: Coalesce(varSelectedVisit.ProjectID, 0),
+                            resp: cmbMealFVObjResp.Selected,
+                            pri: Coalesce(cmbMealFVObjPri.Selected.Value, "")
+                        },
+                        If(
+                            Or(vid <= 0, IsBlank(Trim(txtMealFVObjText.Text))),
+                            Notify(If(ar, "الهدف مطلوب.", "Objective is required."), NotificationType.Error),
+                            IfError(
+                                Patch(
+                                    FieldVisitObjectives,
+                                    If(isNew, Defaults(FieldVisitObjectives), LookUp(FieldVisitObjectives, ID = varMealFVObjRow.ID)),
+                                    {
+                                        Title: Left(Trim(txtMealFVObjText.Text), 255),
+                                        FieldVisit: {Id: vid, Value: Coalesce(varSelectedVisit.Title, "")},
+                                        FieldVisitID: vid,
+                                        VisitNumber: Coalesce(varSelectedVisit.VisitNumber, ""),
+                                        ProjectID: pid,
+                                        Objective: txtMealFVObjText.Text,
+                                        Findings: txtMealFVObjFindings.Text,
+                                        Recommendations: txtMealFVObjRec.Text,
+                                        AchievementStatus: {Value: Coalesce(cmbMealFVObjAch.Selected.Value, "Planned")},
+                                        Priority: If(IsBlank(pri), Blank(), {Value: pri}),
+                                        FollowUpStatus: {Value: Coalesce(cmbMealFVObjFollow.Selected.Value, "Open")},
+                                        DueDate: dteMealFVObjDue.SelectedDate,
+                                        ResponsiblePerson: If(IsBlank(resp), Blank(), {Id: resp.ID, Value: Coalesce(resp.FullName, "")}),
+                                        ResponsiblePersonID: If(IsBlank(resp), Blank(), resp.ID)
+                                    }
+                                );
+                                Set(varMealFVChild, Blank());
+                                Set(varMealFVObjRow, Blank());
+                                Select(btnMealFVLoadKids);
+                                Notify(If(ar, "تم حفظ الهدف.", "Objective saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ الهدف.", "Could not save the objective."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="SaveObj"
+                  Visible: =false
+                  Width: =1
+      - conMealFVPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpMealFVPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpMealFVTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conMealFVHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblMealFVTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "الزيارات الميدانية", "Field Visits")
+                  - btnMealFVNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varMealFVMode, "new");
+                          Set(varSelectedVisit, Blank());
+                          Set(varMealFVChild, Blank());
+                          Reset(txtMealFVEdTitle);
+                          Reset(txtMealFVEdNumber);
+                          Reset(txtMealFVEdGov);
+                          Reset(txtMealFVEdDist);
+                          Reset(txtMealFVEdBudget);
+                          Reset(txtMealFVEdComments)
+                        Text: =If(gblLanguage = "Arabic", "زيارة جديدة", "New visit")
+                        Visible: =varMealFVMode = "list"
+                        Width: =120
+                  - btnMealFVBackList:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: |-
+                          =Set(varMealFVMode, "list");
+                          Set(varMealFVChild, Blank());
+                          Select(btnMealFVLoad)
+                        Text: =If(gblLanguage = "Arabic", "القائمة", "List")
+                        Visible: =varMealFVMode <> "list"
+                        Width: =90
+            - lblMealFVErr:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =fxThemeColor("Danger")
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =If(varMealFVError, 28, 0)
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Text: =If(gblLanguage = "Arabic", "تعذر تحميل الزيارات.", "Could not load visits.")
+                  Visible: =varMealFVError
+            - conMealFVTools:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 120, 40)
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =App.Width < 700
+                  Visible: =varMealFVMode = "list"
+                Children:
+                  - txtMealFVSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =varMealFVQ
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealFVQ, Self.Text); Select(btnMealFVLoad)
+                        Placeholder: =If(gblLanguage = "Arabic", "بحث", "Search")
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbMealFVFltProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealFVFltProject), Filter(Projects, false), Filter(Projects, ID = varMealFVFltProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        Items: =Projects
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealFVFltProject, Self.Selected); Select(btnMealFVLoad)
+                        SelectMultiple: =false
+                        Width: =If(App.Width < 700, Parent.Width, 180)
+                  - cmbMealFVFltType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealFVFltType), Filter(colMealFVTypeUI, false), Filter(colMealFVTypeUI, k = varMealFVFltType.k))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "النوع", "Type")
+                        Items: =colMealFVTypeUI
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealFVFltType, Self.Selected); Select(btnMealFVLoad)
+                        SelectMultiple: =false
+                        Width: =140
+                  - cmbMealFVFltStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealFVFltStatus), Filter(colMealFVStatusUI, false), Filter(colMealFVStatusUI, k = varMealFVFltStatus.k))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        Items: =colMealFVStatusUI
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealFVFltStatus, Self.Selected); Select(btnMealFVLoad)
+                        SelectMultiple: =false
+                        Width: =160
+            - conMealFVBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =varMealFVMode = "list"
+                Children:
+                  - galMealFVList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =If(App.Width < 900, 1, 0)
+                        Height: =Parent.Height
+                        Items: =colMealFVView
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =78
+                        Visible: =Or(App.Width >= 900, IsBlank(varSelectedVisit))
+                        Width: =If(App.Width < 900, Parent.Width, 340)
+                      Children:
+                        - conMealFVCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              Fill: =If(Coalesce(varSelectedVisit.ID, 0) = ThisItem.ID, fxThemeColor("PrimarySubtle"), fxThemeColor("Background"))
+                              Height: =Parent.TemplateHeight - 6
+                              RadiusBottomLeft: =8
+                              RadiusBottomRight: =8
+                              RadiusTopLeft: =8
+                              RadiusTopRight: =8
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =3
+                            Children:
+                              - lblMealFVCardTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =22
+                                    Text: =Coalesce(ThisItem.Title, ThisItem.VisitNumber, "-")
+                                    Width: =Parent.Width - 16
+                                    X: =8
+                                    Y: =6
+                              - lblMealFVCardMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.VisitType.Value, "-") & " · " & Coalesce(ThisItem.Status.Value, "-") & Char(10) & Coalesce(ThisItem.Project.Value, "-") & " · " & Text(ThisItem.PlannedStartDate, "dd mmm yyyy")
+                                    Width: =Parent.Width - 16
+                                    X: =8
+                                    Y: =28
+                              - btnMealFVPick:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Transparent
+                                    Height: =Parent.Height
+                                    OnSelect: |-
+                                      =Set(varSelectedVisit, ThisItem);
+                                      Set(varMealFVPane, "Info");
+                                      Select(btnMealFVLoadKids)
+                                    Text: =""
+                                    Width: =Parent.Width
+                  - conMealFVDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =8
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =8
+                        Visible: =Not(IsBlank(varSelectedVisit))
+                      Children:
+                        - conMealFVDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblMealFVDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =15
+                                    Text: =Coalesce(varSelectedVisit.Title, If(gblLanguage = "Arabic", "تفاصيل الزيارة", "Visit details"))
+                              - btnMealFVEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealFVMode, "edit")
+                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Width: =80
+                              - btnMealFVClosePhone:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varSelectedVisit, Blank())
+                                    Text: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                                    Visible: =App.Width < 900
+                                    Width: =80
+                        - galMealFVTabs:
+                            Control: Gallery@2.15.0
+                            Variant: Horizontal
+                            Properties:
+                              FillPortions: =0
+                              Height: =36
+                              Items: |-
+                                =Table(
+                                    {k: "Info", en: "Info", ar: "معلومات"},
+                                    {k: "Team", en: "Team", ar: "الفريق"},
+                                    {k: "Objectives", en: "Objectives", ar: "الأهداف"},
+                                    {k: "Evidence", en: "Evidence", ar: "الأدلة"},
+                                    {k: "Actions", en: "Actions", ar: "الإجراءات"}
+                                )
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =100
+                            Children:
+                              - btnMealFVTab:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =If(varMealFVPane = ThisItem.k, ButtonAppearance.Primary, ButtonAppearance.Subtle)
+                                    OnSelect: =Set(varMealFVPane, ThisItem.k)
+                                    Text: =If(gblLanguage = "Arabic", ThisItem.ar, ThisItem.en)
+                                    Width: =92
+                                    Y: =2
+                        - conMealFVWF:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =36
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =varMealFVPane = "Info"
+                            Children:
+                              - lblMealFVWF:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =28
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =12
+                                    Text: |-
+                                      =If(gblLanguage = "Arabic", "الحالة: ", "Status: ") & Coalesce(varSelectedVisit.Status.Value, "-") & " · Draft→…→Closed"
+                              - btnMealFVAdvance:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =With(
+                                          {s: Coalesce(varSelectedVisit.Status.Value, "Draft")},
+                                          Set(
+                                              varMealFVNextStatus,
+                                              Switch(
+                                                  s,
+                                                  "Draft", "Pending Approval",
+                                                  "Pending Approval", "Approved",
+                                                  "Approved", "In Progress",
+                                                  "In Progress", "Report Submitted",
+                                                  "Report Submitted", "Report Approved",
+                                                  "Report Approved", "Closed",
+                                                  "Rejected", "Draft",
+                                                  Blank()
+                                              )
+                                          );
+                                          If(IsBlank(varMealFVNextStatus), Notify(If(gblLanguage = "Arabic", "لا توجد خطوة تالية.", "No next step."), NotificationType.Warning), Select(btnMealFVWF))
+                                      )
+                                    Text: =If(gblLanguage = "Arabic", "تقدم الحالة", "Advance")
+                                    Visible: =And(Not(IsBlank(varSelectedVisit)), Coalesce(varSelectedVisit.Status.Value, "") <> "Closed")
+                                    Width: =110
+                        - lblMealFVInfo:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =With(
+                                    {ar: gblLanguage = "Arabic", v: varSelectedVisit},
+                                    If(ar, "الرقم: ", "Number: ") & Coalesce(v.VisitNumber, "-") & Char(10) &
+                                    If(ar, "المشروع: ", "Project: ") & Coalesce(v.Project.Value, "-") & Char(10) &
+                                    If(ar, "النوع: ", "Type: ") & Coalesce(v.VisitType.Value, "-") & Char(10) &
+                                    If(ar, "القائد: ", "Leader: ") & Coalesce(v.TeamLeader.Value, "-") & Char(10) &
+                                    If(ar, "مخطط: ", "Planned: ") & Text(v.PlannedStartDate, "dd mmm yyyy") & " – " & Text(v.PlannedEndDate, "dd mmm yyyy") & Char(10) &
+                                    If(ar, "المحافظة: ", "Governorate: ") & Coalesce(v.Governorate, "-") & Char(10) &
+                                    Coalesce(v.OverallComments, "")
+                                )
+                              Visible: =varMealFVPane = "Info"
+                        - conMealFVTeamPane:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =varMealFVPane = "Team"
+                            Children:
+                              - btnMealFVAddMem:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealFVChild, "mem-new"); Set(varMealFVMemRow, Blank())
+                                    Text: =If(gblLanguage = "Arabic", "+ عضو", "+ Member")
+                                    Width: =110
+                              - galMealFVMembers:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    Items: =colMealFVMembers
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    TemplateSize: =52
+                                  Children:
+                                    - lblMealFVMemRow:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =Parent.TemplateHeight - 4
+                                          OnSelect: |-
+                                            =Set(varMealFVMemRow, ThisItem);
+                                            Set(varMealFVChild, "mem-edit")
+                                          Size: =12
+                                          Text: =Coalesce(ThisItem.Employee.Value, ThisItem.Title, "-") & " · " & Text(Coalesce(ThisItem.PlannedDays, 0)) & "d · " & Text(Coalesce(ThisItem.TotalPerDiem, 0))
+                                          Width: =Parent.TemplateWidth
+                                          Y: =2
+                        - conMealFVObjPane:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =4
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =varMealFVPane = "Objectives"
+                            Children:
+                              - btnMealFVAddObj:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealFVChild, "obj-new"); Set(varMealFVObjRow, Blank())
+                                    Text: =If(gblLanguage = "Arabic", "+ هدف", "+ Objective")
+                                    Width: =120
+                              - galMealFVObjectives:
+                                  Control: Gallery@2.15.0
+                                  Variant: Vertical
+                                  Properties:
+                                    Items: =colMealFVObjectives
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    TemplateSize: =64
+                                  Children:
+                                    - lblMealFVObjRow:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =Parent.TemplateHeight - 4
+                                          OnSelect: |-
+                                            =Set(varMealFVObjRow, ThisItem);
+                                            Set(varMealFVChild, "obj-edit")
+                                          Size: =12
+                                          Text: =Left(Coalesce(ThisItem.Objective, ThisItem.Title, "-"), 80) & Char(10) & Coalesce(ThisItem.Priority.Value, "-") & " · " & Coalesce(ThisItem.FollowUpStatus.Value, "-") & " · " & Coalesce(ThisItem.AchievementStatus.Value, "-")
+                                          Width: =Parent.TemplateWidth
+                                          Y: =2
+                        - galMealFVEvidence:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Items: =colMealFVEvidence
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =48
+                              Visible: =varMealFVPane = "Evidence"
+                            Children:
+                              - lblMealFVEvRow:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =Parent.TemplateHeight - 4
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.Title, "-") & " · " & Coalesce(ThisItem.EvidenceType.Value, "-") & " · " & Text(ThisItem.UploadDate, "dd mmm yyyy")
+                                    Width: =Parent.TemplateWidth
+                                    Y: =2
+                        - galMealFVActions:
+                            Control: Gallery@2.15.0
+                            Variant: Vertical
+                            Properties:
+                              Items: =colMealFVActions
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              TemplateSize: =56
+                              Visible: =varMealFVPane = "Actions"
+                            Children:
+                              - lblMealFVActRow:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =Parent.TemplateHeight - 4
+                                    OnSelect: |-
+                                      =Set(varSelectedMELAction, ThisItem);
+                                      Navigate(scrMELActions, ScreenTransition.None)
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.ActionNumber, ThisItem.Title, "-") & " · " & Coalesce(ThisItem.Status.Value, "-") & Char(10) & Left(Coalesce(ThisItem.ActionRequired, ""), 60)
+                                    Width: =Parent.TemplateWidth
+                                    Y: =2
+            - conMealFVEditor:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
+                  Visible: =Or(varMealFVMode = "new", varMealFVMode = "edit")
+                Children:
+                  - lblMealFVEdHead:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =FontWeight.Semibold
+                        Height: =28
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =15
+                        Text: =If(varMealFVMode = "new", If(gblLanguage = "Arabic", "زيارة جديدة", "New visit"), If(gblLanguage = "Arabic", "تعديل الزيارة", "Edit visit"))
+                  - cmbMealFVEdProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVMode = "edit",
+                              Filter(Projects, ID = varSelectedVisit.ProjectID),
+                              If(IsBlank(varMealFVFltProject), Filter(Projects, false), Filter(Projects, ID = varMealFVFltProject.ID))
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع *", "Project *")
+                        Items: =Projects
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealFVEdType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVMode = "edit",
+                              Filter(Choices(FieldVisits.VisitType), Value = varSelectedVisit.VisitType.Value),
+                              Filter(Choices(FieldVisits.VisitType), Value = "Monitoring")
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "نوع الزيارة *", "Visit type *")
+                        Items: =Choices(FieldVisits.VisitType)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealFVEdStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVMode = "edit",
+                              Filter(Choices(FieldVisits.Status), Value = varSelectedVisit.Status.Value),
+                              Filter(Choices(FieldVisits.Status), Value = "Draft")
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        Items: =Choices(FieldVisits.Status)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - txtMealFVEdTitle:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVMode = "new", "", Coalesce(varSelectedVisit.Title, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "العنوان", "Title")
+                  - txtMealFVEdNumber:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVMode = "new", "", Coalesce(varSelectedVisit.VisitNumber, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "رقم الزيارة", "Visit number")
+                  - cmbMealFVEdLeader:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVMode = "edit",
+                              Filter(colMealFVPeople, ID = varSelectedVisit.TeamLeaderID),
+                              Filter(colMealFVPeople, ID = varMeID)
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "قائد الفريق *", "Team leader *")
+                        Items: =colMealFVPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealFVEdRequested:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVMode = "edit",
+                              Filter(colMealFVPeople, ID = varSelectedVisit.RequestedByID),
+                              Filter(colMealFVPeople, false)
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "مقدم الطلب", "Requested by")
+                        Items: =colMealFVPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - dteMealFVEdStart:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealFVMode = "new", Today(), varSelectedVisit.PlannedStartDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealFVEdEnd:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealFVMode = "new", DateAdd(Today(), 3, TimeUnit.Days), varSelectedVisit.PlannedEndDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealFVEdActStart:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealFVMode = "new", Blank(), varSelectedVisit.ActualStartDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealFVEdActEnd:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealFVMode = "new", Blank(), varSelectedVisit.ActualEndDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - txtMealFVEdGov:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVMode = "new", "", Coalesce(varSelectedVisit.Governorate, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "المحافظة", "Governorate")
+                  - txtMealFVEdDist:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVMode = "new", "", Coalesce(varSelectedVisit.District, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "المديرية", "District")
+                  - txtMealFVEdBudget:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVMode = "new", "", If(IsBlank(varSelectedVisit.EstimatedBudget), "", Text(varSelectedVisit.EstimatedBudget)))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الميزانية التقديرية", "Estimated budget")
+                  - txtMealFVEdComments:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVMode = "new", "", Coalesce(varSelectedVisit.OverallComments, ""))
+                        Height: =80
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "ملاحظات عامة", "Overall comments")
+                        Type: =TextInputType.Multiline
+                  - conMealFVEdActions:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnMealFVSaveVis:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealFVSave)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =100
+                        - btnMealFVCancelEd:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealFVMode, "list")
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =100
+            - conMealFVMemForm:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =220
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =8
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
+                  Visible: =Or(varMealFVChild = "mem-new", varMealFVChild = "mem-edit")
+                Children:
+                  - cmbMealFVMemEmp:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealFVChild = "mem-edit", Filter(colMealFVPeople, ID = varMealFVMemRow.EmployeeID), Filter(colMealFVPeople, false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الموظف", "Employee")
+                        Items: =colMealFVPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - txtMealFVMemDays:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVChild = "mem-edit", Text(Coalesce(varMealFVMemRow.PlannedDays, "")), "")
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الأيام المخططة", "Planned days")
+                  - txtMealFVMemRate:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVChild = "mem-edit", Text(Coalesce(varMealFVMemRow.PerDiemPerDay, "")), "")
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "بدل يومي", "Per diem / day")
+                  - conMealFVMemBtns:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnMealFVMemSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealFVSaveMem)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =90
+                        - btnMealFVMemCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealFVChild, Blank())
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =90
+            - conMealFVObjForm:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =420
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =8
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
+                  Visible: =Or(varMealFVChild = "obj-new", varMealFVChild = "obj-edit")
+                Children:
+                  - txtMealFVObjText:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVChild = "obj-edit", Coalesce(varMealFVObjRow.Objective, ""), "")
+                        Height: =60
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الهدف", "Objective")
+                        Type: =TextInputType.Multiline
+                  - txtMealFVObjFindings:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVChild = "obj-edit", Coalesce(varMealFVObjRow.Findings, ""), "")
+                        Height: =50
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "النتائج", "Findings")
+                        Type: =TextInputType.Multiline
+                  - txtMealFVObjRec:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealFVChild = "obj-edit", Coalesce(varMealFVObjRow.Recommendations, ""), "")
+                        Height: =50
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "التوصيات", "Recommendations")
+                        Type: =TextInputType.Multiline
+                  - cmbMealFVObjPri:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVChild = "obj-edit",
+                              Filter(Choices(FieldVisitObjectives.Priority), Value = varMealFVObjRow.Priority.Value),
+                              Filter(Choices(FieldVisitObjectives.Priority), false)
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الأولوية", "Priority")
+                        Items: =Choices(FieldVisitObjectives.Priority)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealFVObjAch:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVChild = "obj-edit",
+                              Filter(Choices(FieldVisitObjectives.AchievementStatus), Value = varMealFVObjRow.AchievementStatus.Value),
+                              Filter(Choices(FieldVisitObjectives.AchievementStatus), Value = "Planned")
+                          )
+                        Height: =40
+                        Items: =Choices(FieldVisitObjectives.AchievementStatus)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealFVObjFollow:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: |-
+                          =If(
+                              varMealFVChild = "obj-edit",
+                              Filter(Choices(FieldVisitObjectives.FollowUpStatus), Value = varMealFVObjRow.FollowUpStatus.Value),
+                              Filter(Choices(FieldVisitObjectives.FollowUpStatus), Value = "Open")
+                          )
+                        Height: =40
+                        Items: =Choices(FieldVisitObjectives.FollowUpStatus)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealFVObjResp:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealFVChild = "obj-edit", Filter(colMealFVPeople, ID = varMealFVObjRow.ResponsiblePersonID), Filter(colMealFVPeople, false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المسؤول", "Responsible")
+                        Items: =colMealFVPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - dteMealFVObjDue:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealFVChild = "obj-edit", varMealFVObjRow.DueDate, Blank())
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - conMealFVObjBtns:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnMealFVObjSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealFVSaveObj)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =90
+                        - btnMealFVObjCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealFVChild, Blank())
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =90
+      - conMealFVNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpMealFVNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpMealFVTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Map"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrMEAL, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الزيارات الميدانية", "Field Visits")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpMealFVPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 63, Module: "FieldVisits", Title: If(gblLanguage = "Arabic", "زيارات", "Visits"), Icon: "Map", Visible: true},
+                  {ID: 78, Module: "Studies", Title: If(gblLanguage = "Arabic", "دراسات", "Studies"), Icon: "File", Visible: true},
+                  {ID: 79, Module: "CFM", Title: If(gblLanguage = "Arabic", "شكاوى", "CFM"), Icon: "Message", Visible: true},
+                  {ID: 80, Module: "Actions", Title: If(gblLanguage = "Arabic", "إجراءات", "Actions"), Icon: "ClipboardCheck", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "FieldVisits", Navigate(scrFieldVisits, ScreenTransition.None),
+                  "Studies", Navigate(scrMELStudies, ScreenTransition.None),
+                  "CFM", Navigate(scrCFM, ScreenTransition.None),
+                  "Actions", Navigate(scrMELActions, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height

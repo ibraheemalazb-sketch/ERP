@@ -1,0 +1,632 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrActivityEditor:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "Programs");
+        Set(varCurrentScreen, "Programs");
+        Set(VarProgrammodule, "PActivities");
+        Set(varNavSelectedID, If(varActivityReturn = "project", 22, 25));
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        If(IsBlank(varActivityForm), Set(varActivityForm, "new"));
+        Clear(colActEditorMains);
+        Clear(colActEditorPhases);
+        With(
+            {
+                pid: If(
+                    varActivityForm = "edit",
+                    Coalesce(varSelectedActivity.ProjectID, 0),
+                    Coalesce(varSelectedProject.ID, 0)
+                )
+            },
+            If(
+                pid > 0,
+                Collect(colActEditorMains, Filter(ProjectsActivities, And(ProjectID = pid, ActivityType.Value = "Main")));
+                IfError(Collect(colActEditorPhases, Filter(ProjectPhases, ProjectID = pid)), Collect(colActEditorPhases, ProjectPhases))
+            )
+        );
+        Reset(txtEdActTitle);
+        Reset(txtEdActCode);
+        Reset(cmbEdActProject);
+        Reset(cmbEdActType);
+        Reset(cmbEdActParent);
+        Reset(cmbEdActOwner);
+        Reset(cmbEdActPhase);
+        Reset(dteEdActStart);
+        Reset(dteEdActEnd);
+        Reset(txtEdActWeight);
+        Reset(txtEdActDesc)
+    Children:
+      - conEdActNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpEdActNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpEdActTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: =0
+            FontSizeTitle: =
+            HasNotifications: =false
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Activity"
+            ModuleName: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrProjects, ScreenTransition.None)
+            ScreenSubtitle: =If(varActivityForm = "new", If(gblLanguage = "Arabic", "نشاط جديد", "New activity"), If(gblLanguage = "Arabic", "تعديل النشاط", "Edit activity"))
+            ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =false
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpEdActPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 25, Module: "Activities", Title: If(gblLanguage = "Arabic", "الأنشطة", "Activities"), Icon: "Activity", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "Activities", Navigate(scrActivities, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height
+      - conEdActPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Center
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =If(App.Width < 700, cmpEdActPhone.Height + 12, 16)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpEdActTop.Height + 12
+            Width: =Parent.Width
+          Children:
+            - conEdActCard:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  BorderColor: =fxThemeColor("Border")
+                  BorderThickness: =1
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  FillPortions: =0
+                  Height: =980
+                  LayoutAlignItems: =LayoutAlignItems.Stretch
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =16
+                  PaddingLeft: =16
+                  PaddingRight: =16
+                  PaddingTop: =16
+                  RadiusBottomLeft: =gblTheme.Radius.XL
+                  RadiusBottomRight: =gblTheme.Radius.XL
+                  RadiusTopLeft: =gblTheme.Radius.XL
+                  RadiusTopRight: =gblTheme.Radius.XL
+                  Width: =Min(720, Parent.Width)
+                Children:
+                  - conEdActHead:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnEdActBack:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              Icon: ="ArrowLeft"
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =If(
+                                    varActivityReturn = "project",
+                                    Set(varProjectTab, "Activities");
+                                    Set(varShowDetails, true);
+                                    Navigate(ScrAllProjects, ScreenTransition.UnCover),
+                                    Navigate(scrActivities, ScreenTransition.UnCover)
+                                )
+                              Text: =If(gblLanguage = "Arabic", "رجوع", "Back")
+                              Width: =90
+                        - lblEdActTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Bold
+                              Height: =32
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =16
+                              Text: =If(varActivityForm = "new", If(gblLanguage = "Arabic", "نشاط جديد", "New activity"), If(gblLanguage = "Arabic", "تعديل النشاط", "Edit activity"))
+                              Width: =160
+                              Wrap: =false
+                  - txtEdActTitle:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "اسم النشاط", "Activity name")
+                        Default: =If(varActivityForm = "new", "", Coalesce(varSelectedActivity.Title, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "اسم النشاط", "Activity name")
+                        Width: =Parent.Width
+                  - txtEdActCode:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "رمز النشاط", "Activity code")
+                        Default: =If(varActivityForm = "new", "", Coalesce(varSelectedActivity.ActivityCode, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "رمز النشاط", "Activity code")
+                        Width: =Parent.Width
+                  - cmbEdActProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        DefaultSelectedItems: |-
+                          =If(
+                              varActivityForm = "edit",
+                              Filter(Projects, ID = varSelectedActivity.ProjectID),
+                              If(Coalesce(varSelectedProject.ID, 0) > 0, Filter(Projects, ID = varSelectedProject.ID), Filter(Projects, false))
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, Concatenate(ThisItem.ProjectCode, " · ", ThisItem.Title))
+                        Items: |-
+                          =If(
+                              varUserHasAllProjects,
+                              Projects,
+                              Filter(
+                                  ForAll(
+                                      Filter(colUserProjectAccess, AllProjects = false) As access,
+                                      LookUp(Projects, ID = access.ProjectID)
+                                  ),
+                                  !IsBlank(ID)
+                              )
+                          )
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: |-
+                          =ClearCollect(colActEditorMains, Filter(ProjectsActivities, And(ProjectID = Self.Selected.ID, ActivityType.Value = "Main")));
+                          Clear(colActEditorPhases);
+                          IfError(Collect(colActEditorPhases, Filter(ProjectPhases, ProjectID = Self.Selected.ID)), Collect(colActEditorPhases, ProjectPhases));
+                          Reset(cmbEdActParent);
+                          Reset(cmbEdActPhase)
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - cmbEdActType:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "نوع النشاط", "Activity type")
+                        DefaultSelectedItems: |-
+                          =Table(
+                              {
+                                  Value: If(
+                                      Or(varIsSubActivity, And(varActivityForm = "edit", varSelectedActivity.ActivityType.Value = "SubActivity")),
+                                      "SubActivity",
+                                      "Main"
+                                  )
+                              }
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "النوع", "Type")
+                        IsSearchable: =false
+                        ItemDisplayText: =ThisItem.Value
+                        Items: |-
+                          =Table({Value: "Main"}, {Value: "SubActivity"})
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varIsSubActivity, Self.Selected.Value = "SubActivity")
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - cmbEdActParent:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "النشاط الرئيسي", "Parent activity")
+                        DefaultSelectedItems: |-
+                          =If(
+                              IsBlank(varParentActivity),
+                              If(
+                                  And(varActivityForm = "edit", Coalesce(varSelectedActivity.ParentActivityID, 0) > 0),
+                                  Filter(colActEditorMains, ID = varSelectedActivity.ParentActivityID),
+                                  Filter(colActEditorMains, false)
+                              ),
+                              Filter(colActEditorMains, ID = varParentActivity.ID)
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "النشاط الرئيسي", "Parent activity")
+                        ItemDisplayText: =ThisItem.Title
+                        Items: =Filter(colActEditorMains, ID <> Coalesce(varSelectedActivity.ID, 0))
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Visible: =Or(varIsSubActivity, cmbEdActType.Selected.Value = "SubActivity")
+                        Width: =Parent.Width
+                  - cmbEdActOwner:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المسؤول", "Owner")
+                        DefaultSelectedItems: |-
+                          =If(
+                              varActivityForm = "edit",
+                              Filter(Employees, ID = Coalesce(varSelectedActivity.ResponsiblePersonID, varSelectedActivity.ResponsiblePerson.Id)),
+                              Filter(Employees, ID = varMeID)
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المسؤول", "Owner")
+                        ItemDisplayText: =ThisItem.FullName
+                        Items: =Employees
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - cmbEdActPhase:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "المرحلة", "Phase")
+                        DefaultSelectedItems: |-
+                          =If(
+                              And(varActivityForm = "edit", Coalesce(varSelectedActivity.PhaseID, 0) > 0),
+                              Filter(colActEditorPhases, ID = varSelectedActivity.PhaseID),
+                              Filter(colActEditorPhases, false)
+                          )
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المرحلة (اختياري)", "Phase (optional)")
+                        ItemDisplayText: =ThisItem.Title
+                        Items: =colActEditorPhases
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                        Width: =Parent.Width
+                  - dteEdActStart:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varActivityForm = "new", Today(), varSelectedActivity.PlannedStart)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "البداية المخططة", "Planned start")
+                        Width: =Parent.Width
+                  - dteEdActEnd:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varActivityForm = "new", Blank(), varSelectedActivity.PlannedEnd)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "النهاية المخططة", "Planned end")
+                        Width: =Parent.Width
+                  - txtEdActWeight:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الوزن", "Weight")
+                        Default: =If(Or(varActivityForm = "new", IsBlank(varSelectedActivity.Weight)), "", Text(varSelectedActivity.Weight))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الوزن", "Weight")
+                        Width: =Parent.Width
+                  - txtEdActDesc:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                        Default: =If(varActivityForm = "new", "", Coalesce(varSelectedActivity.Description, ""))
+                        Height: =96
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                        Type: =TextInputType.Multiline
+                        Width: =Parent.Width
+                  - lblEdActNote:
+                      Control: Label@2.5.1
+                      Properties:
+                        AutoHeight: =true
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =12
+                        Text: =If(gblLanguage = "Arabic", "الحالة والتقدم وعدد المهام تُحسب من المهام المرتبطة بعد الحفظ.", "Status, progress, and task counts are calculated from related tasks after save.")
+                        Width: =Parent.Width
+                  - conEdActSave:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.End
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnEdActCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =If(
+                                    varActivityReturn = "project",
+                                    Set(varProjectTab, "Activities");
+                                    Set(varShowDetails, true);
+                                    Navigate(ScrAllProjects, ScreenTransition.UnCover),
+                                    Navigate(scrActivities, ScreenTransition.UnCover)
+                                )
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =90
+                        - btnEdActSave:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =If(
+                                    Or(IsBlank(Trim(txtEdActTitle.Text)), IsBlank(cmbEdActProject.Selected)),
+                                    Notify(If(gblLanguage = "Arabic", "الاسم والمشروع مطلوبان.", "Name and project are required."), NotificationType.Warning),
+                                    If(
+                                        And(Or(varIsSubActivity, cmbEdActType.Selected.Value = "SubActivity"), IsBlank(cmbEdActParent.Selected)),
+                                        Notify(If(gblLanguage = "Arabic", "النشاط الفرعي يحتاج نشاطاً رئيسياً.", "A sub-activity needs a parent activity."), NotificationType.Warning),
+                                        If(
+                                            And(Not(IsBlank(dteEdActStart.SelectedDate)), Not(IsBlank(dteEdActEnd.SelectedDate)), dteEdActEnd.SelectedDate < dteEdActStart.SelectedDate),
+                                            Notify(If(gblLanguage = "Arabic", "النهاية قبل البداية.", "The end is before the start."), NotificationType.Warning),
+                                            If(
+                                                And(Not(IsBlank(Trim(txtEdActWeight.Text))), Or(Not(IsNumeric(txtEdActWeight.Text)), Value(txtEdActWeight.Text) < 0)),
+                                                Notify(If(gblLanguage = "Arabic", "الوزن لا يكون سالباً.", "Weight cannot be negative."), NotificationType.Warning),
+                                                Set(
+                                                    varEdSaved,
+                                                    IfError(
+                                                        Patch(
+                                                            ProjectsActivities,
+                                                            If(varActivityForm = "new", Defaults(ProjectsActivities), LookUp(ProjectsActivities, ID = varSelectedActivity.ID)),
+                                                            {
+                                                                Title: Trim(txtEdActTitle.Text),
+                                                                ActivityCode: Trim(txtEdActCode.Text),
+                                                                Project: {Id: cmbEdActProject.Selected.ID, Value: cmbEdActProject.Selected.Title},
+                                                                ProjectID: cmbEdActProject.Selected.ID,
+                                                                ActivityType: {Value: Coalesce(cmbEdActType.Selected.Value, If(varIsSubActivity, "SubActivity", "Main"))},
+                                                                ParentActivity: If(
+                                                                    Or(varIsSubActivity, cmbEdActType.Selected.Value = "SubActivity"),
+                                                                    {Id: cmbEdActParent.Selected.ID, Value: cmbEdActParent.Selected.Title},
+                                                                    Blank()
+                                                                ),
+                                                                ParentActivityID: If(
+                                                                    Or(varIsSubActivity, cmbEdActType.Selected.Value = "SubActivity"),
+                                                                    cmbEdActParent.Selected.ID,
+                                                                    Blank()
+                                                                ),
+                                                                ResponsiblePerson: If(
+                                                                    IsBlank(cmbEdActOwner.Selected),
+                                                                    Blank(),
+                                                                    {Id: cmbEdActOwner.Selected.ID, Value: cmbEdActOwner.Selected.FullName}
+                                                                ),
+                                                                ResponsiblePersonID: If(IsBlank(cmbEdActOwner.Selected), Blank(), cmbEdActOwner.Selected.ID),
+                                                                Phase: If(
+                                                                    IsBlank(cmbEdActPhase.Selected),
+                                                                    Blank(),
+                                                                    {Id: cmbEdActPhase.Selected.ID, Value: cmbEdActPhase.Selected.Title}
+                                                                ),
+                                                                PhaseID: If(IsBlank(cmbEdActPhase.Selected), Blank(), cmbEdActPhase.Selected.ID),
+                                                                PlannedStart: dteEdActStart.SelectedDate,
+                                                                PlannedEnd: dteEdActEnd.SelectedDate,
+                                                                Weight: If(IsBlank(Trim(txtEdActWeight.Text)), Blank(), Value(txtEdActWeight.Text)),
+                                                                Description: txtEdActDesc.Text,
+                                                                Status: {Value: If(varActivityForm = "new", "Not Started", Coalesce(varSelectedActivity.Status.Value, "Not Started"))},
+                                                                Progress: If(varActivityForm = "new", 0, Coalesce(varSelectedActivity.Progress, 0)),
+                                                                TotalTasks: If(varActivityForm = "new", 0, Coalesce(varSelectedActivity.TotalTasks, 0)),
+                                                                'Completed Tasks': If(varActivityForm = "new", 0, Coalesce(varSelectedActivity.'Completed Tasks', 0))
+                                                            }
+                                                        ),
+                                                        Blank()
+                                                    )
+                                                );
+                                                If(
+                                                    IsBlank(varEdSaved),
+                                                    Notify(If(gblLanguage = "Arabic", "تعذر الحفظ.", "Could not save."), NotificationType.Error),
+                                                    With(
+                                                        {
+                                                            notifyOwner: And(
+                                                                Not(IsBlank(cmbEdActOwner.Selected)),
+                                                                cmbEdActOwner.Selected.ID <> varMeID,
+                                                                Or(
+                                                                    varActivityForm = "new",
+                                                                    cmbEdActOwner.Selected.ID <> Coalesce(varSelectedActivity.ResponsiblePersonID, 0)
+                                                                )
+                                                            )
+                                                        },
+                                                        If(
+                                                            notifyOwner,
+                                                            fnProjNotify(
+                                                                cmbEdActOwner.Selected.ID,
+                                                                cmbEdActOwner.Selected.FullName,
+                                                                varEdSaved.Title,
+                                                                If(
+                                                                    varActivityForm = "new",
+                                                                    If(gblLanguage = "Arabic", "أُسند إليك نشاط.", "An activity was assigned to you."),
+                                                                    If(gblLanguage = "Arabic", "أُعيد إسناد نشاط إليك.", "An activity was reassigned to you.")
+                                                                ),
+                                                                "Activity",
+                                                                varEdSaved.ID,
+                                                                "Activity"
+                                                            )
+                                                        );
+                                                        fnProjLog(
+                                                            "Activity: " & varEdSaved.Title,
+                                                            cmbEdActProject.Selected.ID,
+                                                            Coalesce(cmbEdActProject.Selected.Title, ""),
+                                                            "Activity",
+                                                            varEdSaved.ID,
+                                                            If(varActivityForm = "new", "Created", "Updated"),
+                                                            Coalesce(varEdSaved.Status.Value, "")
+                                                        )
+                                                    );
+                                                    Set(varSelectedActivity, varEdSaved);
+                                                    Set(gblSelectedActivityID, varEdSaved.ID);
+                                                    Set(varSelectedProject, cmbEdActProject.Selected);
+                                                    Notify(If(gblLanguage = "Arabic", "تم الحفظ.", "Saved."), NotificationType.Success);
+                                                    If(
+                                                        varActivityReturn = "project",
+                                                        Set(varProjectTab, "Activities");
+                                                        Set(varShowDetails, true);
+                                                        Navigate(ScrAllProjects, ScreenTransition.UnCover),
+                                                        Navigate(scrActivities, ScreenTransition.UnCover)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =90

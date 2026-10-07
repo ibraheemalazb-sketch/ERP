@@ -1,0 +1,1015 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrCFM:
+    Properties:
+      Fill: =fxThemeColor("Background")
+      LoadingSpinnerColor: =fxThemeColor("Primary")
+      OnVisible: |-
+        =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(gblSelectedModule, "MEAL");
+        Set(varCurrentScreen, "MEAL");
+        Set(VarMEALmodule, "CFM");
+        Set(varNavSelectedID, 79);
+        Set(varMeID, Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0));
+        Set(varMeName, Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, LookUp(Employees, ID = varMeID, FullName), ""));
+        If(IsBlank(varMealCFMMode), Set(varMealCFMMode, "list"));
+        If(IsBlank(varMealCFMQ), Set(varMealCFMQ, ""));
+        Set(varMealCFMError, false);
+        Set(varMealCFMCanSensitive, fnMealCanSeeSensitive());
+        Select(btnMealCFMLoad)
+    Children:
+      - conMealCFMSvc:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =Color.Transparent
+            Height: =1
+            Width: =1
+          Children:
+            - btnMealCFMLoad:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =Set(varMealCFMError, false);
+                    Set(varMealCFMCanSensitive, fnMealCanSeeSensitive());
+                    IfError(
+                        Concurrent(
+                            ClearCollect(
+                                colMealCFMList,
+                                FirstN(
+                                    SortByColumns(
+                                        If(
+                                            Coalesce(varMealCFMFltProject.ID, 0) > 0,
+                                            Filter(Complainants, ProjectID = varMealCFMFltProject.ID),
+                                            Complainants
+                                        ),
+                                        "Modified",
+                                        SortOrder.Descending
+                                    ),
+                                    500
+                                )
+                            ),
+                            ClearCollect(
+                                colMealCFMPeople,
+                                FirstN(SortByColumns(Filter(Employees, Status.Value = "Active"), "FullName", SortOrder.Ascending), 300)
+                            )
+                        );
+                        ClearCollect(
+                            colMealCFMView,
+                            Filter(
+                                colMealCFMList,
+                                And(
+                                    Or(
+                                        IsBlank(Trim(Coalesce(varMealCFMQ, ""))),
+                                        Trim(varMealCFMQ) in Coalesce(ComplaintNumber, ""),
+                                        Trim(varMealCFMQ) in Coalesce(ComplaintCategory.Value, ""),
+                                        Trim(varMealCFMQ) in Coalesce(Site, ""),
+                                        Trim(varMealCFMQ) in Coalesce(Project.Value, "")
+                                    ),
+                                    Or(IsBlank(varMealCFMFltChannel), CFMChannel.Value = varMealCFMFltChannel),
+                                    Or(IsBlank(varMealCFMFltCategory), ComplaintCategory.Value = varMealCFMFltCategory),
+                                    Or(IsBlank(varMealCFMFltPriority), Priority.Value = varMealCFMFltPriority),
+                                    Or(IsBlank(varMealCFMFltStatus), Status.Value = varMealCFMFltStatus)
+                                )
+                            )
+                        );
+                        ClearCollect(
+                            colMealCFMKPIs,
+                            {
+                                Key: "open",
+                                LabelEn: "Open",
+                                LabelAr: "مفتوحة",
+                                Count: CountRows(Filter(colMealCFMList, Status.Value = "Open")),
+                                Tone: "warning"
+                            },
+                            {
+                                Key: "overdue",
+                                LabelEn: "Overdue",
+                                LabelAr: "متأخرة",
+                                Count: CountRows(Filter(colMealCFMList, And(Status.Value = "Open", Not(IsBlank(DueDate)), DueDate < Today()))),
+                                Tone: "danger"
+                            },
+                            {
+                                Key: "closed",
+                                LabelEn: "Closed",
+                                LabelAr: "مغلقة",
+                                Count: CountRows(Filter(colMealCFMList, Status.Value = "Closed")),
+                                Tone: "success"
+                            },
+                            {
+                                Key: "ontime",
+                                LabelEn: "Within timeframe",
+                                LabelAr: "ضمن المهلة",
+                                Count: CountRows(Filter(colMealCFMList, Or(WithinTimeFrame = true, Lower(Trim(Text(WithinTimeFrame))) = "yes", Lower(Trim(Text(WithinTimeFrame))) = "true"))),
+                                Tone: "info"
+                            },
+                            {
+                                Key: "satis",
+                                LabelEn: "Satisfaction notes",
+                                LabelAr: "ملاحظات الرضا",
+                                Count: CountRows(Filter(colMealCFMList, Not(IsBlank(Trim(Coalesce(FeedbackSatisfaction, "")))))),
+                                Tone: "neutral"
+                            }
+                        );
+                        If(Coalesce(varSelectedComplaint.ID, 0) > 0, Set(varSelectedComplaint, LookUp(Complainants, ID = varSelectedComplaint.ID))),
+                        Set(varMealCFMError, true);
+                        Notify(If(gblLanguage = "Arabic", "تعذر تحميل الشكاوى.", "Could not load complaints."), NotificationType.Warning)
+                    )
+                  Text: ="Load"
+                  Visible: =false
+                  Width: =1
+            - btnMealCFMSave:
+                Control: ModernButton@1.0.0
+                Properties:
+                  Height: =1
+                  OnSelect: |-
+                    =With(
+                        {
+                            ar: gblLanguage = "Arabic",
+                            isNew: Coalesce(varMealCFMMode, "") = "new",
+                            proj: cmbMealCFMEdProject.Selected,
+                            asg: cmbMealCFMEdAssigned.Selected,
+                            recv: cmbMealCFMEdReceived.Selected,
+                            canSens: varMealCFMCanSensitive
+                        },
+                        If(
+                            Or(IsBlank(Trim(txtMealCFMEdNumber.Text)), IsBlank(proj), Coalesce(proj.ID, 0) <= 0),
+                            Notify(If(ar, "رقم الشكوى والمشروع مطلوبان.", "Complaint number and project are required."), NotificationType.Error),
+                            IfError(
+                                Set(
+                                    varSelectedComplaint,
+                                    Patch(
+                                        Complainants,
+                                        If(isNew, Defaults(Complainants), LookUp(Complainants, ID = varSelectedComplaint.ID)),
+                                        {
+                                            Title: Coalesce(Trim(txtMealCFMEdNumber.Text), Trim(txtMealCFMEdCategory.Text)),
+                                            ComplaintNumber: Trim(txtMealCFMEdNumber.Text),
+                                            Project: {Id: proj.ID, Value: Coalesce(proj.Title, "")},
+                                            ProjectID: proj.ID,
+                                            CFMChannel: {Value: Coalesce(cmbMealCFMEdChannel.Selected.Value, "")},
+                                            ComplaintCategory: {Value: Coalesce(cmbMealCFMEdCategory.Selected.Value, Trim(txtMealCFMEdCategory.Text))},
+                                            Priority: {Value: Coalesce(cmbMealCFMEdPriority.Selected.Value, "")},
+                                            Status: {Value: Coalesce(cmbMealCFMEdStatus.Selected.Value, If(isNew, "Open", "Open"))},
+                                            ComplaintDescription: txtMealCFMEdDesc.Text,
+                                            Site: Trim(txtMealCFMEdSite.Text),
+                                            Location: Trim(txtMealCFMEdLocation.Text),
+                                            DateRecorded: Coalesce(dteMealCFMEdRecorded.SelectedDate, Today()),
+                                            ComplaintDate: dteMealCFMEdComplaint.SelectedDate,
+                                            DueDate: dteMealCFMEdDue.SelectedDate,
+                                            ResponseDate: dteMealCFMEdResponse.SelectedDate,
+                                            ClosureDate: dteMealCFMEdClosure.SelectedDate,
+                                            ActionTaken: txtMealCFMEdAction.Text,
+                                            ResolutionSummary: txtMealCFMEdResolution.Text,
+                                            FeedbackSatisfaction: txtMealCFMEdSatis.Text,
+                                            Notes: txtMealCFMEdNotes.Text,
+                                            AssignedTo: If(IsBlank(asg), Blank(), {Id: asg.ID, Value: Coalesce(asg.FullName, "")}),
+                                            AssignedToID: If(IsBlank(asg), Blank(), asg.ID),
+                                            RecivedTo: If(IsBlank(recv), Blank(), {Id: recv.ID, Value: Coalesce(recv.FullName, "")}),
+                                            RecivedToID: If(IsBlank(recv), Blank(), recv.ID),
+                                            ComplaintName: If(canSens, Trim(txtMealCFMEdName.Text), If(isNew, Blank(), varSelectedComplaint.ComplaintName)),
+                                            PhoneNumber: If(canSens, Trim(txtMealCFMEdPhone.Text), If(isNew, Blank(), varSelectedComplaint.PhoneNumber)),
+                                            IsPSEA: If(canSens, togMealCFMEdPSEA.Checked, If(isNew, false, varSelectedComplaint.IsPSEA)),
+                                            Confidential: If(canSens, togMealCFMEdConf.Checked, If(isNew, false, varSelectedComplaint.Confidential))
+                                        }
+                                    )
+                                );
+                                If(
+                                    And(togMealCFMEdCreateAction.Checked, Coalesce(varSelectedComplaint.ID, 0) > 0),
+                                    IfError(
+                                        Patch(
+                                            MELActions,
+                                            Defaults(MELActions),
+                                            {
+                                                Title: Left("CFM " & Coalesce(varSelectedComplaint.ComplaintNumber, Text(varSelectedComplaint.ID)), 255),
+                                                ActionNumber: "CFM-" & Text(varSelectedComplaint.ID),
+                                                ProjectID: proj.ID,
+                                                SourceType: {Value: "CFM Complaint"},
+                                                SourceID: varSelectedComplaint.ID,
+                                                SourceNumber: Coalesce(varSelectedComplaint.ComplaintNumber, ""),
+                                                Finding: Left(Coalesce(varSelectedComplaint.ComplaintDescription, ""), 500),
+                                                ActionRequired: Left(Coalesce(varSelectedComplaint.ProposedAction, varSelectedComplaint.ActionTaken, "Follow up complaint"), 500),
+                                                Responsible: If(IsBlank(asg), Blank(), {Id: asg.ID, Value: Coalesce(asg.FullName, "")}),
+                                                ResponsibleID: If(IsBlank(asg), Blank(), asg.ID),
+                                                ResponsiblePersonID: If(IsBlank(asg), Blank(), asg.ID),
+                                                DueDate: varSelectedComplaint.DueDate,
+                                                Priority: {Value: Coalesce(varSelectedComplaint.Priority.Value, "Medium")},
+                                                Status: {Value: "Open"}
+                                            }
+                                        ),
+                                        Notify(If(ar, "حُفظت الشكوى لكن تعذر إنشاء الإجراء.", "Complaint saved, but MEL action could not be created."), NotificationType.Warning)
+                                    )
+                                );
+                                If(
+                                    isNew,
+                                    fnMealLog("CFM Complaint", varSelectedComplaint.ID, Coalesce(varSelectedComplaint.ComplaintNumber, ""), "Created", "Info", proj.ID, Coalesce(proj.ProjectCode, ""), "", "", "", "New complaint", Or(Coalesce(varSelectedComplaint.IsPSEA, false), Coalesce(varSelectedComplaint.Confidential, false)));
+                                    If(
+                                        Coalesce(asg.ID, 0) > 0,
+                                        fnMealNotify(asg.ID, Coalesce(asg.FullName, ""), If(ar, "شكوى جديدة", "New complaint"), Coalesce(varSelectedComplaint.ComplaintNumber, ""), "CFM Complaint", varSelectedComplaint.ID, "Unread")
+                                    )
+                                );
+                                Set(varMealCFMMode, "list");
+                                Select(btnMealCFMLoad);
+                                Notify(If(ar, "تم حفظ الشكوى.", "Complaint saved."), NotificationType.Success),
+                                Notify(If(ar, "تعذر حفظ الشكوى.", "Could not save the complaint."), NotificationType.Error)
+                            )
+                        )
+                    )
+                  Text: ="Save"
+                  Visible: =false
+                  Width: =1
+      - conMealCFMPage:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            DropShadow: =DropShadow.None
+            Fill: =Color.Transparent
+            Height: =Parent.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =8
+            PaddingBottom: =If(App.Width < 700, cmpMealCFMPhone.Height + 8, 12)
+            PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
+            PaddingRight: =12
+            PaddingTop: =cmpMealCFMTop.Height + 8
+            Width: =Parent.Width
+          Children:
+            - conMealCFMHeader:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =44
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                Children:
+                  - lblMealCFMTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Bold
+                        Height: =32
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Size: =18
+                        Text: =If(gblLanguage = "Arabic", "الشكاوى والملاحظات", "Complaints & Feedback")
+                  - btnMealCFMNew:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varMealCFMMode, "new"); Set(varSelectedComplaint, Blank())
+                        Text: =If(gblLanguage = "Arabic", "شكوى جديدة", "New complaint")
+                        Visible: =varMealCFMMode = "list"
+                        Width: =130
+                  - btnMealCFMBack:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Subtle
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnSelect: =Set(varMealCFMMode, "list"); Select(btnMealCFMLoad)
+                        Text: =If(gblLanguage = "Arabic", "القائمة", "List")
+                        Visible: =varMealCFMMode <> "list"
+                        Width: =90
+            - galMealCFMKPIs:
+                Control: Gallery@2.15.0
+                Variant: Horizontal
+                Properties:
+                  FillPortions: =0
+                  Height: =72
+                  Items: =colMealCFMKPIs
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  TemplateSize: =140
+                  Visible: =varMealCFMMode = "list"
+                Children:
+                  - conMealCFMKPI:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        Fill: =fxThemeColor("Surface")
+                        Height: =Parent.TemplateHeight - 6
+                        RadiusBottomLeft: =8
+                        RadiusBottomRight: =8
+                        RadiusTopLeft: =8
+                        RadiusTopRight: =8
+                        Width: =Parent.TemplateWidth - 8
+                        X: =4
+                        Y: =3
+                      Children:
+                        - lblMealCFMKPIVal:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =FontWeight.Bold
+                              Height: =28
+                              Size: =18
+                              Text: =Text(ThisItem.Count)
+                              Width: =Parent.Width - 12
+                              X: =6
+                              Y: =6
+                        - lblMealCFMKPILbl:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =24
+                              Size: =11
+                              Text: =If(gblLanguage = "Arabic", ThisItem.LabelAr, ThisItem.LabelEn)
+                              Width: =Parent.Width - 12
+                              X: =6
+                              Y: =32
+            - conMealCFMTools:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =If(App.Width < 700, 140, 40)
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LayoutWrap: =App.Width < 700
+                  Visible: =varMealCFMMode = "list"
+                Children:
+                  - txtMealCFMSearch:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =varMealCFMQ
+                        Height: =36
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealCFMQ, Self.Text); Select(btnMealCFMLoad)
+                        Placeholder: =If(gblLanguage = "Arabic", "بحث", "Search")
+                        Width: =150
+                  - cmbMealCFMFltProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealCFMFltProject), Filter(Projects, false), Filter(Projects, ID = varMealCFMFltProject.ID))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                        Items: =Projects
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealCFMFltProject, Self.Selected); Select(btnMealCFMLoad)
+                        SelectMultiple: =false
+                        Width: =150
+                  - cmbMealCFMFltChannel:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealCFMFltChannel), Filter(Choices(Complainants.CFMChannel), false), Filter(Choices(Complainants.CFMChannel), Value = varMealCFMFltChannel))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "القناة", "Channel")
+                        Items: =Choices(Complainants.CFMChannel)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealCFMFltChannel, Self.Selected.Value); Select(btnMealCFMLoad)
+                        SelectMultiple: =false
+                        Width: =130
+                  - cmbMealCFMFltCategory:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealCFMFltCategory), Filter(Choices(Complainants.ComplaintCategory), false), Filter(Choices(Complainants.ComplaintCategory), Value = varMealCFMFltCategory))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الفئة", "Category")
+                        Items: =Choices(Complainants.ComplaintCategory)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealCFMFltCategory, Self.Selected.Value); Select(btnMealCFMLoad)
+                        SelectMultiple: =false
+                        Width: =130
+                  - cmbMealCFMFltPriority:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealCFMFltPriority), Filter(Choices(Complainants.Priority), false), Filter(Choices(Complainants.Priority), Value = varMealCFMFltPriority))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الأولوية", "Priority")
+                        Items: =Choices(Complainants.Priority)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealCFMFltPriority, Self.Selected.Value); Select(btnMealCFMLoad)
+                        SelectMultiple: =false
+                        Width: =120
+                  - cmbMealCFMFltStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(IsBlank(varMealCFMFltStatus), Filter(Choices(Complainants.Status), false), Filter(Choices(Complainants.Status), Value = varMealCFMFltStatus))
+                        Height: =36
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                        Items: =Choices(Complainants.Status)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        OnChange: =Set(varMealCFMFltStatus, Self.Selected.Value); Select(btnMealCFMLoad)
+                        SelectMultiple: =false
+                        Width: =120
+            - conMealCFMBody:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: =varMealCFMMode = "list"
+                Children:
+                  - galMealCFMList:
+                      Control: Gallery@2.15.0
+                      Variant: Vertical
+                      Properties:
+                        Fill: =fxThemeColor("Surface")
+                        FillPortions: =If(App.Width < 900, 1, 0)
+                        Items: =colMealCFMView
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        TemplateSize: =78
+                        Visible: =Or(App.Width >= 900, IsBlank(varSelectedComplaint))
+                        Width: =If(App.Width < 900, Parent.Width, 340)
+                      Children:
+                        - conMealCFMCard:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              BorderColor: =fxThemeColor("Border")
+                              BorderThickness: =1
+                              Fill: =If(Coalesce(varSelectedComplaint.ID, 0) = ThisItem.ID, fxThemeColor("PrimarySubtle"), fxThemeColor("Background"))
+                              Height: =Parent.TemplateHeight - 6
+                              RadiusBottomLeft: =8
+                              RadiusBottomRight: =8
+                              RadiusTopLeft: =8
+                              RadiusTopRight: =8
+                              Width: =Parent.TemplateWidth - 8
+                              X: =4
+                              Y: =3
+                            Children:
+                              - lblMealCFMCardTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =22
+                                    Text: =Coalesce(ThisItem.ComplaintNumber, Text(ThisItem.ID))
+                                    Width: =Parent.Width - 16
+                                    X: =8
+                                    Y: =6
+                              - lblMealCFMCardMeta:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =42
+                                    Size: =11
+                                    Text: =Coalesce(ThisItem.ComplaintCategory.Value, "-") & " · " & Coalesce(ThisItem.Status.Value, "-") & Char(10) & Coalesce(ThisItem.CFMChannel.Value, "-") & " · " & Coalesce(ThisItem.Priority.Value, "-") & " · " & Coalesce(ThisItem.Project.Value, "-")
+                                    Width: =Parent.Width - 16
+                                    X: =8
+                                    Y: =28
+                              - btnMealCFMPick:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Transparent
+                                    Height: =Parent.Height
+                                    OnSelect: =Set(varSelectedComplaint, ThisItem)
+                                    Text: =""
+                                    Width: =Parent.Width
+                  - conMealCFMDetail:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =8
+                        Visible: =Not(IsBlank(varSelectedComplaint))
+                      Children:
+                        - conMealCFMDetHead:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =40
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =6
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                            Children:
+                              - lblMealCFMDetTitle:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =FontWeight.Semibold
+                                    Height: =32
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    Size: =15
+                                    Text: =Coalesce(varSelectedComplaint.ComplaintNumber, If(gblLanguage = "Arabic", "تفاصيل الشكوى", "Complaint details"))
+                              - btnMealCFMEdit:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varMealCFMMode, "edit")
+                                    Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                    Width: =80
+                        - lblMealCFMInfo:
+                            Control: Label@2.5.1
+                            Properties:
+                              AutoHeight: =true
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: =12
+                              Text: |-
+                                =With(
+                                    {ar: gblLanguage = "Arabic", c: varSelectedComplaint, sens: varMealCFMCanSensitive},
+                                    If(ar, "القناة: ", "Channel: ") & Coalesce(c.CFMChannel.Value, "-") & Char(10) &
+                                    If(ar, "الفئة: ", "Category: ") & Coalesce(c.ComplaintCategory.Value, "-") & Char(10) &
+                                    If(ar, "الأولوية / الحالة: ", "Priority / status: ") & Coalesce(c.Priority.Value, "-") & " / " & Coalesce(c.Status.Value, "-") & Char(10) &
+                                    If(ar, "الموقع: ", "Site: ") & Coalesce(c.Site.Value, "-") & Char(10) &
+                                    If(ar, "المسؤول: ", "Assigned: ") & Coalesce(c.AssignedTo.Value, "-") & Char(10) &
+                                    If(ar, "الاستحقاق: ", "Due: ") & Text(c.DueDate, "dd mmm yyyy") & Char(10) &
+                                    If(ar, "الوصف: ", "Description: ") & Coalesce(c.ComplaintDescription, "-") & Char(10) &
+                                    If(ar, "الإجراء المتخذ: ", "Action taken: ") & Coalesce(c.ActionTaken.Value, "-") & Char(10) &
+                                    If(ar, "الحل: ", "Resolution: ") & Coalesce(c.ResolutionSummary, "-") & Char(10) &
+                                    If(ar, "الرضا: ", "Satisfaction: ") & Coalesce(c.FeedbackSatisfaction, "-") &
+                                    If(
+                                        sens,
+                                        Char(10) & If(ar, "الاسم: ", "Name: ") & Coalesce(c.ComplaintName, "-") & Char(10) &
+                                        If(ar, "الهاتف: ", "Phone: ") & Coalesce(c.PhoneNumber, "-") & Char(10) &
+                                        If(ar, "سري: ", "Confidential: ") & Text(c.Confidential) & Char(10) &
+                                        If(ar, "حماية من الاستغلال: ", "PSEA flag: ") & Text(c.IsPSEA),
+                                        ""
+                                    )
+                                )
+            - conMealCFMEditor:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =fxThemeColor("Surface")
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =6
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  PaddingBottom: =12
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
+                  Visible: =Or(varMealCFMMode = "new", varMealCFMMode = "edit")
+                Children:
+                  - txtMealCFMEdNumber:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.ComplaintNumber, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "رقم الشكوى *", "Complaint number *")
+                  - cmbMealCFMEdProject:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(Projects, ID = varSelectedComplaint.ProjectID), If(IsBlank(varMealCFMFltProject), Filter(Projects, false), Filter(Projects, ID = varMealCFMFltProject.ID)))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المشروع *", "Project *")
+                        Items: =Projects
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealCFMEdChannel:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(Choices(Complainants.CFMChannel), Value = varSelectedComplaint.CFMChannel.Value), Filter(Choices(Complainants.CFMChannel), false))
+                        Height: =40
+                        Items: =Choices(Complainants.CFMChannel)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealCFMEdCategory:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(Choices(Complainants.ComplaintCategory), Value = varSelectedComplaint.ComplaintCategory.Value), Filter(Choices(Complainants.ComplaintCategory), false))
+                        Height: =40
+                        Items: =Choices(Complainants.ComplaintCategory)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - txtMealCFMEdCategory:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.ComplaintCategory.Value, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "فئة بديلة", "Category override")
+                        Visible: =false
+                  - cmbMealCFMEdPriority:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(Choices(Complainants.Priority), Value = varSelectedComplaint.Priority.Value), Filter(Choices(Complainants.Priority), false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "الأولوية", "Priority")
+                        Items: =Choices(Complainants.Priority)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealCFMEdStatus:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(Choices(Complainants.Status), Value = varSelectedComplaint.Status.Value), Filter(Choices(Complainants.Status), Value = "Open"))
+                        Height: =40
+                        Items: =Choices(Complainants.Status)
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealCFMEdAssigned:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(colMealCFMPeople, ID = varSelectedComplaint.AssignedToID), Filter(colMealCFMPeople, false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المسؤول", "Assigned to")
+                        Items: =colMealCFMPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - cmbMealCFMEdReceived:
+                      Control: ModernCombobox@1.1.2
+                      Properties:
+                        DefaultSelectedItems: =If(varMealCFMMode = "edit", Filter(colMealCFMPeople, ID = varSelectedComplaint.RecivedToID), Filter(colMealCFMPeople, false))
+                        Height: =40
+                        InputTextPlaceholder: =If(gblLanguage = "Arabic", "المستلم", "Received to")
+                        Items: =colMealCFMPeople
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        SelectMultiple: =false
+                  - txtMealCFMEdSite:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.Site, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الموقع", "Site")
+                  - txtMealCFMEdLocation:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.Location, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "المكان", "Location")
+                  - dteMealCFMEdRecorded:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealCFMMode = "new", Today(), varSelectedComplaint.DateRecorded)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealCFMEdComplaint:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealCFMMode = "new", Today(), varSelectedComplaint.ComplaintDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealCFMEdDue:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealCFMMode = "new", DateAdd(Today(), 14, TimeUnit.Days), varSelectedComplaint.DueDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealCFMEdResponse:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealCFMMode = "new", Blank(), varSelectedComplaint.ResponseDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - dteMealCFMEdClosure:
+                      Control: ModernDatePicker@1.0.2
+                      Properties:
+                        DefaultDate: =If(varMealCFMMode = "new", Blank(), varSelectedComplaint.ClosureDate)
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - txtMealCFMEdDesc:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.ComplaintDescription, ""))
+                        Height: =70
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                        Type: =TextInputType.Multiline
+                  - txtMealCFMEdAction:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.ActionTaken, ""))
+                        Height: =50
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "الإجراء المتخذ", "Action taken")
+                        Type: =TextInputType.Multiline
+                  - txtMealCFMEdResolution:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.ResolutionSummary, ""))
+                        Height: =50
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "ملخص الحل", "Resolution summary")
+                        Type: =TextInputType.Multiline
+                  - txtMealCFMEdSatis:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.FeedbackSatisfaction, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "ملاحظات الرضا", "Satisfaction note")
+                  - txtMealCFMEdNotes:
+                      Control: ModernTextInput@1.1.2
+                      Properties:
+                        Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.Notes, ""))
+                        Height: =40
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Placeholder: =If(gblLanguage = "Arabic", "ملاحظات", "Notes")
+                  - conMealCFMSens:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =If(varMealCFMCanSensitive, 160, 0)
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =6
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        Visible: =varMealCFMCanSensitive
+                      Children:
+                        - txtMealCFMEdName:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.ComplaintName, ""))
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "اسم المشتكي", "Complainant name")
+                        - txtMealCFMEdPhone:
+                            Control: ModernTextInput@1.1.2
+                            Properties:
+                              Default: =If(varMealCFMMode = "new", "", Coalesce(varSelectedComplaint.PhoneNumber, ""))
+                              Height: =40
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Placeholder: =If(gblLanguage = "Arabic", "الهاتف", "Phone")
+                        - togMealCFMEdConf:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =If(varMealCFMMode = "edit", Coalesce(varSelectedComplaint.Confidential, false), false)
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "سري", "Confidential")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                        - togMealCFMEdPSEA:
+                            Control: ModernToggle@1.0.1
+                            Properties:
+                              Default: =If(varMealCFMMode = "edit", Coalesce(varSelectedComplaint.IsPSEA, false), false)
+                              Height: =32
+                              Label: =If(gblLanguage = "Arabic", "حماية من الاستغلال", "PSEA")
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                  - togMealCFMEdCreateAction:
+                      Control: ModernToggle@1.0.1
+                      Properties:
+                        Height: =32
+                        Label: =If(gblLanguage = "Arabic", "إنشاء إجراء متابعة", "Create MEL action")
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                  - conMealCFMEdBtns:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =0
+                        Height: =44
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - btnMealCFMSaveVis:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Select(btnMealCFMSave)
+                              Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                              Width: =100
+                        - btnMealCFMCancel:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              Appearance: =ButtonAppearance.Subtle
+                              Height: =36
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: =Set(varMealCFMMode, "list")
+                              Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                              Width: =100
+      - conMealCFMNav:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =fxThemeColor("Surface")
+            Height: =Parent.Height
+            Visible: =App.Width >= 700
+            Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
+          Children:
+            - cmpMealCFMNav:
+                Control: CanvasComponent
+                ComponentName: cmpNavigationModern
+                Properties:
+                  AccentColor: =
+                  AppLogo: =hdp
+                  Expanded: =gblMenuExpanded
+                  Height: =Parent.Height
+                  HoverBackground: =
+                  Icons: |-
+                    =Table({Name: "Home", SVG: ""})
+                  Items: =
+                  OnFooterSettings: =
+                  OnHelp: =
+                  OnLanguageToggle: =
+                  OnNavigate: |-
+                    =Switch(
+                        varNavSelectedID,
+                        1, Navigate(ScrHome, ScreenTransition.None),
+                        10, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        11, Set(VarHRmodule, "HRHome"); Navigate(ScrHR, ScreenTransition.None),
+                        12, Set(VarHRmodule, "Employees"); Set(VarNewEmployee, false); Navigate(scrAllEmployees, ScreenTransition.None),
+                        13, Set(varAttendanceTab, "VarUserAttendance"); Set(VarHRmodule, "Attendance"); Refresh(AttendanceRecords); Navigate(scrAttendance, ScreenTransition.None),
+                        14, Set(VarNewLeave, false); Set(VarShowLeave, false); Set(VarHRmodule, "Leaves"); Navigate(scrLeaveManagement, ScreenTransition.None),
+                        15, Set(VarHRmodule, "Payroll"); Navigate(ScrHR, ScreenTransition.None),
+                        16, Set(VarHRmodule, "Recruitment"); Navigate(ScrHR, ScreenTransition.None),
+                        17, Set(VarHRmodule, "Training"); Navigate(scrMyTraining, ScreenTransition.None),
+                        20, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        21, Set(VarProgrammodule, "PHome"); Navigate(scrProjects, ScreenTransition.None),
+                        22, Set(VarProgrammodule, "Pprojects"); Navigate(scrProjects, ScreenTransition.None),
+                        23, Set(VarProgrammodule, "PPlans"); Navigate(scrProjectsPlans, ScreenTransition.None),
+                        24, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "my"); Navigate(scrMyTasks, ScreenTransition.None),
+                        29, Set(VarProgrammodule, "PTasks"); Set(varTkScope, "all"); Navigate(scrTasks, ScreenTransition.None),
+                        25, Set(VarProgrammodule, "PActivities"); Set(varActProjectOnly, false); Navigate(scrActivities, ScreenTransition.None),
+                        26, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        28, Set(VarProgrammodule, "PRisks"); Set(varRkScope, If(IsBlank(varSelectedProject), "my", "project")); Navigate(scrRisks, ScreenTransition.None),
+                        30, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        31, Set(varProcurementTab, "Main"); Navigate(scrProcurement, ScreenTransition.None),
+                        32, Set(varCurrentPR, Blank()); Set(varProcurementTab, "PRs"); Set(varProcurementMode, "View"); Navigate(scrPRs, ScreenTransition.None),
+                        33, Set(varCurrentPO, Blank()); Set(varProcurementTab, "POs"); Set(varProcurementMode, "View"); Navigate(scrPOs, ScreenTransition.None),
+                        34, Set(varCurrentGRN, Blank()); Set(varProcurementTab, "GRNs"); Set(varProcurementMode, "View"); Navigate(ScrGRN, ScreenTransition.None),
+                        35, Set(varCurrentVendor, Blank()); Set(varaddvendor, false); Set(varProcurementTab, "Vendors"); Set(varProcurementMode, "View"); Navigate(scrVendors, ScreenTransition.None),
+                        37, Set(varProcurementTab, "Contracts"); Navigate(scrProcurement, ScreenTransition.None),
+                        39, Set(varProcurementTab, "Plans"); Navigate(scrProcurement, ScreenTransition.None),
+                        50, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        51, Set(VarFinTab, "Main"); Navigate(scrFinance, ScreenTransition.None),
+                        52, Set(VarFinTab, "Transactions"); Navigate(scrFinance, ScreenTransition.None),
+                        53, Set(VarFinTab, "Budgets"); Navigate(scrFinance, ScreenTransition.None),
+                        55, Set(VarFinTab, "BudgetLines"); Navigate(scrFinance, ScreenTransition.None),
+                        56, Set(VarFinTab, "ProjectFinance"); Navigate(scrFinance, ScreenTransition.None),
+                        60, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        61, Set(VarMEALmodule, "Main"); Navigate(scrMEAL, ScreenTransition.None),
+                        77, Set(VarMEALmodule, "Results"); Navigate(scrResultsFramework, ScreenTransition.None),
+                        62, Set(VarMEALmodule, "Indicators"); Navigate(scrIndicators, ScreenTransition.None),
+                        67, Set(VarMEALmodule, "IndicatorResults"); Navigate(scrIndicatorResults, ScreenTransition.None),
+                        65, Set(VarMEALmodule, "Activities"); Navigate(scrMEALActivities, ScreenTransition.None),
+                        63, Set(VarMEALmodule, "FieldVisits"); Navigate(scrFieldVisits, ScreenTransition.None),
+                        78, Set(VarMEALmodule, "Studies"); Navigate(scrMELStudies, ScreenTransition.None),
+                        79, Set(VarMEALmodule, "CFM"); Navigate(scrCFM, ScreenTransition.None),
+                        80, Set(VarMEALmodule, "Actions"); Navigate(scrMELActions, ScreenTransition.None),
+                        64, Set(VarMEALmodule, "Reports"); Navigate(scrReporting, ScreenTransition.None),
+                        74, Set(VarMEALmodule, "Reports"); Navigate(scrReports, ScreenTransition.None),
+                        75, Set(VarMEALmodule, "Reports"); Navigate(scrReportSchedules, ScreenTransition.None),
+                        76, Set(VarMEALmodule, "Reports"); Navigate(scrReportingSettings, ScreenTransition.None),
+                        68, Set(VarMEALmodule, "Evidence"); Navigate(scrMEALEvidence, ScreenTransition.None),
+                        81, Set(VarMEALmodule, "Settings"); Navigate(scrMEALSettings, ScreenTransition.None),
+                        70, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None),
+                        71, Set(VarSettingSection, "UserPermissions"); Set(gblShowPermissionForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        72, Set(VarSettingSection, "ProjectAccess"); Set(gblShowProjectAccessForm, false); Navigate(ScrSettings, ScreenTransition.None),
+                        73, Set(VarSettingSection, "AppSettings"); Navigate(ScrSettings, ScreenTransition.None)
+                    )
+                  OnToggle: |-
+                    =Set(gblMenuExpanded, Not(Coalesce(gblMenuExpanded, true)));
+                    If(Not(gblMenuExpanded), Set(gblNavOpenId, -1))
+                  PrimaryText: =
+                  SecondaryText: =
+                  SelectedBackground: =
+                  SelectedText: =
+                  ShowFooterMenu: =
+                  ShowLanguageToggle: =
+                  ShowUser: =
+                  Theme: =gblTheme.Mode
+                  Width: =Parent.Width
+      - cmpMealCFMTop:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1"))))
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(Filter(colNotifications, With({flag: Lower(Trim(Coalesce(IsRead, "no")))}, And(flag <> "yes", flag <> "true", flag <> "1")))) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Message"
+            ModuleName: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(scrMEAL, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "الشكاوى والملاحظات", "CFM")
+            ScreenTitle: =If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpMealCFMPhone:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 63, Module: "FieldVisits", Title: If(gblLanguage = "Arabic", "زيارات", "Visits"), Icon: "Map", Visible: true},
+                  {ID: 78, Module: "Studies", Title: If(gblLanguage = "Arabic", "دراسات", "Studies"), Icon: "File", Visible: true},
+                  {ID: 79, Module: "CFM", Title: If(gblLanguage = "Arabic", "شكاوى", "CFM"), Icon: "Message", Visible: true},
+                  {ID: 80, Module: "Actions", Title: If(gblLanguage = "Arabic", "إجراءات", "Actions"), Icon: "ClipboardCheck", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "FieldVisits", Navigate(scrFieldVisits, ScreenTransition.None),
+                  "Studies", Navigate(scrMELStudies, ScreenTransition.None),
+                  "CFM", Navigate(scrCFM, ScreenTransition.None),
+                  "Actions", Navigate(scrMELActions, ScreenTransition.None)
+              )
+            SelectedID: =
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height
