@@ -34,7 +34,7 @@ ComponentDefinitions:
         DisplayName: IconColor
         Description: Stroke color for the main icon, as rgb() or a hex color.
         DataType: Text
-        Default: =If(gblTheme.Mode = "Dark", "rgb(13,17,23)", "rgb(255,255,255)")
+        Default: ="#FFFFFF"
       IsOpen:
         PropertyKind: Output
         DisplayName: IsOpen
@@ -247,13 +247,23 @@ ComponentDefinitions:
                                     BorderStyle: =BorderStyle.None
                                     Height: =Max(12, Parent.Height - 28)
                                     Image: |-
-                                      =If(
-                                          StartsWith(ThisItem.Icon, "data:"),
-                                          ThisItem.Icon,
-                                          If(
-                                              StartsWith(ThisItem.Icon, "<svg"),
-                                              "data:image/svg+xml;utf8," & EncodeUrl(Substitute(ThisItem.Icon, "currentColor", "rgb(255,255,255)")),
-                                              fxSvg(Coalesce(ThisItem.Icon, "Plus"), "rgb(255,255,255)")
+                                      =With(
+                                          {
+                                              raw: If(
+                                                  StartsWith(ThisItem.Icon, "data:"),
+                                                  ThisItem.Icon,
+                                                  If(
+                                                      StartsWith(ThisItem.Icon, "<svg"),
+                                                      "data:image/svg+xml;utf8," & EncodeUrl(Substitute(ThisItem.Icon, "currentColor", "#FFFFFF")),
+                                                      fxSvg(Coalesce(ThisItem.Icon, "Plus"), "#FFFFFF")
+                                                  )
+                                              ),
+                                              tile: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5")
+                                          },
+                                          Substitute(
+                                              raw,
+                                              EncodeUrl("stroke-linejoin='round'>"),
+                                              EncodeUrl("stroke-linejoin='round'><rect width='24' height='24' fill='" & tile & "'/>")
                                           )
                                       )
                                     Width: =Self.Height
@@ -316,17 +326,27 @@ ComponentDefinitions:
                               Max(12, Parent.Height - 16)
                           )
                         Image: |-
-                          =If(
-                              _fabOpen,
-                              fxSvg("Dismiss", cmpFloatingActionButton.IconColor),
-                              If(
-                                  StartsWith(cmpFloatingActionButton.Icon, "data:"),
-                                  cmpFloatingActionButton.Icon,
-                                  If(
-                                      StartsWith(cmpFloatingActionButton.Icon, "<svg"),
-                                      "data:image/svg+xml;utf8," & EncodeUrl(Substitute(cmpFloatingActionButton.Icon, "currentColor", cmpFloatingActionButton.IconColor)),
-                                      fxSvg(Coalesce(cmpFloatingActionButton.Icon, "Plus"), cmpFloatingActionButton.IconColor)
+                          =With(
+                              {
+                                  tile: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5"),
+                                  raw: If(
+                                      _fabOpen,
+                                      fxSvg("Dismiss", If(IsBlank(cmpFloatingActionButton.IconColor), "#FFFFFF", cmpFloatingActionButton.IconColor)),
+                                      If(
+                                          StartsWith(cmpFloatingActionButton.Icon, "data:"),
+                                          cmpFloatingActionButton.Icon,
+                                          If(
+                                              StartsWith(cmpFloatingActionButton.Icon, "<svg"),
+                                              "data:image/svg+xml;utf8," & EncodeUrl(Substitute(cmpFloatingActionButton.Icon, "currentColor", If(IsBlank(cmpFloatingActionButton.IconColor), "#FFFFFF", cmpFloatingActionButton.IconColor))),
+                                              fxSvg(Coalesce(cmpFloatingActionButton.Icon, "Plus"), If(IsBlank(cmpFloatingActionButton.IconColor), "#FFFFFF", cmpFloatingActionButton.IconColor))
+                                          )
+                                      )
                                   )
+                              },
+                              Substitute(
+                                  raw,
+                                  EncodeUrl("stroke-linejoin='round'>"),
+                                  EncodeUrl("stroke-linejoin='round'><rect width='24' height='24' fill='" & tile & "'/>")
                               )
                           )
                         Width: =Self.Height
