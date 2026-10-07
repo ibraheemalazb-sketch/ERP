@@ -123,7 +123,8 @@ Screens:
                 Properties:
                   Height: =1
                   OnSelect: |-
-                    =If(
+                    =Set(varSelectedDoc, Blank());
+                    If(
                         IsBlank(varSelectedProject),
                         Clear(colProjMembers);
                         Clear(colProjActivities);
@@ -143,7 +144,8 @@ Screens:
                 Properties:
                   Height: =1
                   OnSelect: |-
-                    =If(
+                    =Set(varSelectedDoc, Blank());
+                    If(
                         IsBlank(varSelectedProject),
                         Clear(colProjDocs),
                         ClearCollect(
@@ -490,6 +492,7 @@ Screens:
                                       Set(varSelectedActivity, Blank());
                                       Set(varSelectedTask, Blank());
                                       Set(varSelectedRisk, Blank());
+                                      Set(varSelectedDoc, Blank());
                                       Set(varTaskActivityFilter, Blank());
                                       Set(ProjectsPan, "None");
                                       Select(btnApLoadKids)
@@ -523,76 +526,42 @@ Screens:
                                     Text: =Coalesce(ThisItem.Status.Value, "-")
                                     Width: =90
                                     Y: =14
-                        - galApList:
-                            Control: Gallery@2.15.0
-                            Variant: Vertical
+                        - cmpApProjects:
+                            Control: CanvasComponent
+                            ComponentName: cmpProList
                             Properties:
-                              Fill: =fxThemeColor("Surface")
-                              Items: =colApFiltered
+                              EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد مشاريع ضمن هذا البحث", "No projects match this search")
+                              FillPortions: =1
+                              Height: =320
+                              Items: |-
+                                =ForAll(
+                                    colApFiltered As project,
+                                    {
+                                        ID: project.ID,
+                                        Title: Coalesce(project.Title, ""),
+                                        Subtitle: Coalesce(project.ProjectCode, "") & " · " & Coalesce(project.Donor, ""),
+                                        Icon: "Box",
+                                        Tone: Switch(project.Status.Value, "Active", "success", "Completed", "completed", "Planed", "info", "On Hold", "warning", "Cancelled", "danger", "muted"),
+                                        Status: Coalesce(project.Status.Value, "-"),
+                                        Progress: Round(Coalesce(project.Progress, 0), 0)
+                                    }
+                                )
                               LayoutMinHeight: =80
                               LayoutMinWidth: =0
-                              TemplatePadding: =4
-                              TemplateSize: =72
+                              OnSelect: |-
+                                =Set(varSelectedProject, LookUp(colApFiltered, ID = cmpApProjects.SelectedItem.ID));
+                                UpdateContext({varShowDetails: true});
+                                Set(varProjectTab, "General");
+                                Set(varSelectedMember, Blank());
+                                Set(varSelectedActivity, Blank());
+                                Set(varSelectedTask, Blank());
+                                Set(varSelectedRisk, Blank());
+                                Set(varSelectedDoc, Blank());
+                                Set(varTaskActivityFilter, Blank());
+                                Set(ProjectsPan, "None");
+                                Select(btnApLoadKids)
                               Visible: =lblApEffView.Text = "list"
                               Width: =Parent.Width
-                            Children:
-                              - conApListRow:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =fxThemeColor("Surface")
-                                    Height: =Parent.TemplateHeight
-                                    LayoutAlignItems: =LayoutAlignItems.Stretch
-                                    LayoutDirection: =LayoutDirection.Vertical
-                                    LayoutGap: =2
-                                    PaddingLeft: =8
-                                    PaddingRight: =8
-                                    Width: =Parent.TemplateWidth
-                                  Children:
-                                    - lblApListTitle:
-                                        Control: ModernText@1.0.0
-                                        Properties:
-                                          Color: =fxThemeColor("TextPrimary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =gblTheme.FontWeights.Medium
-                                          Height: =22
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          Size: =13
-                                          Text: =Coalesce(ThisItem.Title, "")
-                                          Width: =Parent.Width
-                                    - lblApListMeta:
-                                        Control: ModernText@1.0.0
-                                        Properties:
-                                          Color: =fxThemeColor("TextSecondary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          Height: =20
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          Size: =11
-                                          Text: =Coalesce(ThisItem.ProjectCode, "") & " · " & Coalesce(ThisItem.Status.Value, "") & " · " & Coalesce(ThisItem.Donor, "")
-                                          Width: =Parent.Width
-                                    - btnApListOpen:
-                                        Control: ModernButton@1.0.0
-                                        Properties:
-                                          Appearance: =ButtonAppearance.Transparent
-                                          Height: =22
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          OnSelect: |-
-                                            =Set(varSelectedProject, ThisItem);
-                                            UpdateContext({varShowDetails: true});
-                                            Set(varProjectTab, "General");
-                                            Set(varSelectedMember, Blank());
-                                            Set(varSelectedActivity, Blank());
-                                            Set(varSelectedTask, Blank());
-                                            Set(varSelectedRisk, Blank());
-                                            Set(varTaskActivityFilter, Blank());
-                                            Set(ProjectsPan, "None");
-                                            Select(btnApLoadKids)
-                                          Text: =If(gblLanguage = "Arabic", "فتح", "Open")
-                                          Width: =80
                         - galApCards:
                             Control: Gallery@2.15.0
                             Variant: Vertical
@@ -684,6 +653,7 @@ Screens:
                                             Set(varSelectedActivity, Blank());
                                             Set(varSelectedTask, Blank());
                                             Set(varSelectedRisk, Blank());
+                                            Set(varSelectedDoc, Blank());
                                             Set(varTaskActivityFilter, Blank());
                                             Set(ProjectsPan, "None");
                                             Select(btnApLoadKids)
@@ -1077,41 +1047,46 @@ Screens:
                                           LayoutMinWidth: =0
                                           SelectMultiple: =false
                                           Width: =Parent.Width
-                                    - galApMembers:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - cmpApMembers:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
                                         Properties:
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا يوجد أعضاء", "No members")
+                                          FillPortions: =1
+                                          Height: =280
                                           Items: |-
-                                            =Sort(
-                                                Filter(
-                                                    colProjMembers,
-                                                    And(
-                                                        Or(IsBlank(txtApMemSearch.Text), StartsWith(Employee.Value, txtApMemSearch.Text)),
-                                                        Or(IsBlank(cmbApMemRole.Selected.Value), RoleInProject.Value = cmbApMemRole.Selected.Value),
-                                                        Or(
-                                                            cmbApMemStatus.Selected.Value = "All",
-                                                            IsBlank(cmbApMemStatus.Selected.Value),
-                                                            And(cmbApMemStatus.Selected.Value = "Active", IsActive),
-                                                            And(cmbApMemStatus.Selected.Value = "Inactive", Not(IsActive))
+                                            =ForAll(
+                                                Sort(
+                                                    Filter(
+                                                        colProjMembers,
+                                                        And(
+                                                            Or(IsBlank(txtApMemSearch.Text), StartsWith(Employee.Value, txtApMemSearch.Text)),
+                                                            Or(IsBlank(cmbApMemRole.Selected.Value), RoleInProject.Value = cmbApMemRole.Selected.Value),
+                                                            Or(
+                                                                cmbApMemStatus.Selected.Value = "All",
+                                                                IsBlank(cmbApMemStatus.Selected.Value),
+                                                                And(cmbApMemStatus.Selected.Value = "Active", IsActive),
+                                                                And(cmbApMemStatus.Selected.Value = "Inactive", Not(IsActive))
+                                                            )
                                                         )
-                                                    )
-                                                ),
-                                                Employee.Value,
-                                                SortOrder.Ascending
+                                                    ),
+                                                    Employee.Value,
+                                                    SortOrder.Ascending
+                                                ) As member,
+                                                {
+                                                    ID: member.ID,
+                                                    Title: Coalesce(member.Employee.Value, ""),
+                                                    Subtitle: Coalesce(member.RoleInProject.Value, ""),
+                                                    Icon: "User",
+                                                    Tone: If(member.IsActive, "success", "muted"),
+                                                    Status: If(member.IsActive, If(gblLanguage = "Arabic", "نشط", "Active"), If(gblLanguage = "Arabic", "غير نشط", "Inactive")),
+                                                    Progress: -1
+                                                }
                                             )
-                                          LayoutMinHeight: =0
+                                          LayoutMinHeight: =120
                                           LayoutMinWidth: =0
-                                          TemplateSize: =56
+                                          OnSelect: =Set(varSelectedMember, LookUp(colProjMembers, ID = cmpApMembers.SelectedItem.ID))
                                           Width: =Parent.Width
-                                        Children:
-                                          - btnApMemRow:
-                                              Control: ModernButton@1.0.0
-                                              Properties:
-                                                Appearance: =ButtonAppearance.Transparent
-                                                Height: =Parent.TemplateHeight
-                                                OnSelect: =Set(varSelectedMember, ThisItem)
-                                                Text: =Coalesce(ThisItem.Employee.Value, "") & " · " & Coalesce(ThisItem.RoleInProject.Value, "")
-                                                Width: =Parent.TemplateWidth
                               - conApMemDetail:
                                   Control: GroupContainer@1.5.0
                                   Variant: AutoLayout
@@ -1235,7 +1210,7 @@ Screens:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
                               FillPortions: =0
-                              Height: =560
+                              Height: =720
                               LayoutDirection: =If(App.Width >= 1100, LayoutDirection.Horizontal, LayoutDirection.Vertical)
                               LayoutGap: =8
                               LayoutMinHeight: =0
@@ -1278,7 +1253,7 @@ Screens:
                                                 LayoutMinHeight: =0
                                                 LayoutMinWidth: =0
                                                 Placeholder: =If(gblLanguage = "Arabic", "بحث في الأنشطة", "Search activities")
-                                                Width: =Parent.Width - 96
+                                                Width: =Parent.Width - 148
                                           - btnApActWorkspace:
                                               Control: ModernButton@1.0.0
                                               Properties:
@@ -1296,6 +1271,7 @@ Screens:
                                           - btnApActAdd:
                                               Control: ModernButton@1.0.0
                                               Properties:
+                                                AccessibleLabel: =If(gblLanguage = "Arabic", "نشاط جديد", "New activity")
                                                 BasePaletteColor: =fxThemeColor("Primary")
                                                 Height: =36
                                                 Icon: ="Add"
@@ -1308,8 +1284,8 @@ Screens:
                                                   Set(varParentActivity, Blank());
                                                   Set(varSelectedActivity, Blank());
                                                   Navigate(scrActivityEditor, ScreenTransition.Cover)
-                                                Text: =""
-                                                Width: =40
+                                                Text: =If(gblLanguage = "Arabic", "جديد", "New")
+                                                Width: =88
                                     - conApActFilters:
                                         Control: GroupContainer@1.5.0
                                         Variant: AutoLayout
@@ -1375,38 +1351,43 @@ Screens:
                                                 LayoutMinWidth: =0
                                                 SelectMultiple: =false
                                                 Width: =If(Parent.Width < 700, Parent.Width, 110)
-                                    - galApActivities:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - cmpApActivities:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
                                         Properties:
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد أنشطة", "No activities")
+                                          FillPortions: =1
+                                          Height: =280
                                           Items: |-
-                                            =Sort(
-                                                Filter(
-                                                    colProjActivities,
-                                                    And(
-                                                        Or(IsBlank(txtApActSearch.Text), StartsWith(Title, txtApActSearch.Text)),
-                                                        Or(IsBlank(cmbApActType.Selected.Value), ActivityType.Value = cmbApActType.Selected.Value),
-                                                        Or(IsBlank(cmbApActParent.Selected), Or(ParentActivity.Id = cmbApActParent.Selected.ID, ParentActivityID = cmbApActParent.Selected.ID)),
-                                                        Or(IsBlank(cmbApActResp.Selected), Or(ResponsiblePerson.Id = cmbApActResp.Selected.ID, ResponsiblePersonID = cmbApActResp.Selected.ID)),
-                                                        Or(IsBlank(cmbApActStat.Selected.Value), Status.Value = cmbApActStat.Selected.Value)
-                                                    )
-                                                ),
-                                                PlannedStart,
-                                                SortOrder.Ascending
+                                            =ForAll(
+                                                Sort(
+                                                    Filter(
+                                                        colProjActivities,
+                                                        And(
+                                                            Or(IsBlank(txtApActSearch.Text), StartsWith(Title, txtApActSearch.Text)),
+                                                            Or(IsBlank(cmbApActType.Selected.Value), ActivityType.Value = cmbApActType.Selected.Value),
+                                                            Or(IsBlank(cmbApActParent.Selected), Or(ParentActivity.Id = cmbApActParent.Selected.ID, ParentActivityID = cmbApActParent.Selected.ID)),
+                                                            Or(IsBlank(cmbApActResp.Selected), Or(ResponsiblePerson.Id = cmbApActResp.Selected.ID, ResponsiblePersonID = cmbApActResp.Selected.ID)),
+                                                            Or(IsBlank(cmbApActStat.Selected.Value), Status.Value = cmbApActStat.Selected.Value)
+                                                        )
+                                                    ),
+                                                    PlannedStart,
+                                                    SortOrder.Ascending
+                                                ) As activity,
+                                                {
+                                                    ID: activity.ID,
+                                                    Title: Coalesce(activity.Title, ""),
+                                                    Subtitle: Coalesce(activity.ResponsiblePerson.Value, "-") & " · " & Text(activity.PlannedStart, "dd mmm yyyy"),
+                                                    Icon: If(activity.ActivityType.Value = "Main", "Layers", "Activity"),
+                                                    Tone: Switch(activity.Status.Value, "Completed", "completed", "In Progress", "in progress", "On Hold", "warning", "Cancelled", "danger", "Planed", "info", "Not Started", "muted", "muted"),
+                                                    Status: Coalesce(activity.Status.Value, "-"),
+                                                    Progress: Round(Coalesce(activity.Progress, 0), 0)
+                                                }
                                             )
-                                          LayoutMinHeight: =0
+                                          LayoutMinHeight: =120
                                           LayoutMinWidth: =0
-                                          TemplateSize: =56
+                                          OnSelect: =Set(varSelectedActivity, LookUp(colProjActivities, ID = cmpApActivities.SelectedItem.ID))
                                           Width: =Parent.Width
-                                        Children:
-                                          - btnApActRow:
-                                              Control: ModernButton@1.0.0
-                                              Properties:
-                                                Appearance: =ButtonAppearance.Transparent
-                                                Height: =Parent.TemplateHeight
-                                                OnSelect: =Set(varSelectedActivity, ThisItem)
-                                                Text: =Coalesce(ThisItem.Title, "") & " · " & Coalesce(ThisItem.ActivityType.Value, "")
-                                                Width: =Parent.TemplateWidth
                               - conApActDetail:
                                   Control: GroupContainer@1.5.0
                                   Variant: AutoLayout
@@ -1416,7 +1397,7 @@ Screens:
                                     DropShadow: =DropShadow.None
                                     Fill: =fxThemeColor("Background")
                                     FillPortions: =0
-                                    Height: =If(App.Width >= 1100, Parent.Height, 260)
+                                    Height: =If(App.Width >= 1100, Parent.Height, 460)
                                     LayoutDirection: =LayoutDirection.Vertical
                                     LayoutGap: =6
                                     LayoutMinHeight: =0
@@ -1443,11 +1424,11 @@ Screens:
                                         Properties:
                                           Color: =fxThemeColor("TextSecondary")
                                           Font: =gblTheme.Typography.FontFamily
-                                          Height: =36
+                                          Height: =54
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
                                           Size: =12
-                                          Text: =If(varSelectedActivity.ActivityType.Value = "Main", If(gblLanguage = "Arabic", "نشاط رئيسي", "Main Activity"), If(gblLanguage = "Arabic", "نشاط فرعي", "Sub Activity")) & " · " & Coalesce(varSelectedActivity.Status.Value, "-") & Char(10) & Coalesce(varSelectedActivity.ResponsiblePerson.Value, "-") & " · " & Text(varSelectedActivity.PlannedStart, "dd mmm yyyy") & " - " & Text(varSelectedActivity.PlannedEnd, "dd mmm yyyy") & " · " & Text(Round(Coalesce(varSelectedActivity.Progress, 0), 0), "0") & "%"
+                                          Text: =If(varSelectedActivity.ActivityType.Value = "Main", If(gblLanguage = "Arabic", "نشاط رئيسي", "Main Activity"), If(gblLanguage = "Arabic", "نشاط فرعي", "Sub Activity")) & " · " & Coalesce(varSelectedActivity.Status.Value, "-") & Char(10) & Coalesce(varSelectedActivity.ResponsiblePerson.Value, "-") & " · " & Text(varSelectedActivity.PlannedStart, "dd mmm yyyy") & " - " & Text(varSelectedActivity.PlannedEnd, "dd mmm yyyy") & " · " & Text(Round(Coalesce(varSelectedActivity.Progress, 0), 0), "0") & "%" & Char(10) & If(gblLanguage = "Arabic", "المهام المرتبطة: ", "Related tasks: ") & Text(CountRows(Filter(colProjTasks, Or(Activity.Id = varSelectedActivity.ID, ActivityID = varSelectedActivity.ID))), "0")
                                           Width: =Parent.Width
                                     - lblApActDesc:
                                         Control: ModernText@1.0.0
@@ -1460,49 +1441,63 @@ Screens:
                                           Size: =12
                                           Text: =Coalesce(varSelectedActivity.Description, "")
                                           Width: =Parent.Width
-                                    - galApActKids:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - cmpApActKids:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
                                         Properties:
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد أنشطة فرعية", "No sub activities")
                                           FillPortions: =0
-                                          Height: =80
-                                          Items: =Filter(colProjActivities, Or(ParentActivity.Id = varSelectedActivity.ID, ParentActivityID = varSelectedActivity.ID))
+                                          Height: =160
+                                          Items: |-
+                                            =ForAll(
+                                                Filter(colProjActivities, Or(ParentActivity.Id = varSelectedActivity.ID, ParentActivityID = varSelectedActivity.ID)) As child,
+                                                {
+                                                    ID: child.ID,
+                                                    Title: Coalesce(child.Title, ""),
+                                                    Subtitle: Coalesce(child.ResponsiblePerson.Value, "-"),
+                                                    Icon: "Activity",
+                                                    Tone: Switch(child.Status.Value, "Completed", "completed", "In Progress", "in progress", "On Hold", "warning", "Cancelled", "danger", "muted"),
+                                                    Status: Coalesce(child.Status.Value, ""),
+                                                    Progress: Round(Coalesce(child.Progress, 0), 0)
+                                                }
+                                            )
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
-                                          TemplateSize: =32
+                                          OnSelect: =Set(varSelectedActivity, LookUp(colProjActivities, ID = cmpApActKids.SelectedItem.ID))
+                                          RowHeight: =68
+                                          Title: =If(gblLanguage = "Arabic", "الأنشطة الفرعية", "Sub activities")
                                           Visible: =varSelectedActivity.ActivityType.Value = "Main"
                                           Width: =Parent.Width
-                                        Children:
-                                          - lblApActKid:
-                                              Control: ModernText@1.0.0
-                                              Properties:
-                                                Height: =28
-                                                Size: =12
-                                                Text: =Coalesce(ThisItem.Title, "")
-                                                Width: =Parent.TemplateWidth
-                                    - galApActTasks:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - cmpApActTasks:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
                                         Properties:
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد مهام مرتبطة", "No related tasks")
                                           FillPortions: =0
-                                          Height: =80
-                                          Items: =Filter(colProjTasks, Or(Activity.Id = varSelectedActivity.ID, ActivityID = varSelectedActivity.ID))
+                                          Height: =180
+                                          Items: |-
+                                            =ForAll(
+                                                Filter(colProjTasks, Or(Activity.Id = varSelectedActivity.ID, ActivityID = varSelectedActivity.ID)) As task,
+                                                {
+                                                    ID: task.ID,
+                                                    Title: Coalesce(task.Title, ""),
+                                                    Subtitle: Coalesce(task.AssignedTo.Value, "-") & " · " & If(IsBlank(task.DueDate), "-", Text(task.DueDate, "dd mmm yyyy")),
+                                                    Icon: "Clipboard",
+                                                    Tone: Switch(task.Status.Value, "Completed", "completed", "In Progress", "in progress", "On Hold", "warning", "Cancelled", "danger", "muted"),
+                                                    Status: Coalesce(task.Status.Value, ""),
+                                                    Progress: Round(Coalesce(task.Progress, 0), 0)
+                                                }
+                                            )
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
-                                          TemplateSize: =36
+                                          OnSelect: |-
+                                            =Set(varTaskActivityFilter, varSelectedActivity);
+                                            Set(varSelectedTask, LookUp(colProjTasks, ID = cmpApActTasks.SelectedItem.ID));
+                                            Set(varProjectTab, "Tasks")
+                                          RowHeight: =68
+                                          Title: =If(gblLanguage = "Arabic", "المهام المرتبطة", "Related tasks")
                                           Visible: =varSelectedActivity.ActivityType.Value = "SubActivity"
                                           Width: =Parent.Width
-                                        Children:
-                                          - btnApActTask:
-                                              Control: ModernButton@1.0.0
-                                              Properties:
-                                                Appearance: =ButtonAppearance.Transparent
-                                                OnSelect: |-
-                                                  =Set(varTaskActivityFilter, varSelectedActivity);
-                                                  Set(varSelectedTask, ThisItem);
-                                                  Set(varProjectTab, "Tasks")
-                                                Text: =Coalesce(ThisItem.Title, "")
-                                                Width: =Parent.TemplateWidth
                                     - conApActActions:
                                         Control: GroupContainer@1.5.0
                                         Variant: AutoLayout
@@ -1596,7 +1591,7 @@ Screens:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
                               FillPortions: =0
-                              Height: =560
+                              Height: =680
                               LayoutDirection: =If(App.Width >= 1100, LayoutDirection.Horizontal, LayoutDirection.Vertical)
                               LayoutGap: =8
                               LayoutMinHeight: =0
@@ -1718,44 +1713,66 @@ Screens:
                                                   Navigate(scrTasks, ScreenTransition.Cover)
                                                 Text: =""
                                                 Width: =40
-                                    - galApTasks:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - btnApTaskNew:
+                                        Control: ModernButton@1.0.0
                                         Properties:
-                                          Items: |-
-                                            =SortByColumns(
-                                                Filter(
-                                                    colProjTasks,
-                                                    And(
-                                                        Or(IsBlank(txtApTaskSearch.Text), StartsWith(Title, txtApTaskSearch.Text)),
-                                                        Or(
-                                                            And(IsBlank(cmbApTaskActivity.Selected), IsBlank(varTaskActivityFilter)),
-                                                            Or(
-                                                                Activity.Id = Coalesce(cmbApTaskActivity.Selected.ID, varTaskActivityFilter.ID),
-                                                                ActivityID = Coalesce(cmbApTaskActivity.Selected.ID, varTaskActivityFilter.ID)
-                                                            )
-                                                        ),
-                                                        Or(IsBlank(cmbApTaskEmp.Selected), Or(AssignedTo.Id = cmbApTaskEmp.Selected.ID, AssignedToID = cmbApTaskEmp.Selected.ID)),
-                                                        Or(IsBlank(cmbApTaskPri.Selected.Value), Priority.Value = cmbApTaskPri.Selected.Value),
-                                                        Or(IsBlank(cmbApTaskStat.Selected.Value), Status.Value = cmbApTaskStat.Selected.Value)
-                                                    )
-                                                ),
-                                                "DueDate",
-                                                SortOrder.Ascending
-                                            )
+                                          AccessibleLabel: =If(gblLanguage = "Arabic", "مهمة جديدة", "New task")
+                                          BasePaletteColor: =fxThemeColor("Primary")
+                                          Height: =36
+                                          Icon: ="Add"
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
-                                          TemplateSize: =48
+                                          OnSelect: |-
+                                            =Set(varTaskForm, "new");
+                                            Set(varTask, Blank());
+                                            Set(varTaskReturn, "project");
+                                            Set(varTkPresetActivityID, Coalesce(varTaskActivityFilter.ID, 0));
+                                            Navigate(scrTaskEditor, ScreenTransition.Cover)
+                                          Text: =If(gblLanguage = "Arabic", "مهمة جديدة", "New task")
+                                          Width: =140
+                                    - cmpApTasks:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
+                                        Properties:
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد مهام", "No tasks")
+                                          FillPortions: =1
+                                          Height: =280
+                                          Items: |-
+                                            =ForAll(
+                                                SortByColumns(
+                                                    Filter(
+                                                        colProjTasks,
+                                                        And(
+                                                            Or(IsBlank(txtApTaskSearch.Text), StartsWith(Title, txtApTaskSearch.Text)),
+                                                            Or(
+                                                                And(IsBlank(cmbApTaskActivity.Selected), IsBlank(varTaskActivityFilter)),
+                                                                Or(
+                                                                    Activity.Id = Coalesce(cmbApTaskActivity.Selected.ID, varTaskActivityFilter.ID),
+                                                                    ActivityID = Coalesce(cmbApTaskActivity.Selected.ID, varTaskActivityFilter.ID)
+                                                                )
+                                                            ),
+                                                            Or(IsBlank(cmbApTaskEmp.Selected), Or(AssignedTo.Id = cmbApTaskEmp.Selected.ID, AssignedToID = cmbApTaskEmp.Selected.ID)),
+                                                            Or(IsBlank(cmbApTaskPri.Selected.Value), Priority.Value = cmbApTaskPri.Selected.Value),
+                                                            Or(IsBlank(cmbApTaskStat.Selected.Value), Status.Value = cmbApTaskStat.Selected.Value)
+                                                        )
+                                                    ),
+                                                    "DueDate",
+                                                    SortOrder.Ascending
+                                                ) As task,
+                                                {
+                                                    ID: task.ID,
+                                                    Title: Coalesce(task.Title, ""),
+                                                    Subtitle: Coalesce(task.AssignedTo.Value, "-") & " · " & If(IsBlank(task.DueDate), "-", Text(task.DueDate, "dd mmm yyyy")),
+                                                    Icon: "Clipboard",
+                                                    Tone: Switch(task.Priority.Value, "High", "high", "Medium", "medium", "Low", "low", Switch(task.Status.Value, "Completed", "completed", "Cancelled", "danger", "muted")),
+                                                    Status: Coalesce(task.Status.Value, ""),
+                                                    Progress: Round(Coalesce(task.Progress, 0), 0)
+                                                }
+                                            )
+                                          LayoutMinHeight: =120
+                                          LayoutMinWidth: =0
+                                          OnSelect: =Set(varSelectedTask, LookUp(colProjTasks, ID = cmpApTasks.SelectedItem.ID))
                                           Width: =Parent.Width
-                                        Children:
-                                          - btnApTaskRow:
-                                              Control: ModernButton@1.0.0
-                                              Properties:
-                                                Appearance: =ButtonAppearance.Transparent
-                                                Height: =Parent.TemplateHeight
-                                                OnSelect: =Set(varSelectedTask, ThisItem)
-                                                Text: =Coalesce(ThisItem.Title, "") & " · " & Coalesce(ThisItem.Status.Value, "")
-                                                Width: =Parent.TemplateWidth
                               - conApTaskDetail:
                                   Control: GroupContainer@1.5.0
                                   Variant: AutoLayout
@@ -1791,11 +1808,11 @@ Screens:
                                         Properties:
                                           Color: =fxThemeColor("TextSecondary")
                                           Font: =gblTheme.Typography.FontFamily
-                                          Height: =40
+                                          Height: =72
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
                                           Size: =12
-                                          Text: =Coalesce(varSelectedTask.Status.Value, "") & " · " & Coalesce(varSelectedTask.Priority.Value, "") & " · " & Text(Round(Coalesce(varSelectedTask.Progress, 0), 0), "0") & "%" & Char(10) & Coalesce(varSelectedTask.AssignedTo.Value, "-") & " · " & If(IsBlank(varSelectedTask.DueDate), "-", Text(varSelectedTask.DueDate, "dd mmm yyyy")) & Char(10) & Coalesce(varSelectedTask.Remarks, "")
+                                          Text: =Coalesce(varSelectedTask.Status.Value, "") & " · " & Coalesce(varSelectedTask.Priority.Value, "") & " · " & Text(Round(Coalesce(varSelectedTask.Progress, 0), 0), "0") & "%" & Char(10) & If(gblLanguage = "Arabic", "النشاط: ", "Activity: ") & Coalesce(varSelectedTask.Activity.Value, "-") & Char(10) & Coalesce(varSelectedTask.AssignedTo.Value, "-") & " · " & If(IsBlank(varSelectedTask.DueDate), "-", Text(varSelectedTask.DueDate, "dd mmm yyyy")) & Char(10) & Coalesce(varSelectedTask.Remarks, "")
                                           Width: =Parent.Width
                                     - conApTaskActions:
                                         Control: GroupContainer@1.5.0
@@ -1862,7 +1879,7 @@ Screens:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
                               FillPortions: =0
-                              Height: =520
+                              Height: =600
                               LayoutDirection: =If(App.Width >= 1100, LayoutDirection.Horizontal, LayoutDirection.Vertical)
                               LayoutGap: =8
                               LayoutMinHeight: =0
@@ -1973,83 +1990,42 @@ Screens:
                                           LayoutMinWidth: =0
                                           SelectMultiple: =false
                                           Width: =Parent.Width
-                                    - galApRisks:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - cmpApRisks:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
                                         Properties:
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد مخاطر", "No risks")
+                                          FillPortions: =1
+                                          Height: =240
                                           Items: |-
-                                            =SortByColumns(
-                                                Filter(
-                                                    colProjRisks,
-                                                    And(
-                                                        Or(IsBlank(txtApRiskSearch.Text), StartsWith(Title, txtApRiskSearch.Text)),
-                                                        Or(IsBlank(cmbApRiskCat.Selected.Value), Category.Value = cmbApRiskCat.Selected.Value),
-                                                        Or(IsBlank(cmbApRiskOwn.Selected), Or(Owner.Id = cmbApRiskOwn.Selected.ID, OwnerID = cmbApRiskOwn.Selected.ID)),
-                                                        Or(IsBlank(cmbApRiskStat.Selected.Value), Status.Value = cmbApRiskStat.Selected.Value)
-                                                    )
-                                                ),
-                                                "Created",
-                                                SortOrder.Descending
+                                            =ForAll(
+                                                SortByColumns(
+                                                    Filter(
+                                                        colProjRisks,
+                                                        And(
+                                                            Or(IsBlank(txtApRiskSearch.Text), StartsWith(Title, txtApRiskSearch.Text)),
+                                                            Or(IsBlank(cmbApRiskCat.Selected.Value), Category.Value = cmbApRiskCat.Selected.Value),
+                                                            Or(IsBlank(cmbApRiskOwn.Selected), Or(Owner.Id = cmbApRiskOwn.Selected.ID, OwnerID = cmbApRiskOwn.Selected.ID)),
+                                                            Or(IsBlank(cmbApRiskStat.Selected.Value), Status.Value = cmbApRiskStat.Selected.Value)
+                                                        )
+                                                    ),
+                                                    "Created",
+                                                    SortOrder.Descending
+                                                ) As risk,
+                                                {
+                                                    ID: risk.ID,
+                                                    Title: Coalesce(risk.Title, ""),
+                                                    Subtitle: Coalesce(risk.Category.Value, "-") & " · " & Coalesce(risk.Owner.Value, "-"),
+                                                    Icon: "Warning",
+                                                    Tone: Switch(risk.Level.Value, "High", "high", "Critical", "danger", "Medium", "medium", "Low", "low", "muted"),
+                                                    Status: Coalesce(risk.Status.Value, ""),
+                                                    Progress: -1
+                                                }
                                             )
-                                          LayoutMinHeight: =0
+                                          LayoutMinHeight: =120
                                           LayoutMinWidth: =0
-                                          TemplateSize: =64
+                                          OnSelect: =Set(varSelectedRisk, LookUp(colProjRisks, ID = cmpApRisks.SelectedItem.ID))
                                           Width: =Parent.Width
-                                        Children:
-                                          - conApRiskRow:
-                                              Control: GroupContainer@1.5.0
-                                              Variant: AutoLayout
-                                              Properties:
-                                                DropShadow: =DropShadow.None
-                                                Fill: =Color.Transparent
-                                                Height: =Parent.TemplateHeight
-                                                LayoutDirection: =LayoutDirection.Horizontal
-                                                LayoutGap: =4
-                                                Width: =Parent.TemplateWidth
-                                              Children:
-                                                - btnApRiskPick:
-                                                    Control: ModernButton@1.0.0
-                                                    Properties:
-                                                      Appearance: =ButtonAppearance.Transparent
-                                                      Height: =36
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      OnSelect: =Set(varSelectedRisk, ThisItem)
-                                                      Text: =Coalesce(ThisItem.Title, "") & " · " & Coalesce(ThisItem.Level.Value, "") & " · " & Coalesce(ThisItem.Owner.Value, "")
-                                                      Width: =Parent.Width - 150
-                                                - btnApRiskMitigate:
-                                                    Control: ModernButton@1.0.0
-                                                    Properties:
-                                                      Appearance: =ButtonAppearance.Subtle
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      OnSelect: |-
-                                                        =IfError(
-                                                            Patch(Risks, LookUp(Risks, ID = ThisItem.ID), {Status: {Value: "Mitigation In Progress"}});
-                                                            Select(btnApLoadKids);
-                                                            Notify(If(gblLanguage = "Arabic", "بدأ التخفيف", "Mitigation started"), NotificationType.Success),
-                                                            Notify(If(gblLanguage = "Arabic", "تعذر التحديث", "Could not update"), NotificationType.Error)
-                                                        )
-                                                      Text: =If(gblLanguage = "Arabic", "تخفيف", "Mitigate")
-                                                      Width: =70
-                                                - btnApRiskClose:
-                                                    Control: ModernButton@1.0.0
-                                                    Properties:
-                                                      Appearance: =ButtonAppearance.Subtle
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      OnSelect: |-
-                                                        =If(
-                                                            Confirm(If(gblLanguage = "Arabic", "إغلاق هذا الخطر؟", "Close this risk?")),
-                                                            IfError(
-                                                                Patch(Risks, LookUp(Risks, ID = ThisItem.ID), {Status: {Value: "Closed"}, ClosingDate: Today()});
-                                                                Select(btnApLoadKids);
-                                                                Notify(If(gblLanguage = "Arabic", "أُغلق الخطر", "Risk closed"), NotificationType.Success),
-                                                                Notify(If(gblLanguage = "Arabic", "تعذر الإغلاق", "Could not close"), NotificationType.Error)
-                                                            )
-                                                        )
-                                                      Text: =If(gblLanguage = "Arabic", "إغلاق", "Close")
-                                                      Width: =70
                               - conApRiskDetail:
                                   Control: GroupContainer@1.5.0
                                   Variant: AutoLayout
@@ -2059,7 +2035,7 @@ Screens:
                                     DropShadow: =DropShadow.None
                                     Fill: =fxThemeColor("Background")
                                     FillPortions: =0
-                                    Height: =If(App.Width >= 1100, Parent.Height, 200)
+                                    Height: =If(App.Width >= 1100, Parent.Height, 280)
                                     LayoutDirection: =LayoutDirection.Vertical
                                     LayoutGap: =6
                                     LayoutMinHeight: =0
@@ -2091,20 +2067,70 @@ Screens:
                                           Size: =12
                                           Text: =Coalesce(varSelectedRisk.Status.Value, "") & " · " & Coalesce(varSelectedRisk.Category.Value, "-") & " · " & Coalesce(varSelectedRisk.Level.Value, "-") & Char(10) & Coalesce(varSelectedRisk.Owner.Value, "-") & " · " & Coalesce(varSelectedRisk.Probability.Value, "-") & " / " & Coalesce(varSelectedRisk.Impact.Value, "-") & Char(10) & Coalesce(varSelectedRisk.Mitigation, "-")
                                           Width: =Parent.Width
-                                    - btnApRiskEdit:
-                                        Control: ModernButton@1.0.0
+                                    - conApRiskActions:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
                                         Properties:
-                                          Appearance: =ButtonAppearance.Secondary
-                                          Height: =36
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =40
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
-                                          OnSelect: |-
-                                            =Set(varRiskForm, "edit");
-                                            Set(varRiskReturn, "project");
-                                            Set(varReturnTab, "Risks");
-                                            Navigate(scrRiskEditor, ScreenTransition.Cover)
-                                          Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
-                                          Width: =90
+                                          Width: =Parent.Width
+                                        Children:
+                                          - btnApRiskEdit:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =ButtonAppearance.Secondary
+                                                Height: =36
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                OnSelect: |-
+                                                  =Set(varRiskForm, "edit");
+                                                  Set(varRiskReturn, "project");
+                                                  Set(varReturnTab, "Risks");
+                                                  Navigate(scrRiskEditor, ScreenTransition.Cover)
+                                                Text: =If(gblLanguage = "Arabic", "تعديل", "Edit")
+                                                Width: =90
+                                          - btnApRiskMitigate:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =ButtonAppearance.Subtle
+                                                Height: =36
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                OnSelect: |-
+                                                  =IfError(
+                                                      Patch(Risks, LookUp(Risks, ID = varSelectedRisk.ID), {Status: {Value: "Mitigation In Progress"}});
+                                                      Select(btnApLoadKids);
+                                                      Notify(If(gblLanguage = "Arabic", "بدأ التخفيف", "Mitigation started"), NotificationType.Success),
+                                                      Notify(If(gblLanguage = "Arabic", "تعذر التحديث", "Could not update"), NotificationType.Error)
+                                                  )
+                                                Text: =If(gblLanguage = "Arabic", "تخفيف", "Mitigate")
+                                                Width: =100
+                                          - btnApRiskClose:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =ButtonAppearance.Subtle
+                                                BasePaletteColor: =fxThemeColor("Danger")
+                                                Height: =36
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                OnSelect: |-
+                                                  =If(
+                                                      Confirm(If(gblLanguage = "Arabic", "إغلاق هذا الخطر؟", "Close this risk?")),
+                                                      IfError(
+                                                          Patch(Risks, LookUp(Risks, ID = varSelectedRisk.ID), {Status: {Value: "Closed"}, ClosingDate: Today()});
+                                                          Select(btnApLoadKids);
+                                                          Notify(If(gblLanguage = "Arabic", "أُغلق الخطر", "Risk closed"), NotificationType.Success),
+                                                          Notify(If(gblLanguage = "Arabic", "تعذر الإغلاق", "Could not close"), NotificationType.Error)
+                                                      )
+                                                  )
+                                                Text: =If(gblLanguage = "Arabic", "إغلاق", "Close")
+                                                Width: =90
                         - conApReports:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
@@ -2196,77 +2222,89 @@ Screens:
                                             Set(varShowProjectDocUpload, true)
                                           Text: =If(gblLanguage = "Arabic", "رفع", "Upload")
                                           Width: =110
-                                    - galApDocs:
-                                        Control: Gallery@2.15.0
-                                        Variant: Vertical
+                                    - cmpApDocs:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpProList
                                         Properties:
-                                          Items: =colProjDocs
+                                          EmptyMessage: =If(gblLanguage = "Arabic", "لا توجد وثائق في هذا المجلد", "No documents in this folder")
+                                          FillPortions: =1
+                                          Height: =240
+                                          Items: |-
+                                            =ForAll(
+                                                colProjDocs As doc,
+                                                {
+                                                    ID: doc.ID,
+                                                    Title: Coalesce(doc.Name, ""),
+                                                    Subtitle: Coalesce(varProjectDocFolder, ""),
+                                                    Icon: "File",
+                                                    Tone: "info",
+                                                    Status: "",
+                                                    Progress: -1
+                                                }
+                                            )
+                                          LayoutMinHeight: =120
+                                          LayoutMinWidth: =0
+                                          OnSelect: =Set(varSelectedDoc, LookUp(colProjDocs, ID = cmpApDocs.SelectedItem.ID))
+                                          Width: =Parent.Width
+                                    - conApDocActions:
+                                        Control: GroupContainer@1.5.0
+                                        Variant: AutoLayout
+                                        Properties:
+                                          DropShadow: =DropShadow.None
+                                          Fill: =Color.Transparent
+                                          FillPortions: =0
+                                          Height: =40
+                                          LayoutDirection: =LayoutDirection.Horizontal
+                                          LayoutGap: =6
                                           LayoutMinHeight: =0
                                           LayoutMinWidth: =0
-                                          TemplateSize: =44
+                                          Visible: =Not(IsBlank(varSelectedDoc))
                                           Width: =Parent.Width
                                         Children:
-                                          - conApDocRow:
-                                              Control: GroupContainer@1.5.0
-                                              Variant: AutoLayout
+                                          - btnApDocOpen:
+                                              Control: ModernButton@1.0.0
                                               Properties:
-                                                DropShadow: =DropShadow.None
-                                                Fill: =Color.Transparent
-                                                Height: =Parent.TemplateHeight
-                                                LayoutDirection: =LayoutDirection.Horizontal
-                                                LayoutGap: =4
-                                                Width: =Parent.TemplateWidth
-                                              Children:
-                                                - lblApDocName:
-                                                    Control: ModernText@1.0.0
-                                                    Properties:
-                                                      FillPortions: =1
-                                                      Height: =28
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      Size: =12
-                                                      Text: =Coalesce(ThisItem.Name, "")
-                                                      Width: =120
-                                                - btnApDocOpen:
-                                                    Control: ModernButton@1.0.0
-                                                    Properties:
-                                                      Appearance: =ButtonAppearance.Subtle
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      OnSelect: =Launch(ThisItem.'Link to item')
-                                                      Text: =If(gblLanguage = "Arabic", "فتح", "Open")
-                                                      Width: =60
-                                                - btnApDocReplace:
-                                                    Control: ModernButton@1.0.0
-                                                    Properties:
-                                                      Appearance: =ButtonAppearance.Subtle
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      OnSelect: |-
-                                                        =Set(gblProjectDocumentToReplace, ThisItem);
-                                                        Set(varShowProjectDocUpload, true)
-                                                      Text: =If(gblLanguage = "Arabic", "استبدال", "Replace")
-                                                      Width: =80
-                                                - btnApDocDelete:
-                                                    Control: ModernButton@1.0.0
-                                                    Properties:
-                                                      Appearance: =ButtonAppearance.Subtle
-                                                      BasePaletteColor: =fxThemeColor("Danger")
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      OnSelect: |-
-                                                        =If(
-                                                            IsBlank(ThisItem.'Full Path'),
-                                                            Notify(If(gblLanguage = "Arabic", "تعذر تحديد المستند.", "Unable to identify the document."), NotificationType.Error),
-                                                            If(
-                                                                Confirm(If(gblLanguage = "Arabic", "هل أنت متأكد من حذف المستند؟", "Are you sure you want to delete this document?") & Char(10) & ThisItem.Name),
-                                                                Remove(ProjectDocuments, ThisItem);
-                                                                Select(btnApLoadDocs);
-                                                                Notify(If(gblLanguage = "Arabic", "تم حذف المستند بنجاح.", "Document deleted successfully."), NotificationType.Success)
-                                                            )
-                                                        )
-                                                      Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
-                                                      Width: =60
+                                                Appearance: =ButtonAppearance.Secondary
+                                                Height: =36
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                OnSelect: =Launch(varSelectedDoc.'Link to item')
+                                                Text: =If(gblLanguage = "Arabic", "فتح", "Open")
+                                                Width: =80
+                                          - btnApDocReplace:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =ButtonAppearance.Subtle
+                                                Height: =36
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                OnSelect: |-
+                                                  =Set(gblProjectDocumentToReplace, varSelectedDoc);
+                                                  Set(varShowProjectDocUpload, true)
+                                                Text: =If(gblLanguage = "Arabic", "استبدال", "Replace")
+                                                Width: =90
+                                          - btnApDocDelete:
+                                              Control: ModernButton@1.0.0
+                                              Properties:
+                                                Appearance: =ButtonAppearance.Subtle
+                                                BasePaletteColor: =fxThemeColor("Danger")
+                                                Height: =36
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                OnSelect: |-
+                                                  =If(
+                                                      IsBlank(varSelectedDoc.'Full Path'),
+                                                      Notify(If(gblLanguage = "Arabic", "تعذر تحديد المستند.", "Unable to identify the document."), NotificationType.Error),
+                                                      If(
+                                                          Confirm(If(gblLanguage = "Arabic", "هل أنت متأكد من حذف المستند؟", "Are you sure you want to delete this document?") & Char(10) & varSelectedDoc.Name),
+                                                          Remove(ProjectDocuments, varSelectedDoc);
+                                                          Set(varSelectedDoc, Blank());
+                                                          Select(btnApLoadDocs);
+                                                          Notify(If(gblLanguage = "Arabic", "تم حذف المستند بنجاح.", "Document deleted successfully."), NotificationType.Success)
+                                                      )
+                                                  )
+                                                Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
+                                                Width: =80
       - conApUpload:
           Control: GroupContainer@1.5.0
           Variant: ManualLayout
