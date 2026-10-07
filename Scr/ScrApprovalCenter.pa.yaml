@@ -18,6 +18,7 @@ Screens:
       LoadingSpinnerColor: =RGBA(0, 120, 212, 1)
       OnVisible: |-
         =Set(gblSelectedApproval, Blank());
+        Set(varShowApprovalDialog, false);
         Set(ShowFilter, false);
         Set(varApprovalSearch, "");
         Set(varApprovalModule, Blank());
@@ -1907,54 +1908,9 @@ Screens:
                               LayoutMinHeight: =0
                               LayoutMinWidth: =110
                               OnSelect: |-
-                                =With(
-                                    {
-                                        saved: Patch(
-                                            ApprovalHistory,
-                                            LookUp(ApprovalHistory, ID = gblSelectedApproval.ID),
-                                            {
-                                                Decision: {Value: "Approved"},
-                                                DecisionDate: Now()
-                                            }
-                                        )
-                                    },
-                                    Patch(
-                                        colApprovalCenter,
-                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID),
-                                        {
-                                            Decision: saved.Decision,
-                                            DecisionDate: saved.DecisionDate
-                                        }
-                                    );
-                                    Set(
-                                        gblSelectedApproval,
-                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID)
-                                    );
-                                    If(
-                                        saved.EntityType.Value = "LeaveRequest",
-                                        With(
-                                            {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID))},
-                                            If(
-                                                IsBlank(leave),
-                                                Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر العثور على طلب الإجازة.", "The decision was saved. The leave request could not be found."), NotificationType.Warning),
-                                                IfError(
-                                                    Patch(
-                                                        LeaveRequests,
-                                                        leave,
-                                                        {
-                                                            Status: {Value: "Approved"},
-                                                            ApprovalDate: Now()
-                                                        }
-                                                    );
-                                                    fnLogHR("Leave Request", leave.ID, Text(leave.ID), "Approved", "Important", Coalesce(LookUp(Employees, ID = leave.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Approved", Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), "", false);
-                                                    fnHRNotify(Coalesce(leave.EmployeeID, 0), Coalesce(leave.Employee.Value, ""), If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة", "Leave approved"), Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), "Leave Request", leave.ID, "Leave Request");
-                                                    false,
-                                                    Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر تحديث طلب الإجازة.", "The decision was saved. The leave request could not be updated."), NotificationType.Warning)
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
+                                =Set(varApprovalDialogAction, "Approve");
+                                Reset(cmpApprovalDialog);
+                                Set(varShowApprovalDialog, true)
                               RadiusBottomLeft: =10
                               RadiusBottomRight: =10
                               RadiusTopLeft: =10
@@ -1978,54 +1934,9 @@ Screens:
                               LayoutMinHeight: =0
                               LayoutMinWidth: =110
                               OnSelect: |-
-                                =With(
-                                    {
-                                        saved: Patch(
-                                            ApprovalHistory,
-                                            LookUp(ApprovalHistory, ID = gblSelectedApproval.ID),
-                                            {
-                                                Decision: {Value: "Rejected"},
-                                                DecisionDate: Now()
-                                            }
-                                        )
-                                    },
-                                    Patch(
-                                        colApprovalCenter,
-                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID),
-                                        {
-                                            Decision: saved.Decision,
-                                            DecisionDate: saved.DecisionDate
-                                        }
-                                    );
-                                    Set(
-                                        gblSelectedApproval,
-                                        LookUp(colApprovalCenter, ID = gblSelectedApproval.ID)
-                                    );
-                                    If(
-                                        saved.EntityType.Value = "LeaveRequest",
-                                        With(
-                                            {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID))},
-                                            If(
-                                                IsBlank(leave),
-                                                Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر العثور على طلب الإجازة.", "The decision was saved. The leave request could not be found."), NotificationType.Warning),
-                                                IfError(
-                                                    Patch(
-                                                        LeaveRequests,
-                                                        leave,
-                                                        {
-                                                            Status: {Value: "Rejected"},
-                                                            ApprovalDate: Now()
-                                                        }
-                                                    );
-                                                    fnLogHR("Leave Request", leave.ID, Text(leave.ID), "Rejected", "Important", Coalesce(LookUp(Employees, ID = leave.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Rejected", Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), "", false);
-                                                    fnHRNotify(Coalesce(leave.EmployeeID, 0), Coalesce(leave.Employee.Value, ""), If(gblLanguage = "Arabic", "تم رفض الإجازة", "Leave rejected"), Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), "Leave Request", leave.ID, "Leave Request");
-                                                    false,
-                                                    Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر تحديث طلب الإجازة.", "The decision was saved. The leave request could not be updated."), NotificationType.Warning)
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
+                                =Set(varApprovalDialogAction, "Reject");
+                                Reset(cmpApprovalDialog);
+                                Set(varShowApprovalDialog, true)
                               RadiusBottomLeft: =10
                               RadiusBottomRight: =10
                               RadiusTopLeft: =10
@@ -2226,3 +2137,165 @@ Screens:
             Visible: =App.Width < 700
             Width: =Parent.Width
             Y: =Parent.Height - Self.Height
+      - cmpApprovalDialog:
+          Control: CanvasComponent
+          ComponentName: cmpEnhancedDialog
+          Properties:
+            BorderRadius: =16
+            Buttons: |-
+              =Table(
+                  {Label: If(gblLanguage = "Arabic", "إلغاء", "Cancel"), ButtonType: "Secondary", Action: "Cancel", Visible: true},
+                  {
+                      Label: If(
+                          varApprovalDialogAction = "Reject",
+                          If(gblLanguage = "Arabic", "رفض", "Reject"),
+                          If(gblLanguage = "Arabic", "موافقة", "Approve")
+                      ),
+                      ButtonType: If(varApprovalDialogAction = "Reject", "Danger", "Primary"),
+                      Action: "Confirm",
+                      Visible: true
+                  }
+              )
+            DialogType: ="Form"
+            DialogWidth: =440
+            HeaderText: |-
+              =If(
+                  varApprovalDialogAction = "Reject",
+                  If(gblLanguage = "Arabic", "رفض الطلب؟", "Reject this request?"),
+                  If(gblLanguage = "Arabic", "الموافقة على الطلب؟", "Approve this request?")
+              )
+            IconName: =If(varApprovalDialogAction = "Reject", "Error", "Success")
+            IsTextInputRequired: =varApprovalDialogAction = "Reject"
+            MessageText: |-
+              =If(
+                  varApprovalDialogAction = "Reject",
+                  If(gblLanguage = "Arabic", "اكتب سبب الرفض. سيُحفظ مع القرار.", "Enter the rejection reason. It is saved with the decision."),
+                  If(gblLanguage = "Arabic", "يمكنك إضافة تعليق. التعليق اختياري.", "Add a comment. The comment is optional.")
+              )
+            OnButtonSelect: |-
+              =With(
+                  {note: Trim(cmpApprovalDialog.InputText)},
+                  If(
+                      varApprovalDialogAction = "Reject",
+                      With(
+                          {
+                              saved: Patch(
+                                  ApprovalHistory,
+                                  LookUp(ApprovalHistory, ID = gblSelectedApproval.ID),
+                                  {
+                                      Decision: {Value: "Rejected"},
+                                      DecisionDate: Now(),
+                                      Comments: note
+                                  }
+                              )
+                          },
+                          Patch(
+                              colApprovalCenter,
+                              LookUp(colApprovalCenter, ID = gblSelectedApproval.ID),
+                              {
+                                  Decision: saved.Decision,
+                                  DecisionDate: saved.DecisionDate,
+                                  Comments: note
+                              }
+                          );
+                          Set(
+                              gblSelectedApproval,
+                              LookUp(colApprovalCenter, ID = gblSelectedApproval.ID)
+                          );
+                          If(
+                              saved.EntityType.Value = "LeaveRequest",
+                              With(
+                                  {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID))},
+                                  If(
+                                      IsBlank(leave),
+                                      Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر العثور على طلب الإجازة.", "The decision was saved. The leave request could not be found."), NotificationType.Warning),
+                                      IfError(
+                                          Patch(
+                                              LeaveRequests,
+                                              leave,
+                                              {
+                                                  Status: {Value: "Rejected"},
+                                                  ApprovalDate: Now(),
+                                                  ManagerComments: note
+                                              }
+                                          );
+                                          fnLogHR("Leave Request", leave.ID, Text(leave.ID), "Rejected", "Important", Coalesce(LookUp(Employees, ID = leave.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Rejected", Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), note, false);
+                                          fnHRNotify(Coalesce(leave.EmployeeID, 0), Coalesce(leave.Employee.Value, ""), If(gblLanguage = "Arabic", "تم رفض الإجازة", "Leave rejected"), Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, "") & If(IsBlank(note), "", " · " & note), "Leave Request", leave.ID, "Leave Request");
+                                          false,
+                                          Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر تحديث طلب الإجازة.", "The decision was saved. The leave request could not be updated."), NotificationType.Warning)
+                                      )
+                                  )
+                              )
+                          );
+                          Set(varShowApprovalDialog, false);
+                          Reset(cmpApprovalDialog)
+                      ),
+                      With(
+                          {
+                              saved: Patch(
+                                  ApprovalHistory,
+                                  LookUp(ApprovalHistory, ID = gblSelectedApproval.ID),
+                                  {
+                                      Decision: {Value: "Approved"},
+                                      DecisionDate: Now(),
+                                      Comments: note
+                                  }
+                              )
+                          },
+                          Patch(
+                              colApprovalCenter,
+                              LookUp(colApprovalCenter, ID = gblSelectedApproval.ID),
+                              {
+                                  Decision: saved.Decision,
+                                  DecisionDate: saved.DecisionDate,
+                                  Comments: note
+                              }
+                          );
+                          Set(
+                              gblSelectedApproval,
+                              LookUp(colApprovalCenter, ID = gblSelectedApproval.ID)
+                          );
+                          If(
+                              saved.EntityType.Value = "LeaveRequest",
+                              With(
+                                  {leave: LookUp(LeaveRequests, ID = Value(saved.RequestItemID))},
+                                  If(
+                                      IsBlank(leave),
+                                      Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر العثور على طلب الإجازة.", "The decision was saved. The leave request could not be found."), NotificationType.Warning),
+                                      IfError(
+                                          Patch(
+                                              LeaveRequests,
+                                              leave,
+                                              {
+                                                  Status: {Value: "Approved"},
+                                                  ApprovalDate: Now(),
+                                                  ManagerComments: note
+                                              }
+                                          );
+                                          fnLogHR("Leave Request", leave.ID, Text(leave.ID), "Approved", "Important", Coalesce(LookUp(Employees, ID = leave.EmployeeID).ProjectID, 0), Blank(), "", "Status", "Pending", "Approved", Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, ""), note, false);
+                                          fnHRNotify(Coalesce(leave.EmployeeID, 0), Coalesce(leave.Employee.Value, ""), If(gblLanguage = "Arabic", "تمت الموافقة على الإجازة", "Leave approved"), Coalesce(leave.Employee.Value, "") & " · " & Coalesce(leave.LeaveType.Value, "") & If(IsBlank(note), "", " · " & note), "Leave Request", leave.ID, "Leave Request");
+                                          false,
+                                          Notify(If(gblLanguage = "Arabic", "تم تسجيل القرار. تعذر تحديث طلب الإجازة.", "The decision was saved. The leave request could not be updated."), NotificationType.Warning)
+                                      )
+                                  )
+                              )
+                          );
+                          Set(varShowApprovalDialog, false);
+                          Reset(cmpApprovalDialog)
+                      )
+                  )
+              )
+            OnCloseSelect: |-
+              =Set(varShowApprovalDialog, false);
+              Reset(cmpApprovalDialog)
+            PlaceholderText: |-
+              =If(
+                  varApprovalDialogAction = "Reject",
+                  If(gblLanguage = "Arabic", "السبب", "Reason"),
+                  If(gblLanguage = "Arabic", "تعليق", "Comment")
+              )
+            ShowCloseIcon: =true
+            Theme: =gblTheme.Mode
+            Visible: =varShowApprovalDialog
+            X: =0
+            Y: =0
