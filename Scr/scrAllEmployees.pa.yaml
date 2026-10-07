@@ -540,6 +540,8 @@ Screens:
                                 Remove(Employees, LookUp(Employees, ID = row.ID));
                                 Remove(colAllEmployees, LookUp(colAllEmployees, ID = row.ID));
                                 If(gblSelectedEmployee.ID = row.ID, Set(gblSelectedEmployee, Blank()));
+                                fnLogHR("Employee", row.ID, Coalesce(row.EmployeeNumber, Text(row.ID)), "Deleted", "Important", Coalesce(row.ProjectID, 0), Blank(), "", "Status", Coalesce(row.Status.Value, ""), "", Coalesce(row.FullName, ""), "", false);
+                                fnHRNotify(Coalesce(row.Manager.Id, 0), Coalesce(row.Manager.Value, ""), If(gblLanguage = "Arabic", "حذف موظف", "Employee deleted"), Coalesce(row.FullName, ""), "Employee", row.ID, "Employee");
                                 Notify(If(gblLanguage = "Arabic", "تم حذف الموظف.", "Employee deleted."), NotificationType.Success)
                             )
                         )
@@ -1581,6 +1583,8 @@ Screens:
                                             If(
                                                 !IsBlank(varSavedEmployee),
                                                 Patch(Employees, varSavedEmployee, {EmployeeNumber: "EP-" & Text(varSavedEmployee.ID, "000")});
+                                                fnLogHR("Employee", varSavedEmployee.ID, "EP-" & Text(varSavedEmployee.ID, "000"), "Created", "Info", Coalesce(cmbProject.Selected.ID, 0), Blank(), "", "Status", "", Coalesce(cmbEmployeeStatus.Selected.Value, ""), Trim(txtFirstName.Text) & " " & Trim(txtLastName.Text), "", false);
+                                                fnHRNotify(Coalesce(cmbManager.Selected.ID, 0), Coalesce(cmbManager.Selected.FullName, ""), If(gblLanguage = "Arabic", "موظف جديد", "New employee"), Trim(txtFirstName.Text) & " " & Trim(txtLastName.Text), "Employee", varSavedEmployee.ID, "Employee");
                                                 Notify(If(gblLanguage = "Arabic", "تمت إضافة الموظف.", "Employee added."), NotificationType.Success);
                                                 Set(gblSelectedEmployee, LookUp(Employees, ID = varSavedEmployee.ID));
                                                 Set(gblEmployeeMode, "Add");
@@ -1624,6 +1628,39 @@ Screens:
                                                 );
                                                 If(
                                                     !IsBlank(varUpdatedEmployee),
+                                                    fnLogHR(
+                                                        "Employee",
+                                                        varUpdatedEmployee.ID,
+                                                        Coalesce(varUpdatedEmployee.EmployeeNumber, gblSelectedEmployee.EmployeeNumber, ""),
+                                                        "Updated",
+                                                        If(Coalesce(gblSelectedEmployee.Status.Value, "") <> Coalesce(cmbEmployeeStatus.Selected.Value, ""), "Important", "Info"),
+                                                        Coalesce(cmbProject.Selected.ID, gblSelectedEmployee.ProjectID, 0),
+                                                        Blank(),
+                                                        "",
+                                                        If(
+                                                            Coalesce(gblSelectedEmployee.Status.Value, "") <> Coalesce(cmbEmployeeStatus.Selected.Value, ""),
+                                                            "Status",
+                                                            If(Coalesce(gblSelectedEmployee.Role.Value, "") <> Coalesce(cmbRole.Selected.Title, ""), "Role", "Record")
+                                                        ),
+                                                        If(
+                                                            Coalesce(gblSelectedEmployee.Status.Value, "") <> Coalesce(cmbEmployeeStatus.Selected.Value, ""),
+                                                            Coalesce(gblSelectedEmployee.Status.Value, ""),
+                                                            If(Coalesce(gblSelectedEmployee.Role.Value, "") <> Coalesce(cmbRole.Selected.Title, ""), Coalesce(gblSelectedEmployee.Role.Value, ""), "")
+                                                        ),
+                                                        If(
+                                                            Coalesce(gblSelectedEmployee.Status.Value, "") <> Coalesce(cmbEmployeeStatus.Selected.Value, ""),
+                                                            Coalesce(cmbEmployeeStatus.Selected.Value, ""),
+                                                            If(Coalesce(gblSelectedEmployee.Role.Value, "") <> Coalesce(cmbRole.Selected.Title, ""), Coalesce(cmbRole.Selected.Title, ""), "")
+                                                        ),
+                                                        Coalesce(gblSelectedEmployee.FullName, Trim(txtFirstName.Text) & " " & Trim(txtLastName.Text)),
+                                                        "",
+                                                        false
+                                                    );
+                                                    fnHRNotify(Coalesce(gblSelectedEmployee.ID, 0), Coalesce(gblSelectedEmployee.FullName, ""), If(gblLanguage = "Arabic", "تحديث بيانات موظف", "Employee record updated"), Coalesce(gblSelectedEmployee.FullName, ""), "Employee", varUpdatedEmployee.ID, "Employee");
+                                                    If(
+                                                        Coalesce(cmbManager.Selected.ID, gblSelectedEmployee.Manager.Id, 0) <> Coalesce(gblSelectedEmployee.ID, 0),
+                                                        fnHRNotify(Coalesce(cmbManager.Selected.ID, gblSelectedEmployee.Manager.Id, 0), Coalesce(cmbManager.Selected.FullName, gblSelectedEmployee.Manager.Value, ""), If(gblLanguage = "Arabic", "تحديث بيانات موظف", "Employee record updated"), Coalesce(gblSelectedEmployee.FullName, ""), "Employee", varUpdatedEmployee.ID, "Employee")
+                                                    );
                                                     Notify(If(gblLanguage = "Arabic", "تم تحديث الموظف.", "Employee updated."), NotificationType.Success);
                                                     Set(gblSelectedEmployee, LookUp(Employees, ID = varUpdatedEmployee.ID));
                                                     Set(gblEmployeeMode, "Add");
@@ -2108,6 +2145,12 @@ Screens:
                                             );
                                             Reset(attEmployeeDoc);
                                             Notify(If(gblLanguage = "Arabic", "تم رفع الملف.", "File uploaded."), NotificationType.Success);
+                                            fnLogHR("Document", gblSelectedEmployee.ID, Coalesce(gblSelectedEmployee.EmployeeNumber, ""), "Created", "Info", Coalesce(gblSelectedEmployee.ProjectID, 0), Blank(), "", "DocType", "", Coalesce(VarHRDocType, ""), Coalesce(gblSelectedEmployee.FullName, ""), "", false);
+                                            fnHRNotify(Coalesce(gblSelectedEmployee.ID, 0), Coalesce(gblSelectedEmployee.FullName, ""), If(gblLanguage = "Arabic", "مستند موظف", "Employee document"), Coalesce(VarHRDocType, "") & " · " & Coalesce(gblSelectedEmployee.FullName, ""), "Document", gblSelectedEmployee.ID, "Document");
+                                            If(
+                                                Coalesce(gblSelectedEmployee.Manager.Id, 0) <> Coalesce(gblSelectedEmployee.ID, 0),
+                                                fnHRNotify(Coalesce(gblSelectedEmployee.Manager.Id, 0), Coalesce(gblSelectedEmployee.Manager.Value, ""), If(gblLanguage = "Arabic", "مستند موظف", "Employee document"), Coalesce(VarHRDocType, "") & " · " & Coalesce(gblSelectedEmployee.FullName, ""), "Document", gblSelectedEmployee.ID, "Document")
+                                            );
                                             Set(VarHRDocUpload, false);
                                             Refresh(HumanResourcesDoc);
                                             ClearCollect(colEmployeeDocs, Filter(HumanResourcesDoc, EmployeeNumber = gblSelectedEmployee.EmployeeNumber))

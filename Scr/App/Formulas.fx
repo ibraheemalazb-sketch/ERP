@@ -424,3 +424,104 @@ fnWriteLog(
         )
     )
 };
+
+// HR activity log. Training screens already call fnLogHR with this argument order.
+// Now(), GUID(), and the actor are applied here so each row gets a fresh correlation id.
+
+fnLogHR(
+    pEntityType: Text, pEntityID: Number, pEntityNumber: Text, pAction: Text, pSeverity: Text,
+    pProjectID: Number, pAmount: Number, pCurrency: Text,
+    pField: Text, pOld: Text, pNew: Text, pDetails: Text, pReason: Text, pSensitive: Boolean
+): Void = {
+    With(
+        {
+            actor: If(
+                Coalesce(gblCurrentEmployee.ID, 0) > 0,
+                gblCurrentEmployee,
+                LookUp(Employees, Email = User().Email)
+            )
+        },
+        IfError(
+            Patch(
+                HRActivityLog,
+                Defaults(HRActivityLog),
+                {
+                    Title: Left(pAction & " - " & pEntityType & " " & Coalesce(pEntityNumber, ""), 255),
+                    Module: {Value: "HR"},
+                    EntityType: {Value: pEntityType},
+                    EntityID: pEntityID,
+                    EntityNumber: pEntityNumber,
+                    ActionType: {Value: pAction},
+                    FieldChanged: pField,
+                    OldValue: pOld,
+                    NewValue: pNew,
+                    Details: pDetails,
+                    ReasonComment: pReason,
+                    Severity: {Value: pSeverity},
+                    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID, Blank()),
+                    ProjectCode: If(
+                        Coalesce(pProjectID, 0) > 0,
+                        Coalesce(LookUp(Projects, ID = pProjectID, ProjectCode), ""),
+                        ""
+                    ),
+                    Amount: pAmount,
+                    Currency: If(
+                        Or(pCurrency = "USD", pCurrency = "YER", pCurrency = "SAR"),
+                        {Value: pCurrency},
+                        Blank()
+                    ),
+                    ActionDate: Now(),
+                    PeriodKey: Year(Now()) * 100 + Month(Now()),
+                    PerformedByID: Coalesce(actor.ID, 0),
+                    PerformedByName: Coalesce(actor.FullName, gblUser.FullName, ""),
+                    PerformedByEmail: Coalesce(actor.Email, User().Email),
+                    PerformedByRole: Coalesce(actor.Role.Value, ""),
+                    Source: {Value: "Power Apps"},
+                    IsSystemAction: false,
+                    ApprovalLevel: Blank(),
+                    CorrelationID: Text(GUID()),
+                    IsSensitive: Coalesce(pSensitive, false)
+                }
+            ),
+            Trace("HRActivityLog write failed: " & FirstError.Message, TraceSeverity.Error),
+            IfError(
+                Refresh(HRActivityLog),
+                Trace("HRActivityLog refresh failed: " & FirstError.Message, TraceSeverity.Warning)
+            )
+        )
+    )
+};
+
+// In-app notification for someone other than the person who performed the HR action.
+
+fnHRNotify(
+    pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
+    pEntity: Text, pItemID: Number, pRecordType: Text
+): Void = {
+    If(
+        And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
+        IfError(
+            Patch(
+                Notifications,
+                Defaults(Notifications),
+                {
+                    Title: Left(pTitle, 255),
+                    Message: Left(pMessage, 500),
+                    IsRead: "false",
+                    Createddate: Now(),
+                    RecipientID: pUserID,
+                    Recipient: {Id: pUserID, Value: pUserName},
+                    RecipientNo: LookUp(Employees, ID = pUserID, EmployeeNumber),
+                    RelatedEntity: {Value: pEntity},
+                    RelatedItemID: pItemID,
+                    RecordType: pRecordType,
+                    Module: {Value: "HR"},
+                    Status: {Value: "Unread"},
+                    Duration: 0,
+                    ReadDate: Blank()
+                }
+            ),
+            Trace("HR notification failed: " & FirstError.Message, TraceSeverity.Warning)
+        )
+    )
+};
