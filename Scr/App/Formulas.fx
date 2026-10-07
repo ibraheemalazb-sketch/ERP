@@ -17,17 +17,11 @@ fxThemeInk(Kind: Text): Text =
         If(gblTheme.Mode = "Dark", "rgb(201,209,217)", "rgb(55,65,81)")
     );
 
-// One icon library. Call fxSvg("Home", fxThemeInk("Primary"), "") from any screen or component.
-// Pass a color in Background when the icon is shown in an Image control. Power Apps paints a transparent SVG black, so the chip color has to be drawn inside the SVG.
+// One icon library. Call fxSvg("Home", fxThemeInk("Primary")) from any screen or component.
 // Add a name here once. Do not LookUp an icon table inside a gallery.
-fxSvg(IconName: Text, Stroke: Text, Background: Text): Text =
+fxSvg(IconName: Text, Stroke: Text): Text =
     "data:image/svg+xml;utf8," & EncodeUrl(
         "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='" & Coalesce(Stroke, "rgb(55,65,81)") & "' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" &
-        If(
-            IsBlank(Background),
-            "",
-            "<rect width='24' height='24' fill='" & Background & "' stroke='none'/>"
-        ) &
         Switch(
             IconName,
             "Home", "<path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/><polyline points='9 22 9 12 15 12 15 22'/>",
