@@ -417,7 +417,8 @@ fnWriteLog(
                         CorrelationID: Text(GUID())
                     }
                 )
-            ),
+            );
+            false,
             Trace("ProcurementActivityLog write failed: " & FirstError.Message, TraceSeverity.Error),
             IfError(
                 Refresh(ProcurementActivityLog),
@@ -484,7 +485,8 @@ fnLogHR(
                     CorrelationID: Text(GUID()),
                     IsSensitive: Coalesce(pSensitive, false)
                 }
-            ),
+            );
+            false,
             Trace("HRActivityLog write failed: " & FirstError.Message, TraceSeverity.Error),
             IfError(
                 Refresh(HRActivityLog),
@@ -503,13 +505,13 @@ fxLeaveApproval(
     pRequesterID: Number, pRequesterName: Text,
     pApproverID: Number, pApproverName: Text, pApproverEmail: Text, pApproverNo: Text,
     pLeaveType: Text, pProjectID: Number, pAssigned: DateTime
-): Record = {
+) = {
     Title: Left(Coalesce(pRequesterName, "") & " - " & Coalesce(pLeaveType, "Leave"), 255),
     RequestItemID: Text(pItemID),
     RequestType: {Value: "Leave Request"},
     Decision: {Value: pDecision},
     Comments: pComments,
-    DecisionDate: If(pDecision = "Pending", Blank(), Now()),
+    DecisionDate: If(pDecision <> "Pending", Now()),
     Approver: {Id: pApproverID, Value: Coalesce(pApproverName, "")},
     Requester: {Id: pRequesterID, Value: Coalesce(pRequesterName, "")},
     ApprovalLevel: {Value: "Level 1"},
@@ -524,12 +526,12 @@ fxLeaveApproval(
     ActionDate: Now(),
     ApproverEmail: pApproverEmail,
     ApproverNo: pApproverNo,
-    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID, Blank()),
-    ApproverID: If(Coalesce(pApproverID, 0) > 0, pApproverID, Blank()),
-    RequesterID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID, Blank()),
+    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID),
+    ApproverID: If(Coalesce(pApproverID, 0) > 0, pApproverID),
+    RequesterID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID),
     Month: Text(Now(), "yyyy-MM"),
     Priority: {Value: "Normal"},
-    RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID, Blank())
+    RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID)
 };
 
 // In-app notification for someone other than the person who performed the HR action.
@@ -560,7 +562,8 @@ fnHRNotify(
                     Duration: 0,
                     ReadDate: Blank()
                 }
-            ),
+            );
+            false,
             Trace("HR notification failed: " & FirstError.Message, TraceSeverity.Warning)
         )
     )
