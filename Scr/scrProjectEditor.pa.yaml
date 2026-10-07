@@ -19,7 +19,31 @@ Screens:
             Clear(colEditorPhases),
             ClearCollect(colEditorActivities, Filter(ProjectsActivities, ProjectID = varSelectedProject.ID));
             ClearCollect(colEditorPhases, Filter(ProjectPhases, ProjectID = varSelectedProject.ID))
-        )
+        );
+        Reset(txtEdProjectTitle); Reset(txtEdProjectCode); Reset(txtEdAgreement); Reset(txtEdDonor); Reset(txtEdFolder);
+        Reset(cmbEdSector); Reset(cmbEdProjectStatus); Reset(cmbEdHealth); Reset(cmbEdDepartment);
+        Reset(cmbEdManager); Reset(cmbEdFinance); Reset(cmbEdMeal); Reset(cmbEdMeal2);
+        Reset(cmbEdGovernorate); Reset(cmbEdDistrict); Reset(dteEdStart); Reset(dteEdEnd);
+        Reset(txtEdBudget); Reset(txtEdBudgetUsed); Reset(txtEdProgress); Reset(txtEdDescription);
+        Reset(cmbEdMemberProject); Reset(cmbEdMemberEmployee); Reset(cmbEdMemberRole);
+        Reset(togEdCanRead); Reset(togEdCanEdit); Reset(togEdCanApprove); Reset(togEdMemberActive);
+        Reset(dteEdMemberStart); Reset(dteEdMemberEnd); Reset(txtEdMemberDeact); Reset(txtEdMemberNotes);
+        Reset(txtEdPhaseTitle); Reset(txtEdPhaseNo); Reset(cmbEdPhaseStatus); Reset(cmbEdPhaseOwner);
+        Reset(dteEdPhasePStart); Reset(dteEdPhasePEnd); Reset(dteEdPhaseAStart); Reset(dteEdPhaseAEnd); Reset(txtEdPhaseDesc);
+        Reset(txtEdPlanTitle);
+        Reset(txtEdActivityTitle); Reset(txtEdActivityCode); Reset(cmbEdActivityType); Reset(cmbEdActivityParent);
+        Reset(cmbEdActivityPhase); Reset(cmbEdActivityOwner); Reset(cmbEdActivityStatus);
+        Reset(txtEdActivityProgress); Reset(txtEdActivityWeight);
+        Reset(dteEdActivityPStart); Reset(dteEdActivityPEnd); Reset(dteEdActivityAStart); Reset(dteEdActivityAEnd); Reset(txtEdActivityDesc);
+        Reset(txtEdTaskTitle); Reset(cmbEdTaskActivity); Reset(cmbEdTaskAssignee); Reset(cmbEdTaskPriority); Reset(cmbEdTaskStatus);
+        Reset(txtEdTaskProgress); Reset(dteEdTaskStart); Reset(dteEdTaskDue); Reset(dteEdTaskRemind);
+        Reset(txtEdTaskHours); Reset(txtEdTaskWeight); Reset(togEdTaskMile); Reset(togEdTaskArchived);
+        Reset(txtEdTaskDesc); Reset(txtEdTaskRemarks);
+        Reset(txtEdRiskTitle); Reset(cmbEdRiskCategory); Reset(cmbEdRiskProb); Reset(cmbEdRiskImpact); Reset(cmbEdRiskTrend);
+        Reset(txtEdRiskResidual); Reset(txtEdRiskCost); Reset(cmbEdRiskOwner); Reset(cmbEdRiskApprover); Reset(cmbEdRiskStatus);
+        Reset(dteEdRiskDate); Reset(dteEdRiskReview); Reset(txtEdRiskTrigger);
+        Reset(txtEdRiskDesc); Reset(txtEdRiskMit); Reset(txtEdRiskCont); Reset(txtEdRiskResp);
+        Reset(cmbEdProjectPick)
     Children:
       - conEdNav:
           Control: GroupContainer@1.5.0
@@ -71,9 +95,12 @@ Screens:
                 Properties:
                   Height: =1
                   OnSelect: |-
-                    =If(
-                        varReturnScreen = "Tasks",
-                        Navigate(scrTasks, ScreenTransition.UnCover),
+                    =Switch(
+                        varReturnScreen,
+                        "Tasks", Navigate(scrTasks, ScreenTransition.UnCover),
+                        "MyTasks", Navigate(scrMyTasks, ScreenTransition.UnCover),
+                        "Activities", Navigate(scrActivities, ScreenTransition.UnCover),
+                        "Risks", Navigate(scrRisks, ScreenTransition.UnCover),
                         Set(
                             varProjectTab,
                             Switch(
@@ -81,6 +108,7 @@ Screens:
                                 "Member", "Members",
                                 "Activity", "Activities",
                                 "Task", "Tasks",
+                                "Risk", "Risks",
                                 Coalesce(varReturnTab, "General")
                             )
                         );
@@ -135,12 +163,13 @@ Screens:
                               {ID: "Phase", Label: If(gblLanguage = "Arabic", "مرحلة", "Phase"), Icon: "Flag"},
                               {ID: "Plan", Label: If(gblLanguage = "Arabic", "خطة", "Plan"), Icon: "Calendar"},
                               {ID: "Activity", Label: If(gblLanguage = "Arabic", "نشاط", "Activity"), Icon: "Flow"},
-                              {ID: "Task", Label: If(gblLanguage = "Arabic", "مهمة", "Task"), Icon: "ClipboardTask"}
+                              {ID: "Task", Label: If(gblLanguage = "Arabic", "مهمة", "Task"), Icon: "ClipboardTask"},
+                              {ID: "Risk", Label: If(gblLanguage = "Arabic", "خطر", "Risk"), Icon: "Warning"}
                           )
                         TemplatePadding: =4
                         TemplateSize: =If(lblEdWide.Text = "wide", 168, 148)
                         Width: =If(lblEdWide.Text = "wide", 180, Parent.Width)
-                        WrapCount: =If(lblEdWide.Text = "wide", 6, 1)
+                        WrapCount: =If(lblEdWide.Text = "wide", 7, 1)
                       Children:
                         - btnEdEntity:
                             Control: ModernButton@1.0.0
@@ -177,6 +206,44 @@ Screens:
                         RadiusTopRight: =gblTheme.Radius.XL
                         Width: =If(lblEdWide.Text = "wide", Parent.Width - 192, Parent.Width)
                       Children:
+                        - cmbEdProjectPick:
+                            Control: ModernCombobox@1.1.2
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                              DefaultSelectedItems: |-
+                                =If(
+                                    Coalesce(varSelectedProject.ID, 0) > 0,
+                                    Filter(Projects, ID = varSelectedProject.ID),
+                                    Filter(Projects, false)
+                                )
+                              Height: =40
+                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "اختر المشروع", "Choose the project")
+                              ItemDisplayText: =If(IsBlank(ThisItem.ProjectCode), ThisItem.Title, ThisItem.ProjectCode & " · " & ThisItem.Title)
+                              Items: |-
+                                =If(
+                                    varUserHasAllProjects,
+                                    Projects,
+                                    Filter(
+                                        ForAll(
+                                            Filter(colUserProjectAccess, AllProjects = false) As access,
+                                            LookUp(Projects, ID = access.ProjectID)
+                                        ),
+                                        Not(IsBlank(ID))
+                                    )
+                                )
+                              OnChange: |-
+                                =If(
+                                    Not(IsBlank(cmbEdProjectPick.Selected)),
+                                    Set(varSelectedProject, cmbEdProjectPick.Selected);
+                                    ClearCollect(colEditorActivities, Filter(ProjectsActivities, ProjectID = cmbEdProjectPick.Selected.ID));
+                                    ClearCollect(colEditorPhases, Filter(ProjectPhases, ProjectID = cmbEdProjectPick.Selected.ID));
+                                    Reset(cmbEdActivityParent);
+                                    Reset(cmbEdActivityPhase);
+                                    Reset(cmbEdTaskActivity)
+                                )
+                              SelectMultiple: =false
+                              Visible: =Or(varEditorEntity = "Phase", varEditorEntity = "Plan", varEditorEntity = "Activity", varEditorEntity = "Task", varEditorEntity = "Risk")
+                              Width: =Parent.Width
                         - conEdProject:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
@@ -711,6 +778,37 @@ Screens:
                                                             If(
                                                                 IsBlank(varEdSaved),
                                                                 Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                                If(
+                                                                    And(
+                                                                        Not(IsBlank(cmbEdManager.Selected)),
+                                                                        Or(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingProject)),
+                                                                            cmbEdManager.Selected.ID <> Coalesce(varEditingProject.ProjectManagerID, varEditingProject.ManagerID, 0)
+                                                                        )
+                                                                    ),
+                                                                    fnProjNotify(
+                                                                        cmbEdManager.Selected.ID,
+                                                                        cmbEdManager.Selected.FullName,
+                                                                        varEdSaved.Title,
+                                                                        If(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingProject)),
+                                                                            If(gblLanguage = "Arabic", "عُيّنت مديراً لمشروع.", "You were assigned as project manager."),
+                                                                            If(gblLanguage = "Arabic", "أُعيد تعيينك مديراً لمشروع.", "You were reassigned as project manager.")
+                                                                        ),
+                                                                        "Project",
+                                                                        varEdSaved.ID,
+                                                                        "Project"
+                                                                    )
+                                                                );
+                                                                fnProjLog(
+                                                                    "Project: " & varEdSaved.Title,
+                                                                    varEdSaved.ID,
+                                                                    Coalesce(varEdSaved.ProjectCode, varEdSaved.Title, ""),
+                                                                    "Project",
+                                                                    varEdSaved.ID,
+                                                                    If(Or(varEditorMode = "New", IsBlank(varEditingProject)), "Created", "Updated"),
+                                                                    Coalesce(varEdSaved.Status.Value, "")
+                                                                );
                                                                 Set(varSelectedProject, varEdSaved);
                                                                 Set(varEditingProject, varEdSaved);
                                                                 If(
@@ -1015,6 +1113,37 @@ Screens:
                                                     If(
                                                         IsBlank(varEdSaved),
                                                         Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                        If(
+                                                            And(
+                                                                Not(IsBlank(cmbEdMemberEmployee.Selected)),
+                                                                Or(
+                                                                    Or(varEditorMode = "New", IsBlank(varEditingMember)),
+                                                                    cmbEdMemberEmployee.Selected.ID <> Coalesce(varEditingMember.EmployeeID, 0)
+                                                                )
+                                                            ),
+                                                            fnProjNotify(
+                                                                cmbEdMemberEmployee.Selected.ID,
+                                                                cmbEdMemberEmployee.Selected.FullName,
+                                                                Coalesce(varEdSaved.Title, cmbEdMemberEmployee.Selected.FullName),
+                                                                If(
+                                                                    Or(varEditorMode = "New", IsBlank(varEditingMember)),
+                                                                    If(gblLanguage = "Arabic", "أُضيفت إلى مشروع.", "You were added to a project."),
+                                                                    If(gblLanguage = "Arabic", "تغيّرت عضويتك في مشروع.", "Your project membership changed.")
+                                                                ),
+                                                                "Member",
+                                                                varEdSaved.ID,
+                                                                "Member"
+                                                            )
+                                                        );
+                                                        fnProjLog(
+                                                            "Member: " & Coalesce(varEdSaved.Title, cmbEdMemberEmployee.Selected.FullName, ""),
+                                                            cmbEdMemberProject.Selected.ID,
+                                                            Coalesce(cmbEdMemberProject.Selected.ProjectCode, cmbEdMemberProject.Selected.Title, ""),
+                                                            "Member",
+                                                            varEdSaved.ID,
+                                                            If(Or(varEditorMode = "New", IsBlank(varEditingMember)), "Created", "Updated"),
+                                                            Coalesce(cmbEdMemberRole.Selected.Title, "")
+                                                        );
                                                         Set(varSelectedMember, varEdSaved);
                                                         Set(varSelectedProject, LookUp(Projects, ID = cmbEdMemberProject.Selected.ID));
                                                         If(
@@ -1242,6 +1371,37 @@ Screens:
                                                     If(
                                                         IsBlank(varEdSaved),
                                                         Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                        If(
+                                                            And(
+                                                                Not(IsBlank(cmbEdPhaseOwner.Selected)),
+                                                                Or(
+                                                                    Or(varEditorMode = "New", IsBlank(varEditingPhase)),
+                                                                    cmbEdPhaseOwner.Selected.ID <> Coalesce(varEditingPhase.ResponsiblePersonID, 0)
+                                                                )
+                                                            ),
+                                                            fnProjNotify(
+                                                                cmbEdPhaseOwner.Selected.ID,
+                                                                cmbEdPhaseOwner.Selected.FullName,
+                                                                varEdSaved.Title,
+                                                                If(
+                                                                    Or(varEditorMode = "New", IsBlank(varEditingPhase)),
+                                                                    If(gblLanguage = "Arabic", "أُسندت إليك مرحلة.", "A phase was assigned to you."),
+                                                                    If(gblLanguage = "Arabic", "أُعيد إسناد مرحلة إليك.", "A phase was reassigned to you.")
+                                                                ),
+                                                                "Phase",
+                                                                varEdSaved.ID,
+                                                                "Phase"
+                                                            )
+                                                        );
+                                                        fnProjLog(
+                                                            "Phase: " & varEdSaved.Title,
+                                                            varSelectedProject.ID,
+                                                            Coalesce(varSelectedProject.Title, ""),
+                                                            "Phase",
+                                                            varEdSaved.ID,
+                                                            If(Or(varEditorMode = "New", IsBlank(varEditingPhase)), "Created", "Updated"),
+                                                            Coalesce(varEdSaved.Status.Value, "")
+                                                        );
                                                         Set(varEditingPhase, varEdSaved);
                                                         ClearCollect(colEditorPhases, Filter(ProjectPhases, ProjectID = varSelectedProject.ID));
                                                         Select(btnEdReturn)
@@ -1369,6 +1529,15 @@ Screens:
                                                 If(
                                                     IsBlank(varEdSaved),
                                                     Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                    fnProjLog(
+                                                        "Plan: " & varEdSaved.Title,
+                                                        varSelectedProject.ID,
+                                                        Coalesce(varSelectedProject.Title, ""),
+                                                        "Plan",
+                                                        varEdSaved.ID,
+                                                        If(Or(varEditorMode = "New", IsBlank(varEditingPlan)), "Created", "Updated"),
+                                                        ""
+                                                    );
                                                     Set(varEditingPlan, varEdSaved);
                                                     Select(btnEdReturn)
                                                 )
@@ -1630,9 +1799,18 @@ Screens:
                                           OnSelect: |-
                                             =If(
                                                 Confirm(If(gblLanguage = "Arabic", "حذف هذا النشاط؟", "Delete this activity?")),
+                                                fnProjLog(
+                                                    "Activity: " & Coalesce(varEditingActivity.Title, ""),
+                                                    Coalesce(varEditingActivity.ProjectID, varSelectedProject.ID, 0),
+                                                    Coalesce(varSelectedProject.Title, varEditingActivity.Project.Value, ""),
+                                                    "Activity",
+                                                    varEditingActivity.ID,
+                                                    "Deleted",
+                                                    ""
+                                                );
                                                 Remove(ProjectsActivities, LookUp(ProjectsActivities, ID = varEditingActivity.ID));
                                                 Set(varSelectedActivity, Blank());
-                                                Set(varEditingActivity, Blank());
+                                                Set(varEditingActivity, "");
                                                 Select(btnEdReturn)
                                             )
                                           Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
@@ -1697,6 +1875,37 @@ Screens:
                                                             If(
                                                                 IsBlank(varEdSaved),
                                                                 Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                                If(
+                                                                    And(
+                                                                        Not(IsBlank(cmbEdActivityOwner.Selected)),
+                                                                        Or(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingActivity)),
+                                                                            cmbEdActivityOwner.Selected.ID <> Coalesce(varEditingActivity.ResponsiblePersonID, 0)
+                                                                        )
+                                                                    ),
+                                                                    fnProjNotify(
+                                                                        cmbEdActivityOwner.Selected.ID,
+                                                                        cmbEdActivityOwner.Selected.FullName,
+                                                                        varEdSaved.Title,
+                                                                        If(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingActivity)),
+                                                                            If(gblLanguage = "Arabic", "أُسند إليك نشاط.", "An activity was assigned to you."),
+                                                                            If(gblLanguage = "Arabic", "أُعيد إسناد نشاط إليك.", "An activity was reassigned to you.")
+                                                                        ),
+                                                                        "Activity",
+                                                                        varEdSaved.ID,
+                                                                        "Activity"
+                                                                    )
+                                                                );
+                                                                fnProjLog(
+                                                                    "Activity: " & varEdSaved.Title,
+                                                                    varSelectedProject.ID,
+                                                                    Coalesce(varSelectedProject.Title, ""),
+                                                                    "Activity",
+                                                                    varEdSaved.ID,
+                                                                    If(Or(varEditorMode = "New", IsBlank(varEditingActivity)), "Created", "Updated"),
+                                                                    Coalesce(varEdSaved.Status.Value, "")
+                                                                );
                                                                 Set(varSelectedActivity, varEdSaved);
                                                                 Set(varEditingActivity, varEdSaved);
                                                                 Select(btnEdReturn)
@@ -1778,7 +1987,20 @@ Screens:
                                   Control: ModernCombobox@1.1.2
                                   Properties:
                                     AccessibleLabel: =If(gblLanguage = "Arabic", "النشاط الفرعي", "Sub activity")
-                                    DefaultSelectedItems: =If(Not(IsBlank(varParentActivity)), Filter(colEditorActivities, ID = varParentActivity.ID), If(Or(varEditorMode = "New", IsBlank(varEditingTask)), Filter(colEditorActivities, false), Filter(colEditorActivities, ID = Coalesce(varEditingTask.ActivityID, varEditingTask.Activity.Id))))
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          Coalesce(varTkPresetActivityID, 0) > 0,
+                                          Filter(colEditorActivities, ID = varTkPresetActivityID),
+                                          If(
+                                              Not(IsBlank(varParentActivity)),
+                                              Filter(colEditorActivities, ID = varParentActivity.ID),
+                                              If(
+                                                  Or(varEditorMode = "New", IsBlank(varEditingTask)),
+                                                  Filter(colEditorActivities, false),
+                                                  Filter(colEditorActivities, ID = Coalesce(varEditingTask.ActivityID, varEditingTask.Activity.Id))
+                                              )
+                                          )
+                                      )
                                     Height: =40
                                     InputTextPlaceholder: =If(gblLanguage = "Arabic", "النشاط الفرعي", "Sub activity")
                                     IsSearchable: =true
@@ -2027,11 +2249,574 @@ Screens:
                                                             If(
                                                                 IsBlank(varEdSaved),
                                                                 Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                                If(
+                                                                    And(
+                                                                        Not(IsBlank(cmbEdTaskAssignee.Selected)),
+                                                                        Or(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingTask)),
+                                                                            cmbEdTaskAssignee.Selected.ID <> Coalesce(varEditingTask.AssignedToID, 0)
+                                                                        )
+                                                                    ),
+                                                                    fnProjNotify(
+                                                                        cmbEdTaskAssignee.Selected.ID,
+                                                                        cmbEdTaskAssignee.Selected.FullName,
+                                                                        varEdSaved.Title,
+                                                                        If(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingTask)),
+                                                                            If(gblLanguage = "Arabic", "أُسندت إليك مهمة.", "A task was assigned to you."),
+                                                                            If(gblLanguage = "Arabic", "أُعيد إسناد مهمة إليك.", "A task was reassigned to you.")
+                                                                        ),
+                                                                        "Task",
+                                                                        varEdSaved.ID,
+                                                                        "Task"
+                                                                    )
+                                                                );
+                                                                fnProjLog(
+                                                                    "Task: " & varEdSaved.Title,
+                                                                    varSelectedProject.ID,
+                                                                    Coalesce(varSelectedProject.ProjectCode, varSelectedProject.Title, ""),
+                                                                    "Task",
+                                                                    varEdSaved.ID,
+                                                                    If(Or(varEditorMode = "New", IsBlank(varEditingTask)), "Created", "Updated"),
+                                                                    Coalesce(varEdSaved.Status.Value, "")
+                                                                );
                                                                 Set(varSelectedTask, varEdSaved);
                                                                 Set(varEditingTask, varEdSaved);
                                                                 Set(varTask, varEdSaved);
                                                                 If(varReturnScreen = "Tasks", Set(gblSelectedTaskID, varEdSaved.ID));
                                                                 Select(btnEdReturn)
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                          Text: =If(gblLanguage = "Arabic", "حفظ", "Save")
+                                          Width: =100
+                        - conEdRisk:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =2280
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =8
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Visible: =varEditorEntity = "Risk"
+                              Width: =Parent.Width
+                            Children:
+                              - conEdRkHead:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =36
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    Width: =Parent.Width
+                                  Children:
+                                    - imgEdRkHead:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =22
+                                          Image: =fxSvg("Warning", fxThemeInk("Primary"))
+                                          Width: =22
+                                    - lblEdRkHead:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          FillPortions: =1
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =28
+                                          Size: =16
+                                          Text: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), If(gblLanguage = "Arabic", "خطر جديد", "New risk"), If(gblLanguage = "Arabic", "تعديل الخطر", "Edit risk"))
+                                          Width: =200
+                                    - lblEdRkLevel:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: |-
+                                            =fxToneInk(
+                                                With(
+                                                    {sc: Switch(cmbEdRiskProb.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0) * Switch(cmbEdRiskImpact.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0)},
+                                                    If(sc >= 6, "danger", If(sc >= 3, "warning", "muted"))
+                                                )
+                                            )
+                                          Fill: |-
+                                            =fxToneFill(
+                                                With(
+                                                    {sc: Switch(cmbEdRiskProb.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0) * Switch(cmbEdRiskImpact.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0)},
+                                                    If(sc >= 6, "danger", If(sc >= 3, "warning", "muted"))
+                                                )
+                                            )
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =26
+                                          RadiusBottomLeft: =gblTheme.Radius.Round
+                                          RadiusBottomRight: =gblTheme.Radius.Round
+                                          RadiusTopLeft: =gblTheme.Radius.Round
+                                          RadiusTopRight: =gblTheme.Radius.Round
+                                          Size: =11
+                                          Text: |-
+                                            =With(
+                                                {
+                                                    sc: Switch(cmbEdRiskProb.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0) * Switch(cmbEdRiskImpact.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0)
+                                                },
+                                                If(
+                                                    sc = 0,
+                                                    "-",
+                                                    If(gblLanguage = "Arabic", "الدرجة ", "Score ") & sc & " · " & If(sc >= 9, If(gblLanguage = "Arabic", "حرج", "Critical"), sc >= 6, If(gblLanguage = "Arabic", "مرتفع", "High"), sc >= 3, If(gblLanguage = "Arabic", "متوسط", "Medium"), If(gblLanguage = "Arabic", "منخفض", "Low"))
+                                                )
+                                            )
+                                          Width: =180
+                              - lblEdRiskProject:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =24
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "المشروع ", "Project ") & Coalesce(varSelectedProject.Title, "-")
+                                    Width: =Parent.Width
+                              - conEdRkSec1:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =28
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    Width: =Parent.Width
+                                  Children:
+                                    - imgEdRkSec1:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("File", fxThemeInk("Primary"))
+                                          Width: =18
+                                    - lblEdRkSec1:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =24
+                                          Text: =If(gblLanguage = "Arabic", "الأساسيات", "Basics")
+                                          Width: =240
+                              - txtEdRiskTitle:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "عنوان الخطر", "Risk title")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "", Coalesce(varEditingRisk.Title, ""))
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "عنوان الخطر", "Risk title")
+                                    Width: =Parent.Width
+                              - cmbEdRiskCategory:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الفئة", "Category")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Filter(Choices(Risks.Category), false), Filter(Choices(Risks.Category), Value = varEditingRisk.Category.Value))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الفئة", "Category")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(Risks.Category)
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - conEdRkSec2:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =28
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    Width: =Parent.Width
+                                  Children:
+                                    - imgEdRkSec2:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("Layers", fxThemeInk("Primary"))
+                                          Width: =18
+                                    - lblEdRkSec2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =24
+                                          Text: =If(gblLanguage = "Arabic", "التقييم", "Assessment")
+                                          Width: =240
+                              - cmbEdRiskProb:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الاحتمالية", "Probability")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Filter(Choices(Risks.Probability), Value = "Low"), Filter(Choices(Risks.Probability), Value = varEditingRisk.Probability.Value))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الاحتمالية", "Probability")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(Risks.Probability)
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbEdRiskImpact:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الأثر", "Impact")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Filter(Choices(Risks.Impact), Value = "Low"), Filter(Choices(Risks.Impact), Value = varEditingRisk.Impact.Value))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الأثر", "Impact")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(Risks.Impact)
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbEdRiskTrend:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الاتجاه", "Trend")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Filter(Choices(Risks.Trend), Value = "Stable"), Filter(Choices(Risks.Trend), Value = varEditingRisk.Trend.Value))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الاتجاه", "Trend")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(Risks.Trend)
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - txtEdRiskResidual:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الأثر المتبقي", "Residual impact")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk), IsBlank(varEditingRisk.ResidualImpact)), "", Text(varEditingRisk.ResidualImpact))
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "الأثر المتبقي", "Residual impact")
+                                    Width: =Parent.Width
+                              - txtEdRiskCost:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "التكلفة التقديرية", "Estimated cost")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk), IsBlank(varEditingRisk.EstimatedCost)), "", Text(varEditingRisk.EstimatedCost))
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "التكلفة التقديرية", "Estimated cost")
+                                    Width: =Parent.Width
+                              - conEdRkSec3:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =28
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    Width: =Parent.Width
+                                  Children:
+                                    - imgEdRkSec3:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("People", fxThemeInk("Primary"))
+                                          Width: =18
+                                    - lblEdRkSec3:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =24
+                                          Text: =If(gblLanguage = "Arabic", "الملكية والتواريخ", "Ownership and dates")
+                                          Width: =240
+                              - cmbEdRiskOwner:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "مسؤول الخطر", "Risk owner")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Filter(Employees, ID = Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)), Filter(Employees, ID = Coalesce(varEditingRisk.OwnerID, varEditingRisk.Owner.Id)))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "مسؤول الخطر", "Risk owner")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =Filter(Employees, Status.Value = "Active")
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbEdRiskApprover:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المعتمد", "Approver")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk), Coalesce(varEditingRisk.ApproverID, 0) = 0), Filter(Employees, false), Filter(Employees, ID = varEditingRisk.ApproverID))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "المعتمد", "Approver")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =Filter(Employees, Status.Value = "Active")
+                                    SelectMultiple: =false
+                                    Width: =Parent.Width
+                              - cmbEdRiskStatus:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    DefaultSelectedItems: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Filter(Choices(Risks.Status), Value = "Identified"), Filter(Choices(Risks.Status), Value = varEditingRisk.Status.Value))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.Value
+                                    Items: =Choices(Risks.Status)
+                                    SelectMultiple: =false
+                                    Visible: =And(varEditorMode = "Edit", Not(IsBlank(varEditingRisk)))
+                                    Width: =Parent.Width
+                              - dteEdRiskDate:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Today(), varEditingRisk.RiskDate)
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "تاريخ الخطر", "Risk date")
+                                    Width: =Parent.Width
+                              - dteEdRiskReview:
+                                  Control: ModernDatePicker@1.0.2
+                                  Properties:
+                                    DefaultDate: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), DateAdd(Today(), 30, TimeUnit.Days), varEditingRisk.ReviewDate)
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "تاريخ المراجعة", "Review date")
+                                    Width: =Parent.Width
+                              - txtEdRiskTrigger:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "مؤشر التحفيز", "Trigger indicator")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "", Coalesce(varEditingRisk.TriggerIndicator, ""))
+                                    Height: =40
+                                    Placeholder: =If(gblLanguage = "Arabic", "مؤشر التحفيز", "Trigger indicator")
+                                    Width: =Parent.Width
+                              - conEdRkSec4:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =28
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    Width: =Parent.Width
+                                  Children:
+                                    - imgEdRkSec4:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =18
+                                          Image: =fxSvg("FileText", fxThemeInk("Primary"))
+                                          Width: =18
+                                    - lblEdRkSec4:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("Primary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =24
+                                          Text: =If(gblLanguage = "Arabic", "الوصف والخطط", "Description and plans")
+                                          Width: =240
+                              - lblEdRiskDesc:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "وصف الخطر", "Risk description")
+                                    Width: =Parent.Width
+                              - txtEdRiskDesc:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "وصف الخطر", "Risk description")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "", Coalesce(varEditingRisk.RiskDescription, ""))
+                                    Height: =160
+                                    Placeholder: =If(gblLanguage = "Arabic", "اكتب وصفاً تفصيلياً للخطر", "Write a detailed description of the risk")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - lblEdRiskMit:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "خطة المعالجة", "Mitigation")
+                                    Width: =Parent.Width
+                              - txtEdRiskMit:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "خطة المعالجة", "Mitigation")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "", Coalesce(varEditingRisk.Mitigation, ""))
+                                    Height: =160
+                                    Placeholder: =If(gblLanguage = "Arabic", "ما الإجراءات التي تقلل الاحتمالية أو الأثر؟", "What actions reduce the probability or the impact?")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - lblEdRiskCont:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "خطة الطوارئ", "Contingency plan")
+                                    Width: =Parent.Width
+                              - txtEdRiskCont:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "خطة الطوارئ", "Contingency plan")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "", Coalesce(varEditingRisk.ContingencyPlan, ""))
+                                    Height: =160
+                                    Placeholder: =If(gblLanguage = "Arabic", "ماذا تفعل إذا تحقق الخطر؟", "What will you do if the risk happens?")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - lblEdRiskResp:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextSecondary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    Size: =12
+                                    Text: =If(gblLanguage = "Arabic", "الاستجابة", "Response")
+                                    Width: =Parent.Width
+                              - txtEdRiskResp:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الاستجابة", "Response")
+                                    Default: =If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "", Coalesce(varEditingRisk.Response, ""))
+                                    Height: =160
+                                    Placeholder: =If(gblLanguage = "Arabic", "تجنب، تخفيف، نقل، أو قبول", "Avoid, mitigate, transfer, or accept")
+                                    Type: =TextInputType.Multiline
+                                    Width: =Parent.Width
+                              - conEdRiskActions:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =44
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =8
+                                    LayoutJustifyContent: =LayoutJustifyContent.End
+                                    Width: =Parent.Width
+                                  Children:
+                                    - btnEdRiskCancel:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Subtle
+                                          Height: =36
+                                          Icon: ="Dismiss"
+                                          OnSelect: =Select(btnEdReturn)
+                                          Text: =If(gblLanguage = "Arabic", "إلغاء", "Cancel")
+                                          Width: =100
+                                    - btnEdRiskSave:
+                                        Control: ModernButton@1.0.0
+                                        Properties:
+                                          Appearance: =ButtonAppearance.Primary
+                                          Height: =36
+                                          Icon: ="Save"
+                                          OnSelect: |-
+                                            =With(
+                                                {
+                                                    pn: Switch(cmbEdRiskProb.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0),
+                                                    im: Switch(cmbEdRiskImpact.Selected.Value, "High", 3, "Medium", 2, "Low", 1, 0)
+                                                },
+                                                With(
+                                                    {sc: pn * im},
+                                                    If(
+                                                        Or(IsBlank(varSelectedProject), IsBlank(Trim(txtEdRiskTitle.Text)), IsBlank(cmbEdRiskCategory.Selected), pn = 0, im = 0, IsBlank(cmbEdRiskOwner.Selected)),
+                                                        Notify(If(gblLanguage = "Arabic", "العنوان والفئة والاحتمالية والأثر والمسؤول والمشروع مطلوبة", "Title, category, probability, impact, owner, and project are required"), NotificationType.Warning),
+                                                        If(
+                                                            And(Not(IsBlank(dteEdRiskReview.SelectedDate)), Not(IsBlank(dteEdRiskDate.SelectedDate)), dteEdRiskReview.SelectedDate < dteEdRiskDate.SelectedDate),
+                                                            Notify(If(gblLanguage = "Arabic", "المراجعة قبل تاريخ الخطر", "Review date is before the risk date"), NotificationType.Warning),
+                                                            If(
+                                                                Or(
+                                                                    And(Not(IsBlank(Trim(txtEdRiskResidual.Text))), Not(IsNumeric(txtEdRiskResidual.Text))),
+                                                                    And(Not(IsBlank(Trim(txtEdRiskCost.Text))), Not(IsNumeric(txtEdRiskCost.Text)))
+                                                                ),
+                                                                Notify(If(gblLanguage = "Arabic", "الأثر المتبقي والتكلفة يجب أن يكونا رقمين", "Residual impact and cost must be numbers"), NotificationType.Warning),
+                                                                Set(
+                                                                    varEdSaved,
+                                                                    IfError(
+                                                                        Patch(
+                                                                            Risks,
+                                                                            If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), Defaults(Risks), LookUp(Risks, ID = varEditingRisk.ID)),
+                                                                            {
+                                                                                Title: Trim(txtEdRiskTitle.Text),
+                                                                                Project: {Id: varSelectedProject.ID, Value: varSelectedProject.Title},
+                                                                                ProjectID: varSelectedProject.ID,
+                                                                                Category: {Value: cmbEdRiskCategory.Selected.Value},
+                                                                                Probability: {Value: cmbEdRiskProb.Selected.Value},
+                                                                                Impact: {Value: cmbEdRiskImpact.Selected.Value},
+                                                                                Score: sc,
+                                                                                Level: {Value: If(sc >= 9, "Critical", sc >= 6, "High", sc >= 3, "Medium", "Low")},
+                                                                                Mitigation: txtEdRiskMit.Text,
+                                                                                ContingencyPlan: txtEdRiskCont.Text,
+                                                                                Response: txtEdRiskResp.Text,
+                                                                                RiskDescription: txtEdRiskDesc.Text,
+                                                                                TriggerIndicator: Trim(txtEdRiskTrigger.Text),
+                                                                                EstimatedCost: If(IsBlank(Trim(txtEdRiskCost.Text)), Blank(), Value(txtEdRiskCost.Text)),
+                                                                                ResidualImpact: If(IsBlank(Trim(txtEdRiskResidual.Text)), Blank(), Value(txtEdRiskResidual.Text)),
+                                                                                Trend: {Value: Coalesce(cmbEdRiskTrend.Selected.Value, "Stable")},
+                                                                                Owner: {Id: cmbEdRiskOwner.Selected.ID, Value: cmbEdRiskOwner.Selected.FullName},
+                                                                                OwnerID: cmbEdRiskOwner.Selected.ID,
+                                                                                Approver: If(IsBlank(cmbEdRiskApprover.Selected), Blank(), {Id: cmbEdRiskApprover.Selected.ID, Value: cmbEdRiskApprover.Selected.FullName}),
+                                                                                ApproverID: If(IsBlank(cmbEdRiskApprover.Selected), Blank(), cmbEdRiskApprover.Selected.ID),
+                                                                                Status: {Value: If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "Identified", Coalesce(cmbEdRiskStatus.Selected.Value, "Identified"))},
+                                                                                RiskDate: dteEdRiskDate.SelectedDate,
+                                                                                ReviewDate: dteEdRiskReview.SelectedDate
+                                                                            }
+                                                                        ),
+                                                                        Blank()
+                                                                    )
+                                                                );
+                                                                If(
+                                                                    IsBlank(varEdSaved),
+                                                                    Notify(If(gblLanguage = "Arabic", "تعذر الحفظ", "Could not save"), NotificationType.Error),
+                                                                    If(
+                                                                        Or(
+                                                                            Or(varEditorMode = "New", IsBlank(varEditingRisk)),
+                                                                            cmbEdRiskOwner.Selected.ID <> Coalesce(varEditingRisk.OwnerID, 0)
+                                                                        ),
+                                                                        fnProjNotify(
+                                                                            cmbEdRiskOwner.Selected.ID,
+                                                                            cmbEdRiskOwner.Selected.FullName,
+                                                                            varEdSaved.Title,
+                                                                            If(
+                                                                                Or(varEditorMode = "New", IsBlank(varEditingRisk)),
+                                                                                If(gblLanguage = "Arabic", "أُسند إليك خطر.", "A risk was assigned to you."),
+                                                                                If(gblLanguage = "Arabic", "أُعيد إسناد خطر إليك.", "A risk was reassigned to you.")
+                                                                            ),
+                                                                            "Risk",
+                                                                            varEdSaved.ID,
+                                                                            "Risk"
+                                                                        )
+                                                                    );
+                                                                    fnProjLog(
+                                                                        "Risk: " & varEdSaved.Title,
+                                                                        varSelectedProject.ID,
+                                                                        Coalesce(varSelectedProject.Title, ""),
+                                                                        "Risk",
+                                                                        varEdSaved.ID,
+                                                                        If(Or(varEditorMode = "New", IsBlank(varEditingRisk)), "Created", "Updated"),
+                                                                        "Score " & sc
+                                                                    );
+                                                                    Set(varSelectedRisk, varEdSaved);
+                                                                    Set(varEditingRisk, varEdSaved);
+                                                                    Set(gblSelectedRiskID, varEdSaved.ID);
+                                                                    Select(btnEdReturn)
+                                                                )
                                                             )
                                                         )
                                                     )

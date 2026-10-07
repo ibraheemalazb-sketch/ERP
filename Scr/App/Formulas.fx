@@ -534,6 +534,81 @@ fxLeaveApproval(
     RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID)
 };
 
+// Project activity log. The programs home reads Date, ProjectID, PerformedByID,
+// PerformedBy, RelatedEntity, RelatedItemId, ActionType, and Details.
+
+fnProjLog(
+    pTitle: Text, pProjectID: Number, pProjectName: Text,
+    pEntity: Text, pItemID: Number, pAction: Text, pDetails: Text
+): Void = {
+    With(
+        {
+            actor: If(
+                Coalesce(gblCurrentEmployee.ID, 0) > 0,
+                gblCurrentEmployee,
+                LookUp(Employees, Email = User().Email)
+            )
+        },
+        IfError(
+            Patch(
+                ProjectActivityLog,
+                Defaults(ProjectActivityLog),
+                {
+                    Title: Left(pTitle, 255),
+                    Date: Now(),
+                    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID, Blank()),
+                    PerformedByID: Coalesce(actor.ID, 0),
+                    PerformedBy: {Id: Coalesce(actor.ID, 0), Value: Coalesce(actor.FullName, gblUser.FullName, "")},
+                    RelatedEntity: {Value: pEntity},
+                    RelatedItemId: pItemID,
+                    ActionType: {Value: pAction},
+                    Details: Left(
+                        Coalesce(pProjectName, "") & If(Len(Trim(Coalesce(pDetails, ""))) > 0, " · " & pDetails, ""),
+                        500
+                    )
+                }
+            );
+            false,
+            Trace("ProjectActivityLog write failed: " & FirstError.Message, TraceSeverity.Warning)
+        )
+    )
+};
+
+// In-app notice for a project assignment. Skips the person who performed the action.
+
+fnProjNotify(
+    pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
+    pEntity: Text, pItemID: Number, pRecordType: Text
+): Void = {
+    If(
+        And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
+        IfError(
+            Patch(
+                Notifications,
+                Defaults(Notifications),
+                {
+                    Title: Left(pTitle, 255),
+                    Message: Left(pMessage, 500),
+                    IsRead: "false",
+                    Createddate: Now(),
+                    RecipientID: pUserID,
+                    Recipient: {Id: pUserID, Value: pUserName},
+                    RecipientNo: LookUp(Employees, ID = pUserID, EmployeeNumber),
+                    RelatedEntity: {Value: pEntity},
+                    RelatedItemID: pItemID,
+                    RecordType: pRecordType,
+                    Module: {Value: "Projects"},
+                    Status: {Value: "Unread"},
+                    Duration: 0,
+                    ReadDate: Blank()
+                }
+            );
+            false,
+            Trace("Project notification failed: " & FirstError.Message, TraceSeverity.Warning)
+        )
+    )
+};
+
 // In-app notification for someone other than the person who performed the HR action.
 
 fnHRNotify(
