@@ -49,28 +49,74 @@ Screens:
         Set(varOnTrackProjects, CountIf(colProjectScope, HealthStatus.Value = "On Track"));
         Set(varDelayedProjects, CountIf(colProjectScope, HealthStatus.Value = "Delayed"));
         Set(varPlanedProjects, CountIf(colProjectScope, Status.Value = "Planed"));
+        If(IsBlank(varProjectKpiOpen), Set(varProjectKpiOpen, true));
         Clear(colProjectActivityRaw);
         If(
-            varUserHasAllProjects,
-            Collect(
-                colProjectActivityRaw,
-                FirstN(
-                    SortByColumns(ProjectActivityLog, "Created", SortOrder.Descending),
-                    20
-                )
-            ),
-            ForAll(
-                colUserProjectIDs As access,
+            Not(Coalesce(LookUp(colUserPermissions, Module.Value = "Projects").CanRead, false)),
+            Clear(colProjectActivityRaw),
+            Switch(
+                Coalesce(varProgramScope, "Project"),
+                "All",
                 Collect(
                     colProjectActivityRaw,
-                    Filter(ProjectActivityLog, Project.Id = access.ProjectID)
+                    FirstN(SortByColumns(ProjectActivityLog, "Date", SortOrder.Descending), 20)
+                ),
+                "Own",
+                Collect(
+                    colProjectActivityRaw,
+                    FirstN(
+                        SortByColumns(
+                            Filter(
+                                ProjectActivityLog,
+                                PerformedBy.Id = Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)
+                            ),
+                            "Date",
+                            SortOrder.Descending
+                        ),
+                        20
+                    )
+                ),
+                If(
+                    varUserHasAllProjects,
+                    Collect(
+                        colProjectActivityRaw,
+                        FirstN(SortByColumns(ProjectActivityLog, "Date", SortOrder.Descending), 20)
+                    ),
+                    ForAll(
+                        colUserProjectIDs As access,
+                        Collect(
+                            colProjectActivityRaw,
+                            FirstN(
+                                SortByColumns(
+                                    Filter(ProjectActivityLog, Project.Id = access.ProjectID),
+                                    "Date",
+                                    SortOrder.Descending
+                                ),
+                                20
+                            )
+                        )
+                    );
+                    If(
+                        And(CountRows(colProjectActivityRaw) = 0, !IsBlank(gblSProject.ID)),
+                        Collect(
+                            colProjectActivityRaw,
+                            FirstN(
+                                SortByColumns(
+                                    Filter(ProjectActivityLog, Project.Id = gblSProject.ID),
+                                    "Date",
+                                    SortOrder.Descending
+                                ),
+                                20
+                            )
+                        )
+                    )
                 )
             )
         );
         Clear(colProjectActivityFeed);
         ForAll(
             FirstN(
-                SortByColumns(colProjectActivityRaw, "Created", SortOrder.Descending),
+                SortByColumns(colProjectActivityRaw, "Date", SortOrder.Descending),
                 20
             ) As log,
             Collect(
@@ -83,38 +129,171 @@ Screens:
                     Title: Coalesce(log.RelatedEntity.Value, "") & " · " & Coalesce(log.ActionType.Value, ""),
                     Description: Coalesce(log.Details, ""),
                     ActorName: Coalesce(log.PerformedBy.Value, ""),
-                    ActivityDate: log.Created,
+                    ActivityDate: Coalesce(log.Date, log.Created),
                     RecordType: Coalesce(log.RelatedEntity.Value, ""),
                     RecordID: Coalesce(log.RelatedItemId, 0),
                     Status: Coalesce(log.ActionType.Value, ""),
-                    Icon: "Activity",
+                    Icon: Switch(
+                        log.RelatedEntity.Value,
+                        "Task", "Grid",
+                        "Activity", "Activity",
+                        "Risk", "Warning",
+                        "Member", "Users",
+                        "Project", "Box",
+                        "Activity"
+                    ),
                     ProjectId: log.Project.Id
                 }
             )
         )
     Children:
+      - cmpProjectTopBar:
+          Control: CanvasComponent
+          ComponentName: cmpTopBar
+          Properties:
+            Fill: |-
+              =If(
+                  gblTheme.Mode = "Dark",
+                  gblTheme.Dark.Colors.Background,
+                  gblTheme.Light.Colors.Background
+              )
+            Y: =0
+            ActionsVisible: =true
+            BadgeColor: =
+            BadgeCount: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              )
+            FontSizeTitle: =
+            HasNotifications: |-
+              =CountRows(
+                  Filter(
+                      colNotifications,
+                      With(
+                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
+                          And(flag <> "yes", flag <> "true", flag <> "1")
+                      )
+                  )
+              ) > 0
+            Height: =56
+            HoverText: =
+            IconColor: =
+            IconSvg: =
+            ModuleIcon: ="Layers"
+            ModuleName: =If(gblLanguage = "Arabic", "الرئيسية", "Home")
+            OnSearch: =
+            OnSelect: =
+            OnSelectSubtitle: =
+            OnSelectTitle: =Navigate(ScrHome, ScreenTransition.None)
+            ScreenSubtitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
+            ShowBreadcrumb: =true
+            ShowLanguage: =true
+            ShowNotifications: =true
+            ShowSearch: =true
+            ShowTheme: =true
+            ShowUser: =true
+            Size: =
+            SubTitleWidth: =
+            Theme: =gblTheme.Mode
+            TitleWidth: =
+            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - cmpProjectPhoneNav:
+          Control: CanvasComponent
+          ComponentName: cmpBTNav
+          Properties:
+            Fill: |-
+              =If(
+                  gblTheme.Mode = "Dark",
+                  gblTheme.Dark.Colors.Background,
+                  gblTheme.Light.Colors.Background
+              )
+            AccentColor: =
+            Height: =52
+            IconsBtn: |-
+              =Table({Name: "Home", SVG: ""})
+            ItemsBtnNav: |-
+              =Table(
+                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
+                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
+                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
+                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
+                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
+                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
+                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
+              )
+            ModuleBtnNav: =
+            OnNavigateBtn: |-
+              =Switch(
+                  gblSelectedModule,
+                  "Home", Navigate(ScrHome, ScreenTransition.None),
+                  "HR", Navigate(ScrHR, ScreenTransition.None),
+                  "Programs", Navigate(scrProjects, ScreenTransition.None),
+                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
+                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
+                  "Finance", Navigate(scrFinance, ScreenTransition.None),
+                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
+              )
+            SelectedID: =20
+            Visible: =App.Width < 700
+            Width: =Parent.Width
+            Y: =Parent.Height - Self.Height
       - conProjectPage:
           Control: GroupContainer@1.5.0
           Variant: AutoLayout
           Properties:
             DropShadow: =DropShadow.None
             Fill: =Color.Transparent
-            Height: =Parent.Height
+            Height: =Parent.Height - cmpProjectTopBar.Height - If(App.Width < 700, cmpProjectPhoneNav.Height, 0)
             LayoutAlignItems: =LayoutAlignItems.Stretch
             LayoutDirection: =LayoutDirection.Vertical
             LayoutGap: =12
             LayoutOverflowY: =LayoutOverflow.Scroll
-            PaddingBottom: =If(App.Width < 700, cmpProjectPhoneNav.Height + 8, 12)
+            PaddingBottom: =12
             PaddingLeft: =If(App.Width < 700, 12, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth) + 12)
             PaddingRight: =12
-            PaddingTop: =cmpProjectTopBar.Height + 8
+            PaddingTop: =8
             Width: =Parent.Width
+            Y: =cmpProjectTopBar.Height
           Children:
+            - btnProjectKpi:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: |-
+                    =If(
+                        varProjectKpiOpen,
+                        If(gblLanguage = "Arabic", "إخفاء المؤشرات", "Hide KPIs"),
+                        If(gblLanguage = "Arabic", "إظهار المؤشرات", "Show KPIs")
+                    )
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Appearance: =ButtonAppearance.Outline
+                  BasePaletteColor: =fxThemeColor("Primary")
+                  Height: =32
+                  Icon: =If(varProjectKpiOpen, "ChevronUp", "ChevronDown")
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =Set(varProjectKpiOpen, !varProjectKpiOpen)
+                  Text: |-
+                    =If(
+                        varProjectKpiOpen,
+                        If(gblLanguage = "Arabic", "إخفاء المؤشرات", "Hide KPIs"),
+                        If(gblLanguage = "Arabic", "إظهار المؤشرات", "Show KPIs")
+                    )
+                  Visible: =App.Width < 700
+                  Width: =Parent.Width
             - cmpProjectKpi:
                 Control: CanvasComponent
                 ComponentName: cmpKPIwNav
                 Properties:
-                  AnimationEffect: ="None"
+                  AlignInContainer: =AlignInContainer.Stretch
+                  AnimationEffect: ="pop"
                   ColumnsLayout: |-
                     ={
                         Mobile: 1,
@@ -133,8 +312,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "إجمالي المشاريع", "Total Projects"),
                             Subtitle: If(gblLanguage = "Arabic", "ضمن صلاحيتك", "In your scope"),
                             Screen: "Projects",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#172030", "#ECF2FF"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -145,8 +324,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "المشاريع النشطة", "Active Projects"),
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varActiveProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
-                            IconBg: "",
-                            IconColor: fxStatusInk("Approval"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#164E63", "#ECFEFF"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#22D3EE", "#0E7490"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -157,8 +336,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "على المسار", "On Track"),
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varOnTrackProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
-                            IconBg: "",
-                            IconColor: fxStatusInk("Success"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#14532D", "#F0FDF4"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#4ADE80", "#16A34A"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -169,8 +348,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "معرضة للخطر", "At Risk"),
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varAtRiskProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
-                            IconBg: "",
-                            IconColor: fxStatusInk("Warning"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#5C400E", "#FFFBEB"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#FBBF24", "#D97706"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -181,21 +360,26 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "مكتملة", "Completed"),
                             Subtitle: If(varAllprojects = 0, "0", Text(Round(varCompletedProjects / varAllprojects * 100, 0), "0")) & If(gblLanguage = "Arabic", "% من الإجمالي", "% of all projects"),
                             Screen: "",
-                            IconBg: "",
-                            IconColor: fxStatusInk("Reminder"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#2E1065", "#F5F3FF"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#C4B5FD", "#6D28D9"),
                             SparklineData: "",
                             isHidden: false
                         }
                     )
-                  FontsSizesTitle: =
+                  FontsSizesTitle: =12
                   Height: |-
-                    =With(
-                        {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 5))},
-                        RoundUp(5 / cols, 0) * 108
+                    =If(
+                        Or(App.Width >= 700, varProjectKpiOpen),
+                        With(
+                            {cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 5))},
+                            RoundUp(5 / cols, 0) * 108
+                        ),
+                        0
                     )
+                  Visible: =Or(App.Width >= 700, varProjectKpiOpen)
                   Icons: |-
                     =Table({Name: "Box", SVG: ""})
-                  IconsSize: =
+                  IconsSize: =30
                   IsLoading: =false
                   KPINav: =If(varClickScreen = "Projects", Navigate(ScrAllProjects, ScreenTransition.Cover))
                   LayoutMinHeight: =0
@@ -507,19 +691,70 @@ Screens:
                           =Refresh(ProjectActivityLog);
                           Clear(colProjectActivityRaw);
                           If(
-                              varUserHasAllProjects,
-                              Collect(
-                                  colProjectActivityRaw,
-                                  FirstN(SortByColumns(ProjectActivityLog, "Created", SortOrder.Descending), 20)
-                              ),
-                              ForAll(
-                                  colUserProjectIDs As access,
-                                  Collect(colProjectActivityRaw, Filter(ProjectActivityLog, Project.Id = access.ProjectID))
+                              Not(Coalesce(LookUp(colUserPermissions, Module.Value = "Projects").CanRead, false)),
+                              Clear(colProjectActivityRaw),
+                              Switch(
+                                  Coalesce(varProgramScope, "Project"),
+                                  "All",
+                                  Collect(
+                                      colProjectActivityRaw,
+                                      FirstN(SortByColumns(ProjectActivityLog, "Date", SortOrder.Descending), 20)
+                                  ),
+                                  "Own",
+                                  Collect(
+                                      colProjectActivityRaw,
+                                      FirstN(
+                                          SortByColumns(
+                                              Filter(
+                                                  ProjectActivityLog,
+                                                  PerformedBy.Id = Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)
+                                              ),
+                                              "Date",
+                                              SortOrder.Descending
+                                          ),
+                                          20
+                                      )
+                                  ),
+                                  If(
+                                      varUserHasAllProjects,
+                                      Collect(
+                                          colProjectActivityRaw,
+                                          FirstN(SortByColumns(ProjectActivityLog, "Date", SortOrder.Descending), 20)
+                                      ),
+                                      ForAll(
+                                          colUserProjectIDs As access,
+                                          Collect(
+                                              colProjectActivityRaw,
+                                              FirstN(
+                                                  SortByColumns(
+                                                      Filter(ProjectActivityLog, Project.Id = access.ProjectID),
+                                                      "Date",
+                                                      SortOrder.Descending
+                                                  ),
+                                                  20
+                                              )
+                                          )
+                                      );
+                                      If(
+                                          And(CountRows(colProjectActivityRaw) = 0, !IsBlank(gblSProject.ID)),
+                                          Collect(
+                                              colProjectActivityRaw,
+                                              FirstN(
+                                                  SortByColumns(
+                                                      Filter(ProjectActivityLog, Project.Id = gblSProject.ID),
+                                                      "Date",
+                                                      SortOrder.Descending
+                                                  ),
+                                                  20
+                                              )
+                                          )
+                                      )
+                                  )
                               )
                           );
                           Clear(colProjectActivityFeed);
                           ForAll(
-                              FirstN(SortByColumns(colProjectActivityRaw, "Created", SortOrder.Descending), 20) As log,
+                              FirstN(SortByColumns(colProjectActivityRaw, "Date", SortOrder.Descending), 20) As log,
                               Collect(
                                   colProjectActivityFeed,
                                   {
@@ -530,11 +765,19 @@ Screens:
                                       Title: Coalesce(log.RelatedEntity.Value, "") & " · " & Coalesce(log.ActionType.Value, ""),
                                       Description: Coalesce(log.Details, ""),
                                       ActorName: Coalesce(log.PerformedBy.Value, ""),
-                                      ActivityDate: log.Created,
+                                      ActivityDate: Coalesce(log.Date, log.Created),
                                       RecordType: Coalesce(log.RelatedEntity.Value, ""),
                                       RecordID: Coalesce(log.RelatedItemId, 0),
                                       Status: Coalesce(log.ActionType.Value, ""),
-                                      Icon: "Activity",
+                                      Icon: Switch(
+                                          log.RelatedEntity.Value,
+                                          "Task", "Grid",
+                                          "Activity", "Activity",
+                                          "Risk", "Warning",
+                                          "Member", "Users",
+                                          "Project", "Box",
+                                          "Activity"
+                                      ),
                                       ProjectId: log.Project.Id
                                   }
                               )
@@ -672,8 +915,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "قائمة المشاريع", "Projects List"),
                             Descripation: If(gblLanguage = "Arabic", "عرض المشاريع", "View projects"),
                             Screen: "ScrAllProjects",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#172030", "#ECF2FF"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -684,8 +927,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "لوحة المشاريع", "Projects Dashboard"),
                             Descripation: If(gblLanguage = "Arabic", "عرض بيانات المشاريع", "View project data"),
                             Screen: "Dashboard",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#164E63", "#ECFEFF"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#22D3EE", "#0E7490"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -696,8 +939,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "المخطط الزمني", "Gantt"),
                             Descripation: If(gblLanguage = "Arabic", "عرض خطط وأنشطة المشاريع", "View project plans and activities"),
                             Screen: "scrProjectsPlans",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#5C400E", "#FFFBEB"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#FBBF24", "#D97706"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -708,8 +951,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "المهام", "Tasks"),
                             Descripation: If(gblLanguage = "Arabic", "متابعة مهام المشاريع", "Follow project tasks"),
                             Screen: "scrTasks",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#14532D", "#F0FDF4"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#4ADE80", "#16A34A"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -720,8 +963,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "التقارير", "Reports"),
                             Descripation: If(gblLanguage = "Arabic", "عرض جميع التقارير", "View all reports"),
                             Screen: "Reports",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#2E1065", "#F5F3FF"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#C4B5FD", "#6D28D9"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -732,8 +975,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "المشكلات والمخاطر", "Issues and Risks"),
                             Descripation: If(gblLanguage = "Arabic", "متابعة المشكلات والمخاطر", "Monitor issues and risks"),
                             Screen: "Issues",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#632424", "#FEF2F2"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#F87171", "#DC2626"),
                             SparklineData: "",
                             isHidden: false
                         },
@@ -744,8 +987,8 @@ Screens:
                             Label: If(gblLanguage = "Arabic", "الوثائق", "Documents"),
                             Descripation: If(gblLanguage = "Arabic", "عرض وثائق المشاريع", "View project documents"),
                             Screen: "Documents",
-                            IconBg: "",
-                            IconColor: fxThemeInk("Primary"),
+                            IconBg: If(gblTheme.Mode = "Dark", "#7C2D12", "#FFF7ED"),
+                            IconColor: If(gblTheme.Mode = "Dark", "#FB923C", "#C2410C"),
                             SparklineData: "",
                             isHidden: false
                         }
@@ -974,101 +1217,3 @@ Screens:
                   ShowUser: =false
                   Theme: =gblTheme.Mode
                   Width: =Parent.Width
-      - cmpProjectPhoneNav:
-          Control: CanvasComponent
-          ComponentName: cmpBTNav
-          Properties:
-            Fill: |-
-              =If(
-                  gblTheme.Mode = "Dark",
-                  gblTheme.Dark.Colors.Background,
-                  gblTheme.Light.Colors.Background
-              )
-            AccentColor: =
-            Height: =52
-            IconsBtn: |-
-              =Table({Name: "Home", SVG: ""})
-            ItemsBtnNav: |-
-              =Table(
-                  {ID: 1, Module: "Home", Title: If(gblLanguage = "Arabic", "الرئيسية", "Home"), Icon: "Home", Visible: true},
-                  {ID: 10, Module: "HR", Title: If(gblLanguage = "Arabic", "الموارد", "HR"), Icon: "Users", Visible: true},
-                  {ID: 20, Module: "Programs", Title: If(gblLanguage = "Arabic", "البرامج", "Programs"), Icon: "Layers", Visible: true},
-                  {ID: 30, Module: "Procurement", Title: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Icon: "ShoppingCart", Visible: true},
-                  {ID: 40, Module: "MEAL", Title: If(gblLanguage = "Arabic", "التقييم", "MEAL"), Icon: "Dashboard", Visible: true},
-                  {ID: 50, Module: "Finance", Title: If(gblLanguage = "Arabic", "المالية", "Finance"), Icon: "Money", Visible: true},
-                  {ID: 70, Module: "Settings", Title: If(gblLanguage = "Arabic", "إعدادات", "Settings"), Icon: "Settings", Visible: true}
-              )
-            ModuleBtnNav: =
-            OnNavigateBtn: |-
-              =Switch(
-                  gblSelectedModule,
-                  "Home", Navigate(ScrHome, ScreenTransition.None),
-                  "HR", Navigate(ScrHR, ScreenTransition.None),
-                  "Programs", Navigate(scrProjects, ScreenTransition.None),
-                  "Procurement", Navigate(scrProcurement, ScreenTransition.None),
-                  "MEAL", Navigate(scrMEAL, ScreenTransition.None),
-                  "Finance", Navigate(scrFinance, ScreenTransition.None),
-                  "Settings", Navigate(ScrSettings, ScreenTransition.None)
-              )
-            SelectedID: =20
-            Visible: =App.Width < 700
-            Width: =Parent.Width
-            Y: =Parent.Height - Self.Height
-      - cmpProjectTopBar:
-          Control: CanvasComponent
-          ComponentName: cmpTopBar
-          Properties:
-            Fill: |-
-              =If(
-                  gblTheme.Mode = "Dark",
-                  gblTheme.Dark.Colors.Background,
-                  gblTheme.Light.Colors.Background
-              )
-            Y: =0
-            ActionsVisible: =true
-            BadgeColor: =
-            BadgeCount: |-
-              =CountRows(
-                  Filter(
-                      colNotifications,
-                      With(
-                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
-                          And(flag <> "yes", flag <> "true", flag <> "1")
-                      )
-                  )
-              )
-            FontSizeTitle: =
-            HasNotifications: |-
-              =CountRows(
-                  Filter(
-                      colNotifications,
-                      With(
-                          {flag: Lower(Trim(Coalesce(IsRead, "no")))},
-                          And(flag <> "yes", flag <> "true", flag <> "1")
-                      )
-                  )
-              ) > 0
-            Height: =56
-            HoverText: =
-            IconColor: =
-            IconSvg: =
-            ModuleIcon: ="Layers"
-            ModuleName: =If(gblLanguage = "Arabic", "الرئيسية", "Home")
-            OnSearch: =
-            OnSelect: =
-            OnSelectSubtitle: =
-            OnSelectTitle: =Navigate(ScrHome, ScreenTransition.None)
-            ScreenSubtitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
-            ScreenTitle: =If(gblLanguage = "Arabic", "البرامج", "Programs")
-            ShowBreadcrumb: =true
-            ShowLanguage: =true
-            ShowNotifications: =true
-            ShowSearch: =true
-            ShowTheme: =true
-            ShowUser: =true
-            Size: =
-            SubTitleWidth: =
-            Theme: =gblTheme.Mode
-            TitleWidth: =
-            Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
-            X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
