@@ -24,6 +24,7 @@ Screens:
         Set(varApprovalRequestType, Blank());
         Set(varApprovalEntityType, Blank());
         Set(varApprovalDecision, "Pending");
+        Set(varApprovalShowKpi, App.Width >= 700);
         Set(
             varApprovalView,
             If(App.Width < 700, "Card", "Table")
@@ -117,6 +118,30 @@ Screens:
                         )
                     ) & " " & If(gblLanguage = "Arabic", "بانتظار القرار", "pending")
                   Width: =Parent.Width
+            - btnApprovalKpi:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: |-
+                    =If(
+                        varApprovalShowKpi,
+                        If(gblLanguage = "Arabic", "إخفاء المؤشرات", "Hide KPIs"),
+                        If(gblLanguage = "Arabic", "إظهار المؤشرات", "Show KPIs")
+                    )
+                  AlignInContainer: =AlignInContainer.Stretch
+                  Appearance: =ButtonAppearance.Outline
+                  Height: =32
+                  Icon: =If(varApprovalShowKpi, "ChevronUp", "ChevronDown")
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  OnSelect: =Set(varApprovalShowKpi, !varApprovalShowKpi)
+                  Text: |-
+                    =If(
+                        varApprovalShowKpi,
+                        If(gblLanguage = "Arabic", "إخفاء المؤشرات", "Hide KPIs"),
+                        If(gblLanguage = "Arabic", "إظهار المؤشرات", "Show KPIs")
+                    )
+                  Visible: =App.Width < 700
+                  Width: =Parent.Width
             - cmpApprovalKpi:
                 Control: CanvasComponent
                 ComponentName: cmpKPIwNav
@@ -191,12 +216,17 @@ Screens:
                     )
                   FontsSizesTitle: =12
                   Height: |-
-                    =With(
-                        {
-                            cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4))
-                        },
-                        RoundUp(4 / cols, 0) * 108
+                    =If(
+                        Or(App.Width >= 700, varApprovalShowKpi),
+                        With(
+                            {
+                                cols: If(Parent.Width < 640, 1, If(Parent.Width < 1024, 2, 4))
+                            },
+                            RoundUp(4 / cols, 0) * 108
+                        ),
+                        0
                     )
+                  Visible: =Or(App.Width >= 700, varApprovalShowKpi)
                   Icons: |-
                     =Table(
                         {
@@ -348,7 +378,24 @@ Screens:
                               OnChange: =Set(varApprovalDecision, Self.Selected.Value)
                               SelectMultiple: =false
                               Size: =12
-                              Width: =150
+                              Width: =If(App.Width < 700, 120, 150)
+                        - btnApprovalClearStatus:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =If(gblLanguage = "Arabic", "مسح الحالة", "Clear status")
+                              AlignInContainer: =AlignInContainer.Center
+                              Appearance: =ButtonAppearance.Transparent
+                              Height: =36
+                              Icon: ="Dismiss"
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              OnSelect: |-
+                                =Set(varApprovalDecision, Blank());
+                                Reset(cmbApprovalStatus)
+                              Text: =""
+                              Tooltip: =If(gblLanguage = "Arabic", "مسح الحالة", "Clear status")
+                              Visible: =!IsBlank(varApprovalDecision)
+                              Width: =36
                         - btnApprovalRefresh:
                             Control: ModernButton@1.0.0
                             Properties:
