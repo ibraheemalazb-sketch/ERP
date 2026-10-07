@@ -1,0 +1,724 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+ComponentDefinitions:
+  cmpBarList:
+    DefinitionType: CanvasComponent
+    AccessAppScope: true
+    CustomProperties:
+      AbbreviateAt:
+        PropertyKind: Input
+        DisplayName: Abbreviate At
+        Description: Auto and Currency switch to K and M at this absolute value. 0 keeps the full number.
+        DataType: Number
+        Default: =10000
+      Currency:
+        PropertyKind: Input
+        DisplayName: Currency
+        Description: Code appended when Value Format is Currency, for example USD, YER, or SAR. Blank shows the number only.
+        DataType: Text
+        Default: =""
+      Data:
+        PropertyKind: Input
+        DisplayName: Data
+        Description: In-memory rows. Columns are Label, Value, Subtitle, Icon, Color, and isHidden. Icon is an fxSvg name. Color is hex with or without #. Set isHidden to false to show the row.
+        DataType: Table
+        Default: |-
+          =Table(
+              {Label: If(gblLanguage = "Arabic", "المشتريات", "Procurement"), Value: 84200, Subtitle: If(gblLanguage = "Arabic", "طلبات وأوامر شراء", "Requests and orders"), Icon: "ShoppingCart", Color: "", isHidden: false},
+              {Label: If(gblLanguage = "Arabic", "الموارد البشرية", "People"), Value: 61500, Subtitle: If(gblLanguage = "Arabic", "موظفون وإجازات", "Employees and leave"), Icon: "Users", Color: "", isHidden: false},
+              {Label: If(gblLanguage = "Arabic", "البرامج", "Programs"), Value: 48300, Subtitle: If(gblLanguage = "Arabic", "مشاريع وأنشطة", "Projects and activities"), Icon: "Flag", Color: "", isHidden: false},
+              {Label: If(gblLanguage = "Arabic", "المالية", "Finance"), Value: 34800, Subtitle: If(gblLanguage = "Arabic", "مدفوعات وميزانيات", "Payments and budgets"), Icon: "Money", Color: "", isHidden: false},
+              {Label: If(gblLanguage = "Arabic", "التدريب", "Training"), Value: 24100, Subtitle: If(gblLanguage = "Arabic", "دورات ومشاركون", "Courses and participants"), Icon: "Graduation", Color: "", isHidden: false},
+              {Label: If(gblLanguage = "Arabic", "الحضور", "Attendance"), Value: 18600, Subtitle: If(gblLanguage = "Arabic", "سجلات الحضور", "Attendance records"), Icon: "Clock", Color: "", isHidden: false},
+              {Label: If(gblLanguage = "Arabic", "المتابعة والتقييم", "MEAL"), Value: 13000, Subtitle: If(gblLanguage = "Arabic", "مؤشرات وزيارات", "Indicators and visits"), Icon: "Chart", Color: "", isHidden: false}
+          )
+      EmptyMessage:
+        PropertyKind: Input
+        DisplayName: Empty Message
+        Description: Text shown when no rows are visible.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "لا توجد بيانات", "No data")
+      IsLoading:
+        PropertyKind: Input
+        DisplayName: Is Loading
+        Description: When true, shows placeholder rows instead of the bars.
+        DataType: Boolean
+        Default: =false
+      OnBarClick:
+        PropertyKind: Event
+        DisplayName: On Bar Click
+        Description: Fires after the tapped row is stored in Selected Item.
+        ReturnType: None
+        Default: =false
+        Parameters:
+          - ClickedItem:
+              Description: The bar row that was tapped.
+              DataType: Record
+              Default: |-
+                ={
+                    Label: "",
+                    BarValue: 0,
+                    SubtitleSafe: "",
+                    Icon: "Chart",
+                    BarColor: "#1B56E5",
+                    BarPct: 0
+                }
+      Palette:
+        PropertyKind: Input
+        DisplayName: Palette
+        Description: Bar colors used when a row Color is blank. One Color column, hex with or without #.
+        DataType: Table
+        Default: |-
+          =If(
+              gblTheme.Mode = "Dark",
+              Table(
+                  {Color: "#79B0FF"},
+                  {Color: "#4ADE80"},
+                  {Color: "#FBBF24"},
+                  {Color: "#22D3EE"},
+                  {Color: "#F87171"},
+                  {Color: "#C4B5FD"},
+                  {Color: "#FB923C"}
+              ),
+              Table(
+                  {Color: "#1B56E5"},
+                  {Color: "#16A34A"},
+                  {Color: "#D97706"},
+                  {Color: "#0E7490"},
+                  {Color: "#DC2626"},
+                  {Color: "#6D28D9"},
+                  {Color: "#C2410C"}
+              )
+          )
+      Rows:
+        PropertyKind: Output
+        DisplayName: Rows
+        Description: Visible rows, largest value first, with BarColor and BarPct.
+        DataType: Table
+      SelectedItem:
+        PropertyKind: Output
+        DisplayName: Selected Item
+        Description: Last tapped row. Same columns as ClickedItem.
+        DataType: Record
+      ShowRowSubtitle:
+        PropertyKind: Input
+        DisplayName: Show Row Subtitle
+        Description: Shows each row Subtitle under the label.
+        DataType: Boolean
+        Default: =false
+      Subtitle:
+        PropertyKind: Input
+        DisplayName: Subtitle
+        Description: Line under the card title. Blank hides it.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "مرتبة من الأكبر", "Largest first")
+      Theme:
+        PropertyKind: Input
+        DisplayName: Theme
+        Description: Kept so screens can pass gblTheme.Mode. Colors follow gblTheme.
+        DataType: Text
+        Default: =gblTheme.Mode
+      Title:
+        PropertyKind: Input
+        DisplayName: Title
+        Description: Card title.
+        DataType: Text
+        Default: =If(gblLanguage = "Arabic", "حسب الفئة", "By category")
+      ValueFormat:
+        PropertyKind: Input
+        DisplayName: Value Format
+        Description: Auto abbreviates. Number keeps the full figure. Currency appends Currency. Percent appends %.
+        DataType: Text
+        Default: ="Auto"
+    Properties:
+      Fill: =Color.Transparent
+      Height: |-
+        =With(
+            {
+                rowCount: CountRows(cmpBarList.Rows),
+                rowHeight: If(cmpBarList.ShowRowSubtitle, 64, 48),
+                head: 32 + If(Len(Trim(Coalesce(cmpBarList.Subtitle, ""))) > 0, 20, 0)
+            },
+            gblTheme.Spacing.MD + gblTheme.Spacing.SM + head +
+            If(
+                cmpBarList.IsLoading,
+                Max(rowCount, 4) * rowHeight,
+                If(rowCount = 0, 132, rowCount * rowHeight)
+            )
+        )
+      OnReset: =Set(varBarListSelected, Blank())
+      Rows: |-
+        =With(
+            {
+                src: SortByColumns(
+                    Filter(cmpBarList.Data, isHidden = false),
+                    "Value",
+                    SortOrder.Descending
+                ),
+                pal: cmpBarList.Palette
+            },
+            With(
+                {
+                    maxVal: If(CountRows(src) = 0, 0, Max(src, Value)),
+                    palCount: Max(1, CountRows(pal))
+                },
+                ForAll(
+                    Sequence(CountRows(src)),
+                    With(
+                        {
+                            row: Index(src, Value),
+                            rawColor: IfError(Text(Index(src, Value).Color), ""),
+                            n: Value
+                        },
+                        {
+                            Label: Coalesce(row.Label, ""),
+                            BarValue: Coalesce(row.Value, 0),
+                            SubtitleSafe: IfError(Text(row.Subtitle), ""),
+                            Icon: Coalesce(IfError(Text(row.Icon), ""), "Chart"),
+                            BarColor: With(
+                                {
+                                    chosen: If(
+                                        Len(Trim(rawColor)) > 0,
+                                        Trim(rawColor),
+                                        Coalesce(
+                                            Index(pal, Mod(n - 1, palCount) + 1).Color,
+                                            "1B56E5"
+                                        )
+                                    )
+                                },
+                                If(Left(chosen, 1) = "#", chosen, "#" & chosen)
+                            ),
+                            BarPct: If(
+                                maxVal <= 0,
+                                0,
+                                Min(100, Round(Coalesce(row.Value, 0) / maxVal * 100, 0))
+                            )
+                        }
+                    )
+                )
+            )
+        )
+      SelectedItem: =varBarListSelected
+      Width: =360
+    Children:
+      - conBarCard:
+          Control: GroupContainer@1.5.0
+          Variant: AutoLayout
+          Properties:
+            BorderColor: =fxThemeColor("Border")
+            BorderThickness: =1
+            DropShadow: =DropShadow.None
+            Fill: =fxThemeColor("Surface")
+            Height: =cmpBarList.Height
+            LayoutAlignItems: =LayoutAlignItems.Stretch
+            LayoutDirection: =LayoutDirection.Vertical
+            LayoutGap: =4
+            PaddingBottom: =gblTheme.Spacing.SM
+            PaddingLeft: =gblTheme.Spacing.MD
+            PaddingRight: =gblTheme.Spacing.MD
+            PaddingTop: =gblTheme.Spacing.MD
+            RadiusBottomLeft: =gblTheme.Radius.XL
+            RadiusBottomRight: =gblTheme.Radius.XL
+            RadiusTopLeft: =gblTheme.Radius.XL
+            RadiusTopRight: =gblTheme.Radius.XL
+            Width: =cmpBarList.Width
+          Children:
+            - conBarHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =32
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =32
+                  LayoutMinWidth: =0
+                Children:
+                  - imgBarHead:
+                      Control: Image@2.2.3
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: =fxSvg("Chart", fxThemeInk("Primary"))
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        Width: =16
+                  - lblBarTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =24
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Body
+                        Text: =Coalesce(cmpBarList.Title, "")
+                        Tooltip: =Self.Text
+                        Wrap: =false
+            - lblBarSubtitle:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =If(gblIsRTL, Align.Right, Align.Left)
+                  BorderStyle: =BorderStyle.None
+                  Color: =fxThemeColor("TextMuted")
+                  FillPortions: =0
+                  Font: =gblTheme.Typography.FontFamily
+                  Height: =18
+                  LayoutMinHeight: =18
+                  LayoutMinWidth: =0
+                  PaddingBottom: =0
+                  PaddingLeft: =0
+                  PaddingRight: =0
+                  PaddingTop: =0
+                  Size: =gblTheme.Typography.Caption
+                  Text: =Coalesce(cmpBarList.Subtitle, "")
+                  Visible: =Len(Trim(Coalesce(cmpBarList.Subtitle, ""))) > 0
+                  Wrap: =false
+            - galBarRows:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "الأعمدة", "Bars")
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: |-
+                    =CountRows(cmpBarList.Rows) *
+                     If(cmpBarList.ShowRowSubtitle, 64, 48)
+                  Items: =cmpBarList.Rows
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =If(cmpBarList.ShowRowSubtitle, 64, 48)
+                  Visible: |-
+                    =And(
+                        !cmpBarList.IsLoading,
+                        CountRows(cmpBarList.Rows) > 0
+                    )
+                Children:
+                  - conBarRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.TemplateHeight
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - conBarMeta:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              Height: =28
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              Width: =Parent.Width
+                              Y: =2
+                            Children:
+                              - conBarIcon:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: |-
+                                      =IfError(
+                                          ColorFade(
+                                              ColorValue(ThisItem.BarColor),
+                                              If(gblTheme.Mode = "Dark", -0.72, 0.84)
+                                          ),
+                                          fxThemeColor("PrimaryLight")
+                                      )
+                                    Height: =28
+                                    LayoutMinHeight: =28
+                                    LayoutMinWidth: =28
+                                    RadiusBottomLeft: =gblTheme.Radius.Large
+                                    RadiusBottomRight: =gblTheme.Radius.Large
+                                    RadiusTopLeft: =gblTheme.Radius.Large
+                                    RadiusTopRight: =gblTheme.Radius.Large
+                                    Width: =28
+                                  Children:
+                                    - imgBarIcon:
+                                        Control: Image@2.2.3
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Height: =16
+                                          Image: =fxSvg(fxActivityIcon(ThisItem.Icon), ThisItem.BarColor)
+                                          Width: =16
+                                          X: =6
+                                          Y: =6
+                              - lblBarLabel:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Right, Align.Left)
+                                    BorderStyle: =BorderStyle.None
+                                    Color: =fxThemeColor("TextPrimary")
+                                    FillPortions: =1
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: =Coalesce(ThisItem.Label, "-")
+                                    Tooltip: =Self.Text
+                                    Wrap: =false
+                              - lblBarValue:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =If(gblIsRTL, Align.Left, Align.Right)
+                                    BorderStyle: =BorderStyle.None
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.BodySmall
+                                    Text: |-
+                                      =With(
+                                          {
+                                              v: Coalesce(ThisItem.BarValue, 0),
+                                              thresh: Coalesce(cmpBarList.AbbreviateAt, 10000)
+                                          },
+                                          Switch(
+                                              cmpBarList.ValueFormat,
+                                              "Percent",
+                                              Text(v, "0.0") & "%",
+                                              "Number",
+                                              If(
+                                                  v = Round(v, 0),
+                                                  Text(v, "#,##0"),
+                                                  Text(v, "#,##0.##")
+                                              ),
+                                              "Currency",
+                                              If(
+                                                  Abs(v) >= 1000000,
+                                                  Text(v / 1000000, "#,##0.0") & "M",
+                                                  And(thresh > 0, Abs(v) >= thresh),
+                                                  Text(v / 1000, "#,##0.0") & "K",
+                                                  If(
+                                                      v = Round(v, 0),
+                                                      Text(v, "#,##0"),
+                                                      Text(v, "#,##0.##")
+                                                  )
+                                              ) & If(
+                                                  Len(Trim(Coalesce(cmpBarList.Currency, ""))) = 0,
+                                                  "",
+                                                  " " & Trim(cmpBarList.Currency)
+                                              ),
+                                              If(
+                                                  Abs(v) >= 1000000,
+                                                  Text(v / 1000000, "#,##0.0") & "M",
+                                                  And(thresh > 0, Abs(v) >= thresh),
+                                                  Text(v / 1000, "#,##0.0") & "K",
+                                                  If(
+                                                      v = Round(v, 0),
+                                                      Text(v, "#,##0"),
+                                                      Text(v, "#,##0.##")
+                                                  )
+                                              )
+                                          )
+                                      )
+                                    Width: =96
+                                    Wrap: =false
+                        - lblBarRowSub:
+                            Control: Label@2.5.1
+                            Properties:
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              BorderStyle: =BorderStyle.None
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =14
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =ThisItem.SubtitleSafe
+                              Visible: =cmpBarList.ShowRowSubtitle
+                              Width: =Parent.Width - 132
+                              Wrap: =false
+                              X: =36
+                              Y: =30
+                        - conBarTrack:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              Height: =6
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =Parent.Width
+                              Y: =If(cmpBarList.ShowRowSubtitle, 50, 36)
+                            Children:
+                              - conBarFill:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: ManualLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =IfError(ColorValue(ThisItem.BarColor), fxThemeColor("Primary"))
+                                    Height: =Parent.Height
+                                    RadiusBottomLeft: =gblTheme.Radius.Small
+                                    RadiusBottomRight: =gblTheme.Radius.Small
+                                    RadiusTopLeft: =gblTheme.Radius.Small
+                                    RadiusTopRight: =gblTheme.Radius.Small
+                                    Width: =Max(2, Round(Parent.Width * ThisItem.BarPct / 100, 0))
+                                    X: =If(gblIsRTL, Parent.Width - Self.Width, 0)
+                                  Children:
+                                    - lblBarFillSpacer:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          BorderStyle: =BorderStyle.None
+                                          Fill: =Color.Transparent
+                                          Height: =1
+                                          Text: =""
+                                          Width: =1
+                        - btnBarOpen:
+                            Control: ModernButton@1.0.0
+                            Properties:
+                              AccessibleLabel: =Coalesce(ThisItem.Label, "")
+                              Appearance: =ButtonAppearance.Transparent
+                              Height: =Parent.Height
+                              OnSelect: |-
+                                =Set(varBarListSelected, ThisItem);
+                                cmpBarList.OnBarClick(ThisItem)
+                              Text: =""
+                              Tooltip: |-
+                                =Coalesce(ThisItem.Label, "") & " · " & lblBarValue.Text &
+                                If(
+                                    Len(Trim(Coalesce(ThisItem.SubtitleSafe, ""))) = 0,
+                                    "",
+                                    " · " & ThisItem.SubtitleSafe
+                                )
+                              Width: =Parent.Width
+            - galBarSkeleton:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "جار التحميل", "Loading")
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: |-
+                    =Max(CountRows(cmpBarList.Rows), 4) *
+                     If(cmpBarList.ShowRowSubtitle, 64, 48)
+                  Items: =Sequence(Max(CountRows(cmpBarList.Rows), 4))
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  LoadingSpinner: =LoadingSpinner.None
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =If(cmpBarList.ShowRowSubtitle, 64, 48)
+                  Visible: =cmpBarList.IsLoading
+                Children:
+                  - conBarSkel:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =Parent.TemplateHeight
+                        Width: =Parent.TemplateWidth
+                      Children:
+                        - conBarSkelIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              Height: =28
+                              RadiusBottomLeft: =gblTheme.Radius.Large
+                              RadiusBottomRight: =gblTheme.Radius.Large
+                              RadiusTopLeft: =gblTheme.Radius.Large
+                              RadiusTopRight: =gblTheme.Radius.Large
+                              Width: =28
+                              Y: =2
+                            Children:
+                              - lblBarSkelIcon:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    Height: =1
+                                    Text: =""
+                                    Width: =1
+                        - conBarSkelLabel:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("Border")
+                              Height: =10
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =90 + Mod(ThisItem.Value * 37, 70)
+                              X: =36
+                              Y: =8
+                            Children:
+                              - lblBarSkelLabel:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    Height: =1
+                                    Text: =""
+                                    Width: =1
+                        - conBarSkelValue:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              Height: =10
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =48
+                              X: =Parent.Width - 48
+                              Y: =8
+                            Children:
+                              - lblBarSkelValue:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    Height: =1
+                                    Text: =""
+                                    Width: =1
+                        - conBarSkelTrack:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("SurfaceHover")
+                              Height: =6
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =Parent.Width * (0.35 + Mod(ThisItem.Value * 13, 55) / 100)
+                              Y: =If(cmpBarList.ShowRowSubtitle, 50, 36)
+                            Children:
+                              - lblBarSkelTrack:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Fill: =Color.Transparent
+                                    Height: =1
+                                    Text: =""
+                                    Width: =1
+            - conBarEmpty:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =132
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Vertical
+                  LayoutGap: =8
+                  LayoutJustifyContent: =LayoutJustifyContent.Center
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  Visible: |-
+                    =And(
+                        !cmpBarList.IsLoading,
+                        CountRows(cmpBarList.Rows) = 0
+                    )
+                Children:
+                  - conBarEmptyIcon:
+                      Control: GroupContainer@1.5.0
+                      Variant: ManualLayout
+                      Properties:
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("SurfaceHover")
+                        Height: =48
+                        LayoutMinHeight: =48
+                        LayoutMinWidth: =48
+                        RadiusBottomLeft: =gblTheme.Radius.XL
+                        RadiusBottomRight: =gblTheme.Radius.XL
+                        RadiusTopLeft: =gblTheme.Radius.XL
+                        RadiusTopRight: =gblTheme.Radius.XL
+                        Width: =48
+                      Children:
+                        - imgBarEmpty:
+                            Control: Image@2.2.3
+                            Properties:
+                              BorderStyle: =BorderStyle.None
+                              Height: =22
+                              Image: =fxSvg("Chart", fxThemeInk("Muted"))
+                              Width: =22
+                              X: =13
+                              Y: =13
+                  - lblBarEmpty:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextSecondary")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.BodySmall
+                        Text: =Coalesce(cmpBarList.EmptyMessage, "")
+                        Width: =240
+                  - lblBarEmptyHint:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =Align.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        Height: =18
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "لا يوجد ما يُعرض", "Nothing to display")
+                        Width: =240
