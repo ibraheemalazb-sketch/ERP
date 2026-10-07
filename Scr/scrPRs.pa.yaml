@@ -803,21 +803,21 @@ Screens:
                         ShowSubtitle: =true
                         ShowViewToggle: =false
                         ShowWhen: =true
-                        SubtitleAsPill: =false
+                        SubtitleAsPill: =true
                         TitleBold: =true
                         ViewMode: =If(App.Width < 700, "list", Coalesce(varPrView, "table"))
                         Width: =Parent.Width
                         WidthAction: =48
                         WidthColumn1: =130
-                        WidthColumn2: =120
+                        WidthColumn2: =80
                         WidthColumn3: =110
                         WidthId: =
                         WidthPerson: =160
-                        WidthPriority: =110
+                        WidthPriority: =80
                         WidthProgress: =
-                        WidthStatus: =120
-                        WidthSubtitle: =120
-                        WidthTitle: =150
+                        WidthStatus: =80
+                        WidthSubtitle: =80
+                        WidthTitle: =160
                         WidthWhen: =130
             - conPrDetail:
                 Control: GroupContainer@1.5.0
@@ -843,7 +843,11 @@ Screens:
                         DropShadow: =DropShadow.None
                         Fill: =fxThemeColor("Surface")
                         FillPortions: =0
-                        Height: =272
+                        Height: |-
+                          =conPrDetailTop.Height + conPrTitleRow.Height + lblPrMeta.Height + conPrProgress.Height
+                          + 3 * Self.LayoutGap
+                          + Self.PaddingTop
+                          + Self.PaddingBottom
                         LayoutAlignItems: =LayoutAlignItems.Stretch
                         LayoutDirection: =LayoutDirection.Vertical
                         LayoutGap: =12
@@ -1182,7 +1186,20 @@ Screens:
                         Fill: =Color.Transparent
                         LayoutDirection: =If(App.Width < 1100, LayoutDirection.Vertical, LayoutDirection.Horizontal)
                         LayoutGap: =16
-                        LayoutMinHeight: =0
+                        LayoutMinHeight: |-
+                          =With(
+                              {
+                                  mainMin:
+                                      If(conPrTabs.Visible, conPrTabs.Height + 16, 0)
+                                      + 16
+                                      + lblHeight.Height
+                              },
+                              If(
+                                  App.Width > 700,
+                                  Max(conPrSide.Height, mainMin),
+                                  conPrSide.Height + mainMin + Self.LayoutGap
+                              )
+                          )
                         LayoutMinWidth: =0
                         Width: =Min(Parent.Width, 1120)
                       Children:
@@ -1196,7 +1213,7 @@ Screens:
                               LayoutAlignItems: =LayoutAlignItems.Stretch
                               LayoutDirection: =LayoutDirection.Vertical
                               LayoutGap: =12
-                              LayoutMinHeight: =0
+                              LayoutMinHeight: =lblHeight.Height
                               LayoutMinWidth: =0
                               Width: =If(App.Width < 1100, Parent.Width, Max(360, Parent.Width - 336))
                             Children:
@@ -1241,6 +1258,7 @@ Screens:
                                           LayoutMinWidth: =0
                                           OnSelect: =Set(varPrPane, "Items")
                                           Text: =If(gblLanguage = "Arabic", "البنود", "Items")
+                                          Visible: =false
                                     - btnPrTabTalk:
                                         Control: ModernButton@1.0.0
                                         Properties:
@@ -1259,7 +1277,16 @@ Screens:
                                     DropShadow: =DropShadow.None
                                     Fill: =fxThemeColor("Surface")
                                     FillPortions: =0
-                                    Height: =400
+                                    Height: |-
+                                      =conPrFormHead.Height
+                                      + conPrFormR1.Height
+                                      + conPrFormR2.Height
+                                      + conPrFormR3.Height
+                                      + conPrFormR4.Height
+                                      + conPrFormR5.Height
+                                      + 5 * Self.LayoutGap
+                                      + Self.PaddingTop
+                                      + Self.PaddingBottom
                                     LayoutAlignItems: =LayoutAlignItems.Stretch
                                     LayoutDirection: =LayoutDirection.Vertical
                                     LayoutGap: =8
@@ -1789,7 +1816,7 @@ Screens:
                                     Text: =If(gblLanguage = "Arabic", "لا توجد بنود", "No items")
                                     Visible: |-
                                       =And(
-                                          varPrPane = "Items",
+                                          varPrPane = "Details",
                                           CountRows(Filter(colPurchaseRequestLines, PR.Id = varCurrentPR.ID)) = 0
                                       )
                                     Width: =Parent.Width
@@ -1812,7 +1839,7 @@ Screens:
                                     RadiusBottomRight: =gblTheme.Radius.Large
                                     RadiusTopLeft: =gblTheme.Radius.Large
                                     RadiusTopRight: =gblTheme.Radius.Large
-                                    Visible: =And(varPrPane = "Items", CountRows(Filter(colPurchaseRequestLines, PR.Id = varCurrentPR.ID)) > 0)
+                                    Visible: =And(varPrPane = "Details", CountRows(Filter(colPurchaseRequestLines, PR.Id = varCurrentPR.ID)) > 0)
                                     Width: =Parent.Width
                                   Children:
                                     - conPrItemHead:
@@ -2047,6 +2074,8 @@ Screens:
                               LayoutAlignItems: =LayoutAlignItems.Stretch
                               LayoutDirection: =LayoutDirection.Vertical
                               LayoutGap: =12
+                              Height: |-
+                                =conPrSummary.Height + cmpPrFlow.Height + cmpPrQuick.Height + cmpPrHistory.Height + 3 * Self.LayoutGap
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
                               Width: =If(App.Width < 1100, Parent.Width, 320)
@@ -2266,6 +2295,26 @@ Screens:
                                                           LookUp(ApprovalHistory, ID = step.ID),
                                                           {Decision: {Value: "Approved"}, DecisionDate: Now()}
                                                       );
+                                                      If(
+                                                          CountRows(
+                                                              Filter(
+                                                                  colPrApprovals,
+                                                                  And(
+                                                                      RequestNumber = varCurrentPR.PRNumber,
+                                                                      Decision.Value = "Pending",
+                                                                      ID <> step.ID
+                                                                  )
+                                                              )
+                                                          ) = 0,
+                                                          IfError(
+                                                              Patch(
+                                                                  PurchaseRequests,
+                                                                  LookUp(PurchaseRequests, ID = varCurrentPR.ID),
+                                                                  {Status: {Value: "Approved"}}
+                                                              ),
+                                                              false
+                                                          )
+                                                      );
                                                       fnWriteLog(
                                                           "Purchase Request",
                                                           varCurrentPR.ID,
@@ -2326,6 +2375,14 @@ Screens:
                                                           ApprovalHistory,
                                                           LookUp(ApprovalHistory, ID = step.ID),
                                                           {Decision: {Value: "Rejected"}, DecisionDate: Now()}
+                                                      );
+                                                      IfError(
+                                                          Patch(
+                                                              PurchaseRequests,
+                                                              LookUp(PurchaseRequests, ID = varCurrentPR.ID),
+                                                              {Status: {Value: "Rejected"}}
+                                                          ),
+                                                          false
                                                       );
                                                       fnWriteLog(
                                                           "Purchase Request",
@@ -3387,6 +3444,26 @@ Screens:
             TitleWidth: =
             Width: =App.Width - If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
             X: =If(App.Width < 700, 0, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth))
+      - lblHeight:
+          Control: ModernText@1.0.0
+          Properties:
+            Height: |-
+              =Switch(
+                  varPrPane,
+                  "Details",
+                  conPrForm.Height
+                      + If(
+                          CountRows(Filter(colPurchaseRequestLines, PR.Id = varCurrentPR.ID)) > 0,
+                          conPrItems.Height + 12,
+                          48
+                      ),
+                  "Discussion", cmpPrComments.Height + 32,
+                  "Items", conPrItems.Height + 16,
+                  If(App.Width > 700, 10 * 30, 12 * 30)
+              )
+            Visible: =false
+            X: =40
+            Y: =40
       - cmpPrPhone:
           Control: CanvasComponent
           ComponentName: cmpBTNav
