@@ -328,11 +328,30 @@ fxToneInk(Tone: Text): Color =
         fxThemeColor("TextMuted")
     );
 
-// Tone word for a status pill. fxToneFill and fxToneInk color the chip.
+// Tone word for a status or priority pill. fxToneFill and fxToneInk color the chip.
 fxStatusPillTone(Status: Text): Text =
     With(
         {s: Lower(Trim(Coalesce(Status, "")))},
         If(
+            Or(
+                StartsWith(s, "critical"),
+                s = "sensitive"
+            ),
+            "danger",
+            Or(
+                s = "high", s = "heigh", StartsWith(s, "high ")
+            ),
+            "high",
+            Or(
+                s = "medium", StartsWith(s, "medium ")
+            ),
+            "medium",
+            Or(
+                s = "low", StartsWith(s, "low ")
+            ),
+            "low",
+            StartsWith(s, "backlog"),
+            "muted",
             Or(
                 s = "closed", s = "completed", s = "approved", s = "present", s = "active",
                 s = "synced", s = "finished", s = "accepted", s = "selected", s = "received",
