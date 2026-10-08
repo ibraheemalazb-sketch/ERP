@@ -342,7 +342,7 @@ fnProcNotify(
             {
                 Title: pTitle,
                 Message: pMessage,
-                IsRead: false,
+                IsRead: "No",
                 Createddate: Now(),
                 RecipientID: pUserID,
                 Recipient: {Id: pUserID, Value: pUserName},
@@ -557,7 +557,7 @@ fnHRNotify(
                 {
                     Title: Left(pTitle, 255),
                     Message: Left(pMessage, 500),
-                    IsRead: false,
+                    IsRead: "No",
                     Createddate: Now(),
                     RecipientID: pUserID,
                     Recipient: {Id: pUserID, Value: pUserName},
@@ -627,7 +627,7 @@ fnProjNotify(
                 {
                     Title: Left(pTitle, 255),
                     Message: Left(pMessage, 500),
-                    IsRead: false,
+                    IsRead: "No",
                     Createddate: Now(),
                     RecipientID: pUserID,
                     Recipient: {Id: pUserID, Value: pUserName},
