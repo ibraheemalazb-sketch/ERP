@@ -302,20 +302,16 @@ ComponentDefinitions:
                   DelayItemLoading: =false
                   Fill: =Color.Transparent
                   Items: |-
-                    =AddColumns(
-                        FirstN(
-                            SortByColumns(
-                                Filter(
-                                    cmpUpcomingEvents.Items,
-                                    cmpUpcomingEvents.ShowOverdue || DateDiff(Today(), EventDate, TimeUnit.Days) >= 0
-                                ),
-                                "EventDate",
-                                SortOrder.Ascending
+                    =FirstN(
+                        SortByColumns(
+                            Filter(
+                                cmpUpcomingEvents.Items,
+                                cmpUpcomingEvents.ShowOverdue || DateDiff(Today(), EventDate, TimeUnit.Days) >= 0
                             ),
-                            Max(1, Coalesce(cmpUpcomingEvents.MaxItems, 8))
+                            "EventDate",
+                            SortOrder.Ascending
                         ),
-                        "DaysLeft",
-                        DateDiff(Today(), EventDate, TimeUnit.Days)
+                        Max(1, Coalesce(cmpUpcomingEvents.MaxItems, 8))
                     )
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
@@ -345,17 +341,20 @@ ComponentDefinitions:
                               AlignInContainer: =AlignInContainer.Center
                               DropShadow: =DropShadow.None
                               Fill: |-
-                                =ColorFade(
-                                    If(
-                                        ThisItem.DaysLeft <= cmpUpcomingEvents.UrgentDays,
-                                        cmpUpcomingEvents.Palette.Danger,
+                                =With(
+                                    {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                    ColorFade(
                                         If(
-                                            ThisItem.DaysLeft <= cmpUpcomingEvents.SoonDays,
-                                            cmpUpcomingEvents.Palette.Warning,
-                                            cmpUpcomingEvents.Palette.Primary
-                                        )
-                                    ),
-                                    If(gblTheme.Mode = "Dark", -0.75, 0.86)
+                                            days <= cmpUpcomingEvents.UrgentDays,
+                                            cmpUpcomingEvents.Palette.Danger,
+                                            If(
+                                                days <= cmpUpcomingEvents.SoonDays,
+                                                cmpUpcomingEvents.Palette.Warning,
+                                                cmpUpcomingEvents.Palette.Primary
+                                            )
+                                        ),
+                                        If(gblTheme.Mode = "Dark", -0.75, 0.86)
+                                    )
                                 )
                               FillPortions: =0
                               Height: =44
@@ -376,13 +375,16 @@ ComponentDefinitions:
                                     Align: =Align.Center
                                     BorderStyle: =BorderStyle.None
                                     Color: |-
-                                      =If(
-                                          ThisItem.DaysLeft <= cmpUpcomingEvents.UrgentDays,
-                                          cmpUpcomingEvents.Palette.Danger,
+                                      =With(
+                                          {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
                                           If(
-                                              ThisItem.DaysLeft <= cmpUpcomingEvents.SoonDays,
-                                              cmpUpcomingEvents.Palette.Warning,
-                                              cmpUpcomingEvents.Palette.Primary
+                                              days <= cmpUpcomingEvents.UrgentDays,
+                                              cmpUpcomingEvents.Palette.Danger,
+                                              If(
+                                                  days <= cmpUpcomingEvents.SoonDays,
+                                                  cmpUpcomingEvents.Palette.Warning,
+                                                  cmpUpcomingEvents.Palette.Primary
+                                              )
                                           )
                                       )
                                     Font: =gblTheme.Typography.FontFamily
@@ -480,7 +482,7 @@ ComponentDefinitions:
                                             =fxSvg(
                                                 fxActivityIcon(Coalesce(ThisItem.Icon, ThisItem.EventType)),
                                                 fxUrgencyInk(
-                                                    ThisItem.DaysLeft,
+                                                    DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days),
                                                     cmpUpcomingEvents.UrgentDays,
                                                     cmpUpcomingEvents.SoonDays
                                                 )
@@ -507,23 +509,20 @@ ComponentDefinitions:
                                           Size: =gblTheme.Typography.Caption
                                           Text: |-
                                             =With(
-                                                {
-                                                    days: ThisItem.DaysLeft,
-                                                    when: If(
-                                                        days < 0,
-                                                        If(gblLanguage = "Arabic", "متأخر", "Overdue"),
-                                                        days = 0,
-                                                        If(gblLanguage = "Arabic", "اليوم", "Today"),
-                                                        days = 1,
-                                                        If(gblLanguage = "Arabic", "غدًا", "Tomorrow"),
-                                                        If(
-                                                            gblLanguage = "Arabic",
-                                                            "بعد " & days & " يوم",
-                                                            "In " & days & " days"
-                                                        )
+                                                {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                                If(
+                                                    days < 0,
+                                                    If(gblLanguage = "Arabic", "متأخر", "Overdue"),
+                                                    days = 0,
+                                                    If(gblLanguage = "Arabic", "اليوم", "Today"),
+                                                    days = 1,
+                                                    If(gblLanguage = "Arabic", "غدًا", "Tomorrow"),
+                                                    If(
+                                                        gblLanguage = "Arabic",
+                                                        "بعد " & days & " يوم",
+                                                        "In " & days & " days"
                                                     )
-                                                },
-                                                when & If(
+                                                ) & If(
                                                     IsBlank(ThisItem.OwnerName),
                                                     "",
                                                     "  ·  " & ThisItem.OwnerName
