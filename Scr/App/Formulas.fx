@@ -328,6 +328,47 @@ fxToneInk(Tone: Text): Color =
         fxThemeColor("TextMuted")
     );
 
+// Tone word for a status pill. fxToneFill and fxToneInk color the chip.
+fxStatusPillTone(Status: Text): Text =
+    With(
+        {s: Lower(Trim(Coalesce(Status, "")))},
+        If(
+            Or(
+                s = "closed", s = "completed", s = "approved", s = "present", s = "active",
+                s = "synced", s = "finished", s = "accepted", s = "selected", s = "received",
+                s = "posted", s = "paid", s = "achieved", s = "verified", s = "report approved",
+                s = "goals approved", s = "agreed", s = "success"
+            ),
+            "completed",
+            Or(
+                s = "overdue", s = "dropped", s = "rejected", s = "cancelled", s = "canceled",
+                s = "absent", s = "terminated", s = "not achieved", s = "reversed"
+            ),
+            "danger",
+            Or(
+                StartsWith(s, "pending"),
+                s = "pendding", s = "pended", s = "under review", s = "under assessment",
+                s = "underinspection", s = "on hold", s = "half day", s = "on leave",
+                s = "due soon", s = "partiallyreceived", s = "partiallyaccepted",
+                s = "partially paid", s = "partially achieved", s = "unpaid", s = "not paid",
+                s = "waived", s = "in preparation", s = "delayed", s = "late",
+                s = "returned", s = "returned for revision", s = "not verified", s = "approval"
+            ),
+            "warning",
+            Or(
+                s = "inactive", s = "archived", s = "not applicable", s = "skipped", s = ""
+            ),
+            "muted",
+            Or(
+                s = "in progress", s = "inprogress", s = "ongoing", s = "data collection",
+                s = "analysis", s = "reporting", s = "in review", s = "mitigation in progress",
+                s = "self-assessment", s = "manager review", s = "calibration", s = "delegated"
+            ),
+            "in progress",
+            "info"
+        )
+    );
+
 // Procurement activity log. These are not finance formulas.
 
 fnProcNotify(
