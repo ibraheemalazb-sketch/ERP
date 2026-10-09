@@ -23,6 +23,7 @@ Screens:
         If(IsBlank(varRkQuick), Set(varRkQuick, "all"));
         Set(varRkCell, Blank());
         Set(varRkPane, "Details");
+        If(IsBlank(varRkFilters), Set(varRkFilters, false));
         Set(varRkError, false);
         ClearCollect(
             colRkScale,
@@ -368,17 +369,19 @@ Screens:
                         Text: =If(gblLanguage = "Arabic", "إدارة المخاطر", "Risk Management")
                         Width: =160
                         Wrap: =false
-                  - btnRkRefresh:
-                      Control: ModernButton@1.0.0
+                  - cmpRkTools:
+                      Control: CanvasComponent
+                      ComponentName: cmpFilterRefresh
                       Properties:
-                        Appearance: =ButtonAppearance.Subtle
+                        Compact: =App.Width < 700
+                        FilterLabel: =If(gblLanguage = "Arabic", "تصفية", "Filters")
+                        FiltersOn: =varRkFilters
                         Height: =36
-                        Icon: ="ArrowClockwise"
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
-                        OnSelect: =Select(btnRkReload)
-                        Text: =""
-                        Width: =44
+                        OnFilter: =Set(varRkFilters, Not(varRkFilters))
+                        OnRefresh: =Select(btnRkReload)
+                        Width: =If(App.Width < 700, 80, 154)
                   - btnRkNew:
                       Control: ModernButton@1.0.0
                       Properties:
@@ -576,6 +579,7 @@ Screens:
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
                         SelectMultiple: =false
+                        Visible: =varRkFilters
                         Width: =If(App.Width < 700, Parent.Width, 160)
                   - cmbRkLvl:
                       Control: ModernCombobox@1.1.2
@@ -590,6 +594,7 @@ Screens:
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
                         SelectMultiple: =false
+                        Visible: =varRkFilters
                         Width: =If(App.Width < 700, Parent.Width, 140)
                   - btnRkClear:
                       Control: ModernButton@1.0.0
@@ -605,6 +610,7 @@ Screens:
                           Set(varRkCell, Blank());
                           Set(varRkQuick, "all")
                         Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                        Visible: =varRkFilters
                         Width: =80
             - lblRkError:
                 Control: Label@2.5.1
@@ -971,6 +977,42 @@ Screens:
                                 )
                               Visible: =Not(IsBlank(varSelectedRisk))
                               Width: =Parent.Width
+                        - cmpRkStep:
+                            Control: CanvasComponent
+                            ComponentName: cmpStepper
+                            Properties:
+                              ClickableSteps: ="None"
+                              CurrentStep: |-
+                                =If(
+                                    varSelectedRisk.Status.Value = "Closed",
+                                    4,
+                                    If(
+                                        varSelectedRisk.Status.Value in ["Mitigation Planned", "Mitigation In Progress", "Monitoring", "Accepted", "Pending Closure"],
+                                        3,
+                                        2
+                                    )
+                                )
+                              Density: ="Full"
+                              Height: =96
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: ="Small"
+                              StepLabels: |-
+                                =Table(
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "تحديد", "Identified") & Char(10) & Coalesce(varSelectedRisk.'Created By'.DisplayName, "—") & Char(10) & If(IsBlank(varSelectedRisk.RiskDate), If(IsBlank(varSelectedRisk.Created), "—", Text(varSelectedRisk.Created, "dd mmm yyyy")), Text(varSelectedRisk.RiskDate, "dd mmm yyyy"))
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "الاستجابة", "Response") & Char(10) & Coalesce(varSelectedRisk.ResponseStrategy.Value, "—") & Char(10) & Coalesce(varSelectedRisk.Status.Value, "—")
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "الإغلاق", "Closure") & Char(10) & If(IsBlank(varSelectedRisk.ClosingDate), "—", Text(varSelectedRisk.ClosingDate, "dd mmm yyyy")) & Char(10) & Coalesce(LookUp(Employees, ID = varSelectedRisk.ApproverID, FullName), "—")
+                                    }
+                                )
+                              Theme: =gblTheme.Mode
+                              Type: ="Step"
+                              Visible: =Not(IsBlank(varSelectedRisk))
+                              Width: =Parent.Width
                         - galRkPane:
                             Control: Gallery@2.15.0
                             Variant: Horizontal
@@ -1006,7 +1048,7 @@ Screens:
                               DropShadow: =DropShadow.None
                               Fill: =fxThemeColor("Background")
                               FillPortions: =0
-                              Height: =170
+                              Height: =120
                               LayoutAlignItems: =LayoutAlignItems.Stretch
                               LayoutDirection: =LayoutDirection.Vertical
                               LayoutGap: =8
@@ -1016,19 +1058,7 @@ Screens:
                               PaddingLeft: =8
                               PaddingRight: =8
                               PaddingTop: =8
-                              Visible: |-
-                                =And(
-                                    Not(IsBlank(varSelectedRisk)),
-                                    varRkPane = "Details",
-                                    Or(
-                                        And(
-                                            Or(varSelectedRisk.OwnerID = varMeID, varSelectedRisk.ApproverID = varMeID),
-                                            varSelectedRisk.Status.Value <> "Closed",
-                                            varSelectedRisk.Status.Value <> "Pending Closure"
-                                        ),
-                                        And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")
-                                    )
-                                )
+                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
                               Width: =Parent.Width
                             Children:
                               - lblRkWfT:
@@ -1041,7 +1071,7 @@ Screens:
                                     LayoutMinHeight: =0
                                     LayoutMinWidth: =0
                                     Size: =gblTheme.Typography.Body
-                                    Text: =If(varSelectedRisk.Status.Value = "Pending Closure", If(gblLanguage = "Arabic", "مراجعة طلب الإغلاق", "Review closure request"), If(gblLanguage = "Arabic", "إغلاق المخاطرة", "Close this risk"))
+                                    Text: =If(gblLanguage = "Arabic", "ملاحظة الإجراء", "Action note")
                                     Width: =Parent.Width
                                     Wrap: =false
                               - txtRkNote:
@@ -1055,149 +1085,121 @@ Screens:
                                     Placeholder: =If(gblLanguage = "Arabic", "ملاحظة / سبب (مطلوبة عند الرفض)", "Note / rationale (required when rejecting)")
                                     Type: =TextInputType.Multiline
                                     Width: =Parent.Width
-                              - conRkWfBtns:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    FillPortions: =0
-                                    Height: =42
-                                    LayoutAlignItems: =LayoutAlignItems.Stretch
-                                    LayoutDirection: =LayoutDirection.Horizontal
-                                    LayoutGap: =8
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                  Children:
-                                    - btnRkClose:
-                                        Control: ModernButton@1.0.0
-                                        Properties:
-                                          FillPortions: =1
-                                          Height: =42
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          OnSelect: =Set(varRkOp, "close"); Select(btnRkAct)
-                                          Text: =If(Or(IsBlank(varSelectedRisk.ApproverID), varSelectedRisk.ApproverID = varMeID), If(gblLanguage = "Arabic", "إغلاق", "Close"), If(gblLanguage = "Arabic", "طلب إغلاق", "Request closure"))
-                                          Visible: =And(varSelectedRisk.Status.Value <> "Closed", varSelectedRisk.Status.Value <> "Pending Closure")
-                                    - btnRkApprove:
-                                        Control: ModernButton@1.0.0
-                                        Properties:
-                                          FillPortions: =1
-                                          Height: =42
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          OnSelect: =Set(varRkOp, "approve"); Select(btnRkAct)
-                                          Text: =If(gblLanguage = "Arabic", "اعتماد", "Approve")
-                                          Visible: =And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")
-                                    - btnRkReject:
-                                        Control: ModernButton@1.0.0
-                                        Properties:
-                                          Appearance: =ButtonAppearance.Outline
-                                          FillPortions: =1
-                                          Height: =42
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          OnSelect: =Set(varRkOp, "reject"); Select(btnRkAct)
-                                          Text: =If(gblLanguage = "Arabic", "رفض", "Reject")
-                                          Visible: =And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")
-                        - conRkActions:
-                            Control: GroupContainer@1.5.0
-                            Variant: AutoLayout
+                        - cmpRkQuick:
+                            Control: CanvasComponent
+                            ComponentName: cmpQuickActions
                             Properties:
-                              DropShadow: =DropShadow.None
-                              Fill: =Color.Transparent
-                              FillPortions: =0
-                              Height: =44
-                              LayoutAlignItems: =LayoutAlignItems.Center
-                              LayoutDirection: =LayoutDirection.Horizontal
-                              LayoutGap: =8
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                            Children:
-                              - btnRkReopen:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Secondary
-                                    Height: =36
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                    OnSelect: =Set(varRkOp, "reopen"); Select(btnRkAct)
-                                    Text: =If(gblLanguage = "Arabic", "إعادة فتح", "Reopen")
-                                    Visible: =And(varSelectedRisk.Status.Value = "Closed", Or(varSelectedRisk.OwnerID = varMeID, varSelectedRisk.ApproverID = varMeID))
-                                    Width: =110
-                              - btnRkDelete:
-                                  Control: ModernButton@1.0.0
-                                  Properties:
-                                    Appearance: =ButtonAppearance.Outline
-                                    Height: =36
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                    OnSelect: =Set(varRkOp, "delete"); Select(btnRkAct)
-                                    Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
-                                    Visible: =Or(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.'Created By'.Email = User().Email)
-                                    Width: =90
-                        - lblRkInfoT:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "معلومات المخاطرة", "Risk information")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkInfo:
-                            Control: Label@2.5.1
-                            Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =120
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: |-
-                                =With(
-                                    {ar: gblLanguage = "Arabic", t: varSelectedRisk, loc: If(gblLanguage = "Arabic", "ar-EG", "en-US")},
-                                    If(ar, "المعتمِد: ", "Approver: ") & Coalesce(LookUp(Employees, ID = t.ApproverID, FullName), "-") & Char(10) &
-                                    If(ar, "تاريخ المخاطرة: ", "Risk date: ") & If(IsBlank(t.RiskDate), "--", Text(t.RiskDate, "dd mmm yyyy", loc)) & Char(10) &
-                                    If(ar, "المراجعة: ", "Review: ") & If(IsBlank(t.ReviewDate), "--", Text(t.ReviewDate, "dd mmm yyyy", loc)) & Char(10) &
-                                    If(ar, "الإغلاق: ", "Closing: ") & If(IsBlank(t.ClosingDate), "--", Text(t.ClosingDate, "dd mmm yyyy", loc)) & Char(10) &
-                                    If(ar, "الاتجاه: ", "Trend: ") & Coalesce(t.Trend.Value, "-") & " · " & If(ar, "تكلفة: ", "Cost: ") & Coalesce(Text(t.EstimatedCost), "-") & Char(10) &
-                                    If(ar, "مؤشر التحفيز: ", "Trigger: ") & Coalesce(t.TriggerIndicator, "-")
+                              Height: =320
+                              Items: |-
+                                =Table(
+                                    {ActionKey: "Close", Label: If(Or(IsBlank(varSelectedRisk.ApproverID), varSelectedRisk.ApproverID = varMeID), If(gblLanguage = "Arabic", "إغلاق", "Close"), If(gblLanguage = "Arabic", "طلب إغلاق", "Request closure")), Icon: "Check", Visible: And(Or(varSelectedRisk.OwnerID = varMeID, varSelectedRisk.ApproverID = varMeID), varSelectedRisk.Status.Value <> "Closed", varSelectedRisk.Status.Value <> "Pending Closure")},
+                                    {ActionKey: "Approve", Label: If(gblLanguage = "Arabic", "اعتماد الإغلاق", "Approve closure"), Icon: "Check", Visible: And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")},
+                                    {ActionKey: "Reject", Label: If(gblLanguage = "Arabic", "رفض الإغلاق", "Reject closure"), Icon: "Dismiss", Visible: And(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.Status.Value = "Pending Closure")},
+                                    {ActionKey: "Reopen", Label: If(gblLanguage = "Arabic", "إعادة فتح", "Reopen"), Icon: "Refresh", Visible: And(varSelectedRisk.Status.Value = "Closed", Or(varSelectedRisk.OwnerID = varMeID, varSelectedRisk.ApproverID = varMeID))},
+                                    {ActionKey: "Delete", Label: If(gblLanguage = "Arabic", "حذف", "Delete"), Icon: "Dismiss", Visible: Or(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.'Created By'.Email = User().Email)}
                                 )
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                        - lblRkDescT:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "الوصف", "Description")
+                              OnSelect: |-
+                                =Set(
+                                    varRkOp,
+                                    Switch(
+                                        cmpRkQuick.SelectedAction.ActionKey,
+                                        "Close", "close",
+                                        "Approve", "approve",
+                                        "Reject", "reject",
+                                        "Reopen", "reopen",
+                                        "Delete", "delete",
+                                        ""
+                                    )
+                                );
+                                Select(btnRkAct)
+                              Title: =If(gblLanguage = "Arabic", "إجراءات سريعة", "Quick actions")
                               Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
                               Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkDesc:
-                            Control: Label@2.5.1
+                        - cmpRkDetails:
+                            Control: CanvasComponent
+                            ComponentName: cmpRecordDetails
                             Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Fill: =fxThemeColor("Background")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =80
+                              Columns: =3
+                              Items: |-
+                                =Table(
+                                    {
+                                        Dimension: "What",
+                                        Label: If(gblLanguage = "Arabic", "المسؤول", "Owner"),
+                                        Value: Coalesce(varSelectedRisk.Owner.Value, "—"),
+                                        Label2: If(gblLanguage = "Arabic", "المعتمِد", "Approver"),
+                                        Value2: Coalesce(LookUp(Employees, ID = varSelectedRisk.ApproverID, FullName), "—"),
+                                        Icon: "User",
+                                        Tone: ""
+                                    },
+                                    {
+                                        Dimension: "When",
+                                        Label: If(gblLanguage = "Arabic", "تاريخ التحديد", "Identified"),
+                                        Value: If(IsBlank(varSelectedRisk.RiskDate), "—", Text(varSelectedRisk.RiskDate, "dd mmm yyyy")),
+                                        Label2: If(gblLanguage = "Arabic", "المراجعة القادمة", "Next review"),
+                                        Value2: If(IsBlank(varSelectedRisk.ReviewDate), "—", Text(varSelectedRisk.ReviewDate, "dd mmm yyyy")),
+                                        Icon: "Calendar",
+                                        Tone: If(And(Not(IsBlank(varSelectedRisk.ReviewDate)), varSelectedRisk.ReviewDate < Today(), varSelectedRisk.Status.Value <> "Closed"), "danger", "")
+                                    },
+                                    {
+                                        Dimension: "Who",
+                                        Label: If(gblLanguage = "Arabic", "المشروع", "Project"),
+                                        Value: Coalesce(varSelectedRisk.Project.Value, "—"),
+                                        Label2: If(gblLanguage = "Arabic", "الفئة", "Category"),
+                                        Value2: Coalesce(varSelectedRisk.Category.Value, "—"),
+                                        Icon: "Flag",
+                                        Tone: ""
+                                    },
+                                    {
+                                        Dimension: "Whom",
+                                        Label: If(gblLanguage = "Arabic", "الاستجابة", "Response"),
+                                        Value: Coalesce(varSelectedRisk.ResponseStrategy.Value, "—"),
+                                        Label2: "",
+                                        Value2: "",
+                                        Icon: "Settings",
+                                        Tone: ""
+                                    },
+                                    {
+                                        Dimension: "How",
+                                        Label: If(gblLanguage = "Arabic", "الاتجاه", "Trend"),
+                                        Value: Coalesce(varSelectedRisk.Trend.Value, "—"),
+                                        Label2: "",
+                                        Value2: "",
+                                        Icon: "Activity",
+                                        Tone: ""
+                                    },
+                                    {
+                                        Dimension: "Why",
+                                        Label: If(gblLanguage = "Arabic", "التكلفة", "Cost"),
+                                        Value: If(IsBlank(varSelectedRisk.EstimatedCost), "—", Text(varSelectedRisk.EstimatedCost, "#,##0.00")),
+                                        Label2: "",
+                                        Value2: "",
+                                        Icon: "Money",
+                                        Tone: ""
+                                    },
+                                    {
+                                        Dimension: "Started",
+                                        Label: If(gblLanguage = "Arabic", "الإغلاق", "Closure"),
+                                        Value: If(IsBlank(varSelectedRisk.ClosingDate), "—", Text(varSelectedRisk.ClosingDate, "dd mmm yyyy")),
+                                        Label2: "",
+                                        Value2: "",
+                                        Icon: "Check",
+                                        Tone: ""
+                                    },
+                                    {
+                                        Dimension: "Description",
+                                        Label: If(gblLanguage = "Arabic", "الوصف", "Description"),
+                                        Value: Coalesce(varSelectedRisk.RiskDescription, If(gblLanguage = "Arabic", "لا يوجد وصف.", "No description.")),
+                                        Label2: "",
+                                        Value2: "",
+                                        Icon: "FileText",
+                                        Tone: ""
+                                    }
+                                )
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: =Coalesce(varSelectedRisk.RiskDescription, "-")
+                              Title: =If(gblLanguage = "Arabic", "تفاصيل المخاطرة", "Risk details")
                               Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
                               Width: =Parent.Width
                         - lblRkMitT:

@@ -89,7 +89,7 @@ ComponentDefinitions:
             Switch(cmpStepper.Size, "Small", 8, "Medium", 10, "Large", 12, 10),
             If(
                 cmpStepper.Density = "Full",
-                Switch(cmpStepper.Size, "Small", 56, "Medium", 68, "Large", 80, 68),
+                Switch(cmpStepper.Size, "Small", 56, "Medium", 68, "Large", 80, 68) + If(Sum(cmpStepper.StepLabels, If(Char(10) in Coalesce(Label, ""), 1, 0)) > 0, 40, 0),
                 Switch(cmpStepper.Size, "Small", 28, "Medium", 36, "Large", 44, 36)
             )
         )
@@ -329,7 +329,17 @@ ComponentDefinitions:
                         gblTheme.FontWeights.Medium,
                         gblTheme.FontWeights.Regular
                     )
-                  Height: =18
+                  Height: |-
+                    =With(
+                        {
+                            txt: If(
+                                CountRows(cmpStepper.StepLabels) >= ThisItem.Value,
+                                Coalesce(Index(cmpStepper.StepLabels, ThisItem.Value).Label, ""),
+                                ""
+                            )
+                        },
+                        Max(18, CountRows(Split(txt, Char(10))) * Switch(cmpStepper.Size, "Small", 14, "Medium", 15, "Large", 16, 15))
+                    )
                   PaddingBottom: =0
                   PaddingLeft: =2
                   PaddingRight: =2
@@ -344,7 +354,7 @@ ComponentDefinitions:
                   Tooltip: =Self.Text
                   Visible: =cmpStepper.Density = "Full"
                   Width: =Parent.TemplateWidth
-                  Wrap: =false
+                  Wrap: =true
                   Y: |-
                     =Switch(
                         cmpStepper.Size,
