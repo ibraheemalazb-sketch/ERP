@@ -830,7 +830,7 @@ Screens:
                         BorderThickness: =1
                         DropShadow: =DropShadow.None
                         Fill: =fxThemeColor("Surface")
-                        Height: =36 + 36 + 22 + 32
+                        Height: =36 + 36 + 22 + 96 + 36 + 32
                         LayoutAlignItems: =LayoutAlignItems.Stretch
                         LayoutDirection: =LayoutDirection.Vertical
                         LayoutGap: =12
@@ -958,6 +958,41 @@ Screens:
                                 =Coalesce(varAtSel.ProjectText, "-") & "   •   " & If(IsBlank(varAtSel.ActivityText), "-", varAtSel.ActivityText) & "   •   " & If(IsBlank(varAtSel.AssigneeText), "-", varAtSel.AssigneeText)
                               Width: =Parent.Width
                               Wrap: =false
+                        - cmpAtStep:
+                            Control: CanvasComponent
+                            ComponentName: cmpStepper
+                            Properties:
+                              ClickableSteps: ="None"
+                              CurrentStep: |-
+                                =If(
+                                    Or(varAtSel.StatusText = "Completed", Not(IsBlank(varAtSel.CompletedDate))),
+                                    4,
+                                    If(
+                                        Or(Not(IsBlank(varAtSel.ActualStart)), varAtSel.StatusText in ["In Progress", "On Hold", "Pending Approval", "In Review", "Reopened"]),
+                                        3,
+                                        2
+                                    )
+                                )
+                              Density: ="Full"
+                              Height: =96
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: ="Small"
+                              StepLabels: |-
+                                =Table(
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "أُنشئت", "Created") & Char(10) & Coalesce(LookUp(colAtPeople, ID = varAtSel.AssignedByID).FullName, "—") & Char(10) & If(IsBlank(varAtSel.Created), "—", Text(varAtSel.Created, "dd mmm yyyy"))
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "بدأت", "Started") & Char(10) & Coalesce(varAtSel.AssigneeText, "—") & Char(10) & If(IsBlank(varAtSel.ActualStart), "—", Text(varAtSel.ActualStart, "dd mmm yyyy"))
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "اكتملت", "Completed") & Char(10) & If(IsBlank(varAtSel.CompletedDate), "—", Text(varAtSel.CompletedDate, "dd mmm yyyy")) & Char(10) & Coalesce(LookUp(colAtLog, ActionType.Value = "Completed").PerformedByName, "—")
+                                    }
+                                )
+                              Theme: =gblTheme.Mode
+                              Type: ="Step"
+                              Width: =Parent.Width
                   - conAtBody:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
