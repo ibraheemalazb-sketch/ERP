@@ -40,7 +40,54 @@ ComponentDefinitions:
         Default: =""
     Properties:
       Fill: =Color.Transparent
-      Height: =If(Len(Trim(Coalesce(cmpRecordDetails.Title, ""))) > 0, 28, 0) + conRdFacts.Height + If(conRdDesc.Visible, 8 + conRdDesc.Height, 0)
+      Height: |-
+        =With(
+            {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+            With(
+                {cardW: If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)},
+                With(
+                    {
+                        hWhat: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")), 0, 40 + Max(20, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—")) / Max(8, (cardW - 64) / 6.6), 0) * 18)),
+                        hWhen: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")), 0, 40 + Max(20, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—")) / Max(8, (cardW - 64) / 6.6), 0) * 18)),
+                        hWho: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")), 0, 40 + Max(20, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—")) / Max(8, (cardW - 64) / 6.6), 0) * 18)),
+                        hWhom: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")), 0, 40 + Max(20, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—")) / Max(8, (cardW - 64) / 6.6), 0) * 18)),
+                        hHow: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")), 0, 40 + Max(20, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—")) / Max(8, (cardW - 64) / 6.6), 0) * 18)),
+                        hWhy: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")), 0, 40 + Max(20, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—")) / Max(8, (cardW - 64) / 6.6), 0) * 18)),
+                        hDesc: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Description")), 0, 40 + Max(36, RoundUp(Len(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Description").Value, "—")) / Max(12, (Max(cmpRecordDetails.Width, 280) - 72) / 6.6), 0) * 18))
+                    },
+                    With(
+                        {rows: Filter(Table({H: hWhat}, {H: hWhen}, {H: hWho}, {H: hWhom}, {H: hHow}, {H: hWhy}), H > 0)},
+                        With(
+                            {n: CountRows(rows), c: Max(1, colCount)},
+                            With(
+                                {r: RoundUp(n / c, 0)},
+                                If(Len(Trim(Coalesce(cmpRecordDetails.Title, ""))) > 0, 28, 0)
+                                + If(And(Len(Trim(Coalesce(cmpRecordDetails.Title, ""))) > 0, Or(n > 0, hDesc > 0)), 8, 0)
+                                + If(
+                                    n = 0,
+                                    0,
+                                    Sum(
+                                        Sequence(6),
+                                        If(
+                                            Value > r,
+                                            0,
+                                            Max(
+                                                If((Value - 1) * c + 1 <= n, Index(rows, (Value - 1) * c + 1).H, 0),
+                                                If(And(c >= 2, (Value - 1) * c + 2 <= n), Index(rows, (Value - 1) * c + 2).H, 0),
+                                                If(And(c >= 3, (Value - 1) * c + 3 <= n), Index(rows, (Value - 1) * c + 3).H, 0),
+                                                If(And(c >= 4, (Value - 1) * c + 4 <= n), Index(rows, (Value - 1) * c + 4).H, 0)
+                                            ) + If(Value > 1, 8, 0)
+                                        )
+                                    )
+                                )
+                                + If(And(n > 0, hDesc > 0), 8, 0)
+                                + hDesc
+                            )
+                        )
+                    )
+                )
+            )
+        )
       Width: =360
     Children:
       - conRd:
