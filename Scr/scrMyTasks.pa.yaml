@@ -1000,7 +1000,7 @@ Screens:
                                     BorderThickness: =1
                                     DropShadow: =DropShadow.None
                                     Fill: =fxThemeColor("Surface")
-                                    Height: =24 + conMtFGrid.Height + 8 + 32
+                                    Height: =24 + cmpMtDetails.Height + 8 + 32
                                     LayoutAlignItems: =LayoutAlignItems.Stretch
                                     LayoutDirection: =LayoutDirection.Vertical
                                     LayoutGap: =5
@@ -1030,110 +1030,60 @@ Screens:
                                           Text: =If(gblLanguage = "Arabic", "تفاصيل المهمة", "Task details")
                                           Width: =Parent.Width
                                           Wrap: =false
-                                    - conMtFGrid:
-                                        Control: GroupContainer@1.5.0
-                                        Variant: AutoLayout
+                                    - cmpMtDetails:
+                                        Control: CanvasComponent
+                                        ComponentName: cmpRecordDetails
                                         Properties:
-                                          DropShadow: =DropShadow.None
-                                          Fill: =Color.Transparent
-                                          Height: =If(App.Width < 700, 8 * 60 + 104, 2 * 60 + 104)
-                                          LayoutDirection: =LayoutDirection.Horizontal
-                                          LayoutGap: =5
+                                          Columns: =3
+                                          Items: |-
+                                            =Table(
+                                                {
+                                                    Dimension: "What",
+                                                    Label: If(gblLanguage = "Arabic", "النشاط", "What"),
+                                                    Value: If(IsBlank(varMtSel.ActivityText), "-", varMtSel.ActivityText),
+                                                    Icon: "Activity"
+                                                },
+                                                {
+                                                    Dimension: "When",
+                                                    Label: If(gblLanguage = "Arabic", "الموعد", "When"),
+                                                    Value: If(gblLanguage = "Arabic", "الاستحقاق: ", "Due: ") & If(IsBlank(varMtSel.DueDate), "-", Text(varMtSel.DueDate, "dd mmm yyyy")) & Char(10) & If(gblLanguage = "Arabic", "البداية: ", "Started: ") & If(IsBlank(varMtSel.ActualStart), "-", Text(varMtSel.ActualStart, "dd mmm yyyy")) & " · " & If(gblLanguage = "Arabic", "الإكمال: ", "Completed: ") & If(IsBlank(varMtSel.CompletedDate), "-", Text(varMtSel.CompletedDate, "dd mmm yyyy")),
+                                                    Icon: "Calendar"
+                                                },
+                                                {
+                                                    Dimension: "Who",
+                                                    Label: If(gblLanguage = "Arabic", "أسندها", "Who"),
+                                                    Value: Coalesce(LookUp(colMtPeople, ID = varMtSel.AssignedByID).FullName, "-"),
+                                                    Icon: "User"
+                                                },
+                                                {
+                                                    Dimension: "Whom",
+                                                    Label: If(gblLanguage = "Arabic", "المكلّف", "Whom"),
+                                                    Value: Coalesce(varMtSel.AssigneeText, "-"),
+                                                    Icon: "Users"
+                                                },
+                                                {
+                                                    Dimension: "How",
+                                                    Label: If(gblLanguage = "Arabic", "التنفيذ", "How"),
+                                                    Value: Text(Coalesce(varMtSel.ProgressPct, 0)) & "%" & If(IsBlank(varMtSel.EstimatedHours), "", Char(10) & If(gblLanguage = "Arabic", "ساعات: ", "Hours: ") & Text(varMtSel.EstimatedHours)) & Char(10) & If(gblLanguage = "Arabic", "إرجاع: ", "Returned: ") & Text(Coalesce(varMtSel.ReturnCount, 0)),
+                                                    Icon: "Settings"
+                                                },
+                                                {
+                                                    Dimension: "Why",
+                                                    Label: If(gblLanguage = "Arabic", "ملاحظات", "Why"),
+                                                    Value: Coalesce(varMtSel.Remarks, "-"),
+                                                    Icon: "Flag"
+                                                },
+                                                {
+                                                    Dimension: "Description",
+                                                    Label: If(gblLanguage = "Arabic", "الوصف", "Description"),
+                                                    Value: Coalesce(varMtSel.TaskDescription, If(gblLanguage = "Arabic", "لا يوجد وصف.", "No description.")),
+                                                    Icon: "FileText"
+                                                }
+                                            )
+                                          LayoutMinHeight: =0
                                           LayoutMinWidth: =0
-                                          LayoutWrap: =true
+                                          Title: =""
                                           Width: =Parent.Width
-                                        Children:
-                                          - lblMtFAssignee:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "المكلّف", "Assigned to") & Char(10) & Coalesce(varMtSel.AssigneeText, "—")
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFBy:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "أسندها", "Assigned by") & Char(10) & Coalesce(LookUp(colMtPeople, ID = varMtSel.AssignedByID).FullName, "—")
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFDue:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =If(varMtSel.IsOverdue, fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "الاستحقاق", "Due") & Char(10) & If(IsBlank(varMtSel.DueDate), "—", Text(varMtSel.DueDate, "dd mmm yyyy"))
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFProject:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "المشروع", "Project") & Char(10) & Coalesce(varMtSel.ProjectText, "—")
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFActivity:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "النشاط", "Activity") & Char(10) & If(IsBlank(varMtSel.ActivityText), "—", varMtSel.ActivityText)
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFStart:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "البداية", "Started") & Char(10) & If(IsBlank(varMtSel.ActualStart), "—", Text(varMtSel.ActualStart, "dd mmm yyyy"))
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFDone:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "الإكمال", "Completed") & Char(10) & If(IsBlank(varMtSel.CompletedDate), "—", Text(varMtSel.CompletedDate, "dd mmm yyyy"))
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFProg:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =52
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "الإنجاز", "Progress") & Char(10) & Text(Coalesce(varMtSel.ProgressPct, 0)) & "%"
-                                                Width: =If(App.Width < 700, Parent.Width, (Parent.Width - 15) / 4)
-                                          - lblMtFDesc:
-                                              Control: Label@2.5.1
-                                              Properties:
-                                                Color: =fxThemeColor("TextPrimary")
-                                                Font: =gblTheme.Typography.FontFamily
-                                                Height: =96
-                                                Size: =12
-                                                Text: |-
-                                                  =If(gblLanguage = "Arabic", "الوصف", "Description") & Char(10) & Coalesce(varMtSel.TaskDescription, If(gblLanguage = "Arabic", "لا يوجد وصف.", "No description."))
-                                                VerticalAlign: =VerticalAlign.Top
-                                                Width: =Parent.Width
                               - cmpMtComments:
                                   Control: CanvasComponent
                                   ComponentName: cmpComments
