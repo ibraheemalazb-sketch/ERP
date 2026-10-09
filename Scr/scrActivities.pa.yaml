@@ -26,6 +26,7 @@ Screens:
         Set(varAcView, If(App.Width < 700, "list", Coalesce(varAcView, "table")));
         Set(varAcFilters, Coalesce(varAcFilters, false));
         Set(varAcMine, Coalesce(varAcMine, false));
+        Set(varAcLateOnly, false);
         Set(varAcDlg, false);
         Set(varAcTaskSel, 0);
         Set(varAcMailOpen, false);
@@ -561,6 +562,7 @@ Screens:
                                                         Or(Coalesce(varAcProjectID, 0) = 0, ProjectID = varAcProjectID),
                                                         Or(varAcOwner = "All", OwnerText = varAcOwner),
                                                         Or(Not(varAcMine), ResponsiblePersonID = varAcMe),
+                                                        Or(Not(Coalesce(varAcLateOnly, false)), IsLate),
                                                         Or(
                                                             IsBlank(Trim(txtAcSearch.Text)),
                                                             Trim(txtAcSearch.Text) in Title,
@@ -1038,6 +1040,7 @@ Screens:
                                             Set(varAcProjectID, 0);
                                             Set(varAcOwner, "All");
                                             Set(varAcMine, false);
+                                            Set(varAcLateOnly, false);
                                             Reset(cmbAcStatus);
                                             Reset(cmbAcType);
                                             Reset(cmbAcProject);
@@ -1061,6 +1064,7 @@ Screens:
                                             Set(varAcProjectID, 0);
                                             Set(varAcOwner, "All");
                                             Set(varAcMine, false);
+                                            Set(varAcLateOnly, false);
                                             Reset(cmbAcStatus);
                                             Reset(cmbAcType);
                                             Reset(cmbAcProject);
@@ -1103,7 +1107,8 @@ Screens:
                                     LayoutMinHeight: =0
                                     LayoutMinWidth: =0
                                     OnSelect: |-
-                                      =If(
+                                      =Set(varAcLateOnly, false);
+                                      If(
                                           ThisItem.K = "Mine",
                                           Set(varAcMine, Not(Coalesce(varAcMine, false))),
                                           Set(varAcStatus, ThisItem.K);
@@ -1111,372 +1116,94 @@ Screens:
                                       )
                                     Text: =ThisItem.L
                                     Width: =120
-                  - conAcKpis:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
+                  - cmpAcKpi:
+                      Control: CanvasComponent
+                      ComponentName: cmpKPIwNav
                       Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =0
-                        Height: =If(App.Width < 700, 152, 72)
-                        LayoutAlignItems: =LayoutAlignItems.Stretch
-                        LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutGap: =8
+                        AlignInContainer: =AlignInContainer.Stretch
+                        AnimationEffect: ="None"
+                        ColumnsLayout: |-
+                          ={
+                              Mobile: 2,
+                              Tablet: 2,
+                              Desktop: 4,
+                              MobileBreakpoint: 700,
+                              TabletBreakpoint: 1100,
+                              DesktopBreakpoint: 1366
+                          }
+                        Data: |-
+                          =Table(
+                              {
+                                  ID: 1,
+                                  Icon: "Activity",
+                                  Value: CountRows(colAcRows),
+                                  Label: If(gblLanguage = "Arabic", "كل الأنشطة", "All activities"),
+                                  Subtitle: If(gblLanguage = "Arabic", "ضمن القائمة", "In this list"),
+                                  Screen: "All",
+                                  IconBg: If(gblTheme.Mode = "Dark", "#172030", "#ECF2FF"),
+                                  IconColor: If(gblTheme.Mode = "Dark", "#79B0FF", "#1B56E5"),
+                                  SparklineData: "",
+                                  isHidden: false
+                              },
+                              {
+                                  ID: 2,
+                                  Icon: "Clock",
+                                  Value: CountRows(Filter(colAcRows, StatusText = "In Progress")),
+                                  Label: If(gblLanguage = "Arabic", "قيد التنفيذ", "In progress"),
+                                  Subtitle: If(gblLanguage = "Arabic", "أنشطة جارية", "Activities underway"),
+                                  Screen: "In Progress",
+                                  IconBg: If(gblTheme.Mode = "Dark", "#164E63", "#ECFEFF"),
+                                  IconColor: If(gblTheme.Mode = "Dark", "#22D3EE", "#0E7490"),
+                                  SparklineData: "",
+                                  isHidden: false
+                              },
+                              {
+                                  ID: 3,
+                                  Icon: "Warning",
+                                  Value: CountRows(Filter(colAcRows, IsLate)),
+                                  Label: If(gblLanguage = "Arabic", "متأخرة عن الخطة", "Behind plan"),
+                                  Subtitle: If(gblLanguage = "Arabic", "تجاوزت النهاية المخططة", "Past the planned end"),
+                                  Screen: "Late",
+                                  IconBg: If(gblTheme.Mode = "Dark", "#450A0A", "#FEF2F2"),
+                                  IconColor: If(gblTheme.Mode = "Dark", "#F87171", "#DC2626"),
+                                  SparklineData: "",
+                                  isHidden: false
+                              },
+                              {
+                                  ID: 4,
+                                  Icon: "Check",
+                                  Value: CountRows(Filter(colAcRows, StatusText = "Completed")),
+                                  Label: If(gblLanguage = "Arabic", "مكتملة", "Completed"),
+                                  Subtitle: If(gblLanguage = "Arabic", "أُنجزت", "Finished activities"),
+                                  Screen: "Completed",
+                                  IconBg: If(gblTheme.Mode = "Dark", "#14532D", "#F0FDF4"),
+                                  IconColor: If(gblTheme.Mode = "Dark", "#4ADE80", "#16A34A"),
+                                  SparklineData: "",
+                                  isHidden: false
+                              }
+                          )
+                        FontsSizesTitle: =12
+                        Height: |-
+                          =With(
+                              {cols: If(Parent.Width < 700, 2, 4)},
+                              RoundUp(4 / cols, 0) * 108
+                          )
+                        Icons: |-
+                          =Table({Name: "Activity", SVG: ""})
+                        IconsSize: =20
+                        IsLoading: =false
+                        KPINav: =
                         LayoutMinHeight: =0
                         LayoutMinWidth: =0
-                        LayoutWrap: =App.Width < 700
+                        OnCardClick: |-
+                          =Set(varAcLateOnly, varClickScreen = "Late");
+                          Set(varAcStatus, If(varClickScreen = "Late", "All", Coalesce(varClickScreen, "All")));
+                          Reset(cmbAcStatus)
+                        Style: ="Compact"
+                        StyleConfig: =
+                        SubtitleFS: =
+                        Theme: =gblTheme.Mode
                         Width: =Parent.Width
-                      Children:
-                        - conAcKpiTotal:
-                            Control: GroupContainer@1.5.0
-                            Variant: AutoLayout
-                            Properties:
-                              BorderColor: =fxThemeColor("Border")
-                              BorderThickness: =1
-                              DropShadow: =DropShadow.None
-                              Fill: =fxThemeColor("Surface")
-                              FillPortions: =If(App.Width < 700, 0, 1)
-                              Height: =72
-                              LayoutAlignItems: =LayoutAlignItems.Center
-                              LayoutDirection: =LayoutDirection.Horizontal
-                              LayoutGap: =12
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =140
-                              PaddingLeft: =14
-                              PaddingRight: =14
-                              RadiusBottomLeft: =gblTheme.Radius.XL
-                              RadiusBottomRight: =gblTheme.Radius.XL
-                              RadiusTopLeft: =gblTheme.Radius.XL
-                              RadiusTopRight: =gblTheme.Radius.XL
-                              Width: =If(App.Width < 700, (Parent.Width - 8) / 2, 180)
-                            Children:
-                              - conAcKpiTotalIcon:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =fxToneFill("in progress")
-                                    FillPortions: =0
-                                    Height: =40
-                                    LayoutAlignItems: =LayoutAlignItems.Center
-                                    LayoutDirection: =LayoutDirection.Horizontal
-                                    LayoutJustifyContent: =LayoutJustifyContent.Center
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                    RadiusBottomLeft: =10
-                                    RadiusBottomRight: =10
-                                    RadiusTopLeft: =10
-                                    RadiusTopRight: =10
-                                    Width: =40
-                                  Children:
-                                    - imgAcKpiTotal:
-                                        Control: Image@2.2.3
-                                        Properties:
-                                          BorderStyle: =BorderStyle.None
-                                          Height: =20
-                                          Image: =fxSvg("Activity", fxThemeInk("Primary"))
-                                          Width: =20
-                              - conAcKpiTotalText:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =Color.Transparent
-                                    FillPortions: =1
-                                    Height: =50
-                                    LayoutDirection: =LayoutDirection.Vertical
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                  Children:
-                                    - lblAcKpiTotal:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextPrimary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =FontWeight.Bold
-                                          Height: =28
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =20
-                                          Text: =Text(CountRows(colAcRows))
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                                    - lblAcKpiTotalCap:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextMuted")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          Height: =18
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =11
-                                          Text: =If(gblLanguage = "Arabic", "كل الأنشطة", "All activities")
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                        - conAcKpiDoing:
-                            Control: GroupContainer@1.5.0
-                            Variant: AutoLayout
-                            Properties:
-                              BorderColor: =fxThemeColor("Border")
-                              BorderThickness: =1
-                              DropShadow: =DropShadow.None
-                              Fill: =fxThemeColor("Surface")
-                              FillPortions: =If(App.Width < 700, 0, 1)
-                              Height: =72
-                              LayoutAlignItems: =LayoutAlignItems.Center
-                              LayoutDirection: =LayoutDirection.Horizontal
-                              LayoutGap: =12
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =140
-                              PaddingLeft: =14
-                              PaddingRight: =14
-                              RadiusBottomLeft: =gblTheme.Radius.XL
-                              RadiusBottomRight: =gblTheme.Radius.XL
-                              RadiusTopLeft: =gblTheme.Radius.XL
-                              RadiusTopRight: =gblTheme.Radius.XL
-                              Width: =If(App.Width < 700, (Parent.Width - 8) / 2, 180)
-                            Children:
-                              - conAcKpiDoingIcon:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =fxToneFill("info")
-                                    Height: =40
-                                    LayoutAlignItems: =LayoutAlignItems.Center
-                                    LayoutDirection: =LayoutDirection.Horizontal
-                                    LayoutJustifyContent: =LayoutJustifyContent.Center
-                                    RadiusBottomLeft: =10
-                                    RadiusBottomRight: =10
-                                    RadiusTopLeft: =10
-                                    RadiusTopRight: =10
-                                    Width: =40
-                                  Children:
-                                    - imgAcKpiDoing:
-                                        Control: Image@2.2.3
-                                        Properties:
-                                          BorderStyle: =BorderStyle.None
-                                          Height: =20
-                                          Image: =fxSvg("Clock", fxStatusInk("Approval"))
-                                          Width: =20
-                              - conAcKpiDoingText:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    Fill: =Color.Transparent
-                                    FillPortions: =1
-                                    Height: =50
-                                    LayoutDirection: =LayoutDirection.Vertical
-                                  Children:
-                                    - lblAcKpiDoing:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextPrimary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =FontWeight.Bold
-                                          Height: =28
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =20
-                                          Text: =Text(CountRows(Filter(colAcRows, StatusText = "In Progress")))
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                                    - lblAcKpiDoingCap:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextMuted")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          Height: =18
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =11
-                                          Text: =If(gblLanguage = "Arabic", "قيد التنفيذ", "In progress")
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                        - conAcKpiLate:
-                            Control: GroupContainer@1.5.0
-                            Variant: AutoLayout
-                            Properties:
-                              BorderColor: =fxThemeColor("Border")
-                              BorderThickness: =1
-                              DropShadow: =DropShadow.None
-                              Fill: =fxThemeColor("Surface")
-                              FillPortions: =If(App.Width < 700, 0, 1)
-                              Height: =72
-                              LayoutAlignItems: =LayoutAlignItems.Center
-                              LayoutDirection: =LayoutDirection.Horizontal
-                              LayoutGap: =12
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =140
-                              PaddingLeft: =14
-                              PaddingRight: =14
-                              RadiusBottomLeft: =gblTheme.Radius.XL
-                              RadiusBottomRight: =gblTheme.Radius.XL
-                              RadiusTopLeft: =gblTheme.Radius.XL
-                              RadiusTopRight: =gblTheme.Radius.XL
-                              Width: =If(App.Width < 700, (Parent.Width - 8) / 2, 180)
-                            Children:
-                              - conAcKpiLateIcon:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =fxToneFill("danger")
-                                    Height: =40
-                                    LayoutAlignItems: =LayoutAlignItems.Center
-                                    LayoutDirection: =LayoutDirection.Horizontal
-                                    LayoutJustifyContent: =LayoutJustifyContent.Center
-                                    RadiusBottomLeft: =10
-                                    RadiusBottomRight: =10
-                                    RadiusTopLeft: =10
-                                    RadiusTopRight: =10
-                                    Width: =40
-                                  Children:
-                                    - imgAcKpiLate:
-                                        Control: Image@2.2.3
-                                        Properties:
-                                          BorderStyle: =BorderStyle.None
-                                          Height: =20
-                                          Image: =fxSvg("Warning", fxStatusInk("Danger"))
-                                          Width: =20
-                              - conAcKpiLateText:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    Fill: =Color.Transparent
-                                    FillPortions: =1
-                                    Height: =50
-                                    LayoutDirection: =LayoutDirection.Vertical
-                                  Children:
-                                    - lblAcKpiLate:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextPrimary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =FontWeight.Bold
-                                          Height: =28
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =20
-                                          Text: =Text(CountRows(Filter(colAcRows, IsLate)))
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                                    - lblAcKpiLateCap:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextMuted")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          Height: =18
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =11
-                                          Text: =If(gblLanguage = "Arabic", "متأخرة عن الخطة", "Behind plan")
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                        - conAcKpiDone:
-                            Control: GroupContainer@1.5.0
-                            Variant: AutoLayout
-                            Properties:
-                              BorderColor: =fxThemeColor("Border")
-                              BorderThickness: =1
-                              DropShadow: =DropShadow.None
-                              Fill: =fxThemeColor("Surface")
-                              FillPortions: =If(App.Width < 700, 0, 1)
-                              Height: =72
-                              LayoutAlignItems: =LayoutAlignItems.Center
-                              LayoutDirection: =LayoutDirection.Horizontal
-                              LayoutGap: =12
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =140
-                              PaddingLeft: =14
-                              PaddingRight: =14
-                              RadiusBottomLeft: =gblTheme.Radius.XL
-                              RadiusBottomRight: =gblTheme.Radius.XL
-                              RadiusTopLeft: =gblTheme.Radius.XL
-                              RadiusTopRight: =gblTheme.Radius.XL
-                              Width: =If(App.Width < 700, (Parent.Width - 8) / 2, 180)
-                            Children:
-                              - conAcKpiDoneIcon:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    DropShadow: =DropShadow.None
-                                    Fill: =fxToneFill("completed")
-                                    Height: =40
-                                    LayoutAlignItems: =LayoutAlignItems.Center
-                                    LayoutDirection: =LayoutDirection.Horizontal
-                                    LayoutJustifyContent: =LayoutJustifyContent.Center
-                                    RadiusBottomLeft: =10
-                                    RadiusBottomRight: =10
-                                    RadiusTopLeft: =10
-                                    RadiusTopRight: =10
-                                    Width: =40
-                                  Children:
-                                    - imgAcKpiDone:
-                                        Control: Image@2.2.3
-                                        Properties:
-                                          BorderStyle: =BorderStyle.None
-                                          Height: =20
-                                          Image: =fxSvg("Check", fxStatusInk("Success"))
-                                          Width: =20
-                              - conAcKpiDoneText:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    Fill: =Color.Transparent
-                                    FillPortions: =1
-                                    Height: =50
-                                    LayoutDirection: =LayoutDirection.Vertical
-                                  Children:
-                                    - lblAcKpiDone:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextPrimary")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =FontWeight.Bold
-                                          Height: =28
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =20
-                                          Text: =Text(CountRows(Filter(colAcRows, StatusText = "Completed")))
-                                          Width: =Parent.Width
-                                          Wrap: =false
-                                    - lblAcKpiDoneCap:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                                          Color: =fxThemeColor("TextMuted")
-                                          Font: =gblTheme.Typography.FontFamily
-                                          Height: =18
-                                          PaddingBottom: =0
-                                          PaddingLeft: =0
-                                          PaddingRight: =0
-                                          PaddingTop: =0
-                                          Size: =11
-                                          Text: =If(gblLanguage = "Arabic", "مكتملة", "Completed")
-                                          Width: =Parent.Width
-                                          Wrap: =false
                   - cmpAcTable:
                       Control: CanvasComponent
                       ComponentName: cmpMyTable
@@ -1516,6 +1243,7 @@ Screens:
                                       Or(Coalesce(varAcProjectID, 0) = 0, ProjectID = varAcProjectID),
                                       Or(varAcOwner = "All", OwnerText = varAcOwner),
                                       Or(Not(varAcMine), ResponsiblePersonID = varAcMe),
+                                      Or(Not(Coalesce(varAcLateOnly, false)), IsLate),
                                       Or(
                                           IsBlank(Trim(txtAcSearch.Text)),
                                           Trim(txtAcSearch.Text) in Title,
