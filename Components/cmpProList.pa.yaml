@@ -20,11 +20,11 @@ ComponentDefinitions:
       Items:
         PropertyKind: Input
         DisplayName: Items
-        Description: Rows to show. Required columns are ID, Title, Subtitle, Icon, Tone, Status, and Progress. Progress below 0 hides the bar. Icon is an fxSvg name. Tone is a word such as success, warning, danger, info, or muted.
+        Description: Rows to show. Columns are ID, Title, Subtitle, Activity, Priority, Status, DueDate, Icon, Tone, and Progress. Progress below 0 hides the percent.
         DataType: Table
         Default: |-
           =Table(
-              {ID: 1, Title: If(gblLanguage = "Arabic", "عنصر", "Item"), Subtitle: If(gblLanguage = "Arabic", "تفاصيل", "Details"), Icon: "File", Tone: "info", Status: If(gblLanguage = "Arabic", "نشط", "Active"), Progress: 40}
+              {ID: 1, Title: If(gblLanguage = "Arabic", "عنصر", "Item"), Subtitle: If(gblLanguage = "Arabic", "تفاصيل", "Details"), Activity: If(gblLanguage = "Arabic", "نشاط", "Activity"), Priority: "Medium", Status: "In Progress", DueDate: Today(), Icon: "File", Tone: "info", Progress: 40}
           )
       OnSelect:
         PropertyKind: Event
@@ -37,7 +37,7 @@ ComponentDefinitions:
         DisplayName: Row Height
         Description: Height of one row.
         DataType: Number
-        Default: =76
+        Default: =84
       SelectedItem:
         PropertyKind: Output
         DisplayName: Selected Item
@@ -55,12 +55,12 @@ ComponentDefinitions:
       OnReset: |-
         =Set(
             _proSel,
-            {ID: 0, Title: "", Subtitle: "", Icon: "File", Tone: "muted", Status: "", Progress: -1}
+            {ID: 0, Title: "", Subtitle: "", Activity: "", Priority: "", Status: "", DueDate: Today(), Icon: "File", Tone: "muted", Progress: -1}
         )
       SelectedItem: |-
         =If(
             IsBlank(_proSel),
-            {ID: 0, Title: "", Subtitle: "", Icon: "File", Tone: "muted", Status: "", Progress: -1},
+            {ID: 0, Title: "", Subtitle: "", Activity: "", Priority: "", Status: "", DueDate: Today(), Icon: "File", Tone: "muted", Progress: -1},
             _proSel
         )
       Width: =360
@@ -114,135 +114,188 @@ ComponentDefinitions:
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
                   ShowScrollbar: =true
-                  TemplatePadding: =6
-                  TemplateSize: =Max(64, Coalesce(cmpProList.RowHeight, 76))
+                  TemplatePadding: =0
+                  TemplateSize: =Max(78, Coalesce(cmpProList.RowHeight, 84))
                   Visible: =CountRows(cmpProList.Items) > 0
                   Width: =Parent.Width
                 Children:
                   - conProRow:
                       Control: GroupContainer@1.5.0
-                      Variant: ManualLayout
+                      Variant: AutoLayout
                       Properties:
-                        BorderColor: =If(ThisItem.ID = cmpProList.SelectedItem.ID, fxThemeColor("Primary"), fxThemeColor("Border"))
-                        BorderThickness: =1
                         DropShadow: =DropShadow.None
                         Fill: =If(ThisItem.ID = cmpProList.SelectedItem.ID, fxThemeColor("PrimaryLight"), fxThemeColor("Surface"))
-                        Height: =Parent.TemplateHeight - 6
-                        RadiusBottomLeft: =gblTheme.Radius.Large
-                        RadiusBottomRight: =gblTheme.Radius.Large
-                        RadiusTopLeft: =gblTheme.Radius.Large
-                        RadiusTopRight: =gblTheme.Radius.Large
+                        Height: =Parent.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        PaddingBottom: =8
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        PaddingTop: =8
                         Width: =Parent.TemplateWidth
                       Children:
-                        - conProIcon:
+                        - conProMain:
                             Control: GroupContainer@1.5.0
-                            Variant: ManualLayout
+                            Variant: AutoLayout
                             Properties:
                               DropShadow: =DropShadow.None
-                              Fill: =fxToneFill(ThisItem.Tone)
-                              Height: =36
-                              RadiusBottomLeft: =10
-                              RadiusBottomRight: =10
-                              RadiusTopLeft: =10
-                              RadiusTopRight: =10
-                              Width: =36
-                              X: =10
-                              Y: =10
+                              LayoutAlignItems: =LayoutAlignItems.Stretch
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =3
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
                             Children:
-                              - imgProIcon:
-                                  Control: Image@2.2.3
+                              - lblProRowTitle:
+                                  Control: ModernText@1.0.0
                                   Properties:
-                                    BorderStyle: =BorderStyle.None
-                                    Height: =18
-                                    Image: |-
-                                      =fxSvg(
-                                          Coalesce(ThisItem.Icon, "File"),
-                                          Switch(
-                                              Lower(Coalesce(ThisItem.Tone, "muted")),
-                                              "success", "rgb(22,163,74)",
-                                              "completed", "rgb(22,163,74)",
-                                              "low", "rgb(22,163,74)",
-                                              "warning", "rgb(217,119,6)",
-                                              "pending", "rgb(217,119,6)",
-                                              "medium", "rgb(217,119,6)",
-                                              "danger", "rgb(220,38,38)",
-                                              "high", "rgb(220,38,38)",
-                                              "error", "rgb(220,38,38)",
-                                              "info", "rgb(37,99,235)",
-                                              fxThemeInk("Primary")
-                                          )
-                                      )
-                                    Width: =18
-                                    X: =9
-                                    Y: =9
-                        - lblProRowTitle:
+                                    Color: =fxThemeColor("TextPrimary")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =20
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =12
+                                    Text: =Coalesce(ThisItem.Title, "")
+                                    Wrap: =false
+                              - lblProActivity:
+                                  Control: ModernText@1.0.0
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =10
+                                    Text: =Coalesce(ThisItem.Activity, ThisItem.Subtitle, "")
+                                    Wrap: =false
+                              - conProMeta:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    FillPortions: =0
+                                    Height: =20
+                                    LayoutAlignItems: =LayoutAlignItems.Center
+                                    LayoutDirection: =LayoutDirection.Horizontal
+                                    LayoutGap: =6
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                  Children:
+                                    - lblProPriority:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxToneInk(fxStatusPillTone(ThisItem.Priority))
+                                          Fill: =fxToneFill(fxStatusPillTone(ThisItem.Priority))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =18
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          RadiusBottomLeft: =gblTheme.Radius.Round
+                                          RadiusBottomRight: =gblTheme.Radius.Round
+                                          RadiusTopLeft: =gblTheme.Radius.Round
+                                          RadiusTopRight: =gblTheme.Radius.Round
+                                          Size: =9
+                                          Text: =Switch(ThisItem.Priority, "High", If(gblLanguage = "Arabic", "عالية", "High"), "Critical", If(gblLanguage = "Arabic", "حرجة", "Critical"), "Medium", If(gblLanguage = "Arabic", "متوسطة", "Medium"), "Low", If(gblLanguage = "Arabic", "منخفضة", "Low"), ThisItem.Priority)
+                                          Visible: =Len(Trim(Coalesce(ThisItem.Priority, ""))) > 0
+                                          Width: =64
+                                    - lblProStatus:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Align: =Align.Center
+                                          Color: =fxToneInk(fxStatusPillTone(ThisItem.Status))
+                                          Fill: =fxToneFill(fxStatusPillTone(ThisItem.Status))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: =18
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          RadiusBottomLeft: =gblTheme.Radius.Round
+                                          RadiusBottomRight: =gblTheme.Radius.Round
+                                          RadiusTopLeft: =gblTheme.Radius.Round
+                                          RadiusTopRight: =gblTheme.Radius.Round
+                                          Size: =9
+                                          Text: =Switch(ThisItem.Status, "Completed", If(gblLanguage = "Arabic", "مكتمل", "Completed"), "In Progress", If(gblLanguage = "Arabic", "قيد التنفيذ", "In Progress"), "On Hold", If(gblLanguage = "Arabic", "معلّق", "On Hold"), "Not Started", If(gblLanguage = "Arabic", "لم يبدأ", "Not Started"), "Cancelled", If(gblLanguage = "Arabic", "ملغاة", "Cancelled"), ThisItem.Status)
+                                          Visible: =Len(Trim(Coalesce(ThisItem.Status, ""))) > 0
+                                          Width: =84
+                                    - lblProDue:
+                                        Control: ModernText@1.0.0
+                                        Properties:
+                                          Color: =If(And(!IsBlank(ThisItem.DueDate), ThisItem.DueDate < Today(), ThisItem.Status <> "Completed", ThisItem.Status <> "Cancelled"), fxThemeColor("Danger"), fxThemeColor("TextMuted"))
+                                          FillPortions: =1
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =18
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =10
+                                          Text: =If(IsBlank(ThisItem.DueDate), "", If(gblLanguage = "Arabic", "الاستحقاق ", "Due ") & Text(ThisItem.DueDate, "dd mmm yyyy"))
+                                          Wrap: =false
+                        - lblProPct:
                             Control: ModernText@1.0.0
                             Properties:
-                              Color: =fxThemeColor("TextPrimary")
+                              Align: =Align.Right
+                              Color: =fxThemeColor("Primary")
                               Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: =20
-                              Size: =13
-                              Text: =Coalesce(ThisItem.Title, "")
-                              Width: =Parent.Width - If(Len(Trim(Coalesce(ThisItem.Status, ""))) > 0, 130, 64)
-                              X: =54
-                              Y: =8
-                        - lblProStatus:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Align: =Align.Center
-                              Color: =fxToneInk(ThisItem.Tone)
-                              Fill: =fxToneFill(ThisItem.Tone)
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =22
-                              RadiusBottomLeft: =gblTheme.Radius.Round
-                              RadiusBottomRight: =gblTheme.Radius.Round
-                              RadiusTopLeft: =gblTheme.Radius.Round
-                              RadiusTopRight: =gblTheme.Radius.Round
-                              Size: =10
-                              Text: =Coalesce(ThisItem.Status, "")
-                              Visible: =Len(Trim(Coalesce(ThisItem.Status, ""))) > 0
-                              Width: =96
-                              X: =Parent.Width - 106
-                              Y: =8
-                        - lblProSubtitle:
-                            Control: ModernText@1.0.0
-                            Properties:
-                              Color: =fxThemeColor("TextSecondary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =18
-                              Size: =11
-                              Text: =Coalesce(ThisItem.Subtitle, "")
-                              Width: =Parent.Width - 64
-                              X: =54
-                              Y: =28
-                        - recProTrack:
-                            Control: Rectangle@2.3.0
-                            Properties:
-                              Fill: =fxThemeColor("Border")
-                              Height: =4
-                              Visible: =Coalesce(ThisItem.Progress, -1) >= 0
-                              Width: =Parent.Width - 64
-                              X: =54
-                              Y: =52
-                        - recProFill:
-                            Control: Rectangle@2.3.0
-                            Properties:
-                              Fill: =fxToneInk(ThisItem.Tone)
-                              Height: =4
-                              Visible: =Coalesce(ThisItem.Progress, -1) >= 0
-                              Width: =(Parent.Width - 64) * Min(Max(Coalesce(ThisItem.Progress, 0), 0), 100) / 100
-                              X: =54
-                              Y: =52
-                        - btnProSelect:
-                            Control: ModernButton@1.0.0
-                            Properties:
-                              Appearance: =ButtonAppearance.Transparent
+                              FontWeight: =gblTheme.FontWeights.Bold
                               Height: =Parent.Height
-                              OnSelect: |-
-                                =Set(_proSel, ThisItem);
-                                cmpProList.OnSelect()
-                              Text: =""
-                              Width: =Parent.Width
-                              X: =0
-                              Y: =0
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =12
+                              Text: =Round(Coalesce(ThisItem.Progress, 0), 0) & "%"
+                              Visible: =Coalesce(ThisItem.Progress, -1) >= 0
+                              Width: =44
+                  - recProDiv:
+                      Control: Rectangle@2.3.0
+                      Properties:
+                        BorderStyle: =BorderStyle.None
+                        Fill: =fxThemeColor("BorderLight")
+                        Height: =1
+                        Width: =Parent.TemplateWidth
+                        Y: =Parent.TemplateHeight - 1
+                  - btnProSelect:
+                      Control: Classic/Button@2.2.0
+                      Properties:
+                        BorderColor: =RGBA(0, 0, 0, 0)
+                        BorderStyle: =BorderStyle.None
+                        Color: =RGBA(0, 0, 0, 0)
+                        Fill: =RGBA(0, 0, 0, 0)
+                        FocusedBorderThickness: =0
+                        Height: =Parent.TemplateHeight
+                        HoverBorderColor: =RGBA(0, 0, 0, 0)
+                        HoverColor: =RGBA(0, 0, 0, 0)
+                        HoverFill: =RGBA(100, 116, 139, 0.06)
+                        OnSelect: |-
+                          =Set(_proSel, ThisItem);
+                          cmpProList.OnSelect()
+                        PressedBorderColor: =RGBA(0, 0, 0, 0)
+                        PressedColor: =RGBA(0, 0, 0, 0)
+                        PressedFill: =RGBA(100, 116, 139, 0.12)
+                        Text: =
+                        Width: =Parent.TemplateWidth
