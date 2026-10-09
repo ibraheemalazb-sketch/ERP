@@ -229,7 +229,7 @@ Screens:
             Visible: =App.Width >= 700
             Width: =If(gblMenuExpanded, gblTheme.Controls.SideNavWidth, gblTheme.Controls.SideNavCollapsedWidth)
           Children:
-            - cmpPrNav:
+            - cmpNavigationModern_9:
                 Control: CanvasComponent
                 ComponentName: cmpNavigationModern
                 Properties:
@@ -463,377 +463,390 @@ Screens:
                   Visible: =IsBlank(varCurrentPR)
                   Width: =Parent.Width
                 Children:
-                  - conPrHead:
+                  - conPrTB:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
                         DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
                         FillPortions: =0
-                        Height: =48
+                        Height: =80+44+If(varPrFilters,conPrFilterRow.Height+5,0)+Self.LayoutGap*2+Self.PaddingTop*2
                         LayoutAlignItems: =LayoutAlignItems.Center
-                        LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutGap: =12
-                        LayoutMinHeight: =0
-                        LayoutMinWidth: =0
-                        Width: =Parent.Width
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =5
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
                       Children:
-                        - conPrTitles:
+                        - conPrHead:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
                             Properties:
                               DropShadow: =DropShadow.None
                               Fill: =Color.Transparent
-                              Height: =44
-                              LayoutDirection: =LayoutDirection.Vertical
-                              LayoutGap: =2
+                              FillPortions: =0
+                              Height: =48
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
                               Width: =Parent.Width
                             Children:
-                              - lblPrTitle:
-                                  Control: Label@2.5.1
+                              - conPrTitles:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
                                   Properties:
-                                    Color: =fxThemeColor("TextPrimary")
-                                    Font: =gblTheme.Typography.FontFamily
-                                    FontWeight: =gblTheme.FontWeights.Bold
-                                    Height: =24
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    Height: =44
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
                                     LayoutMinHeight: =0
                                     LayoutMinWidth: =0
-                                    PaddingBottom: =0
-                                    PaddingLeft: =0
-                                    PaddingRight: =0
-                                    PaddingTop: =0
-                                    Size: =15
-                                    Text: =If(gblLanguage = "Arabic", "كل طلبات الشراء", "All purchase requests")
                                     Width: =Parent.Width
-                                    Wrap: =false
-                              - lblPrCount:
-                                  Control: Label@2.5.1
+                                  Children:
+                                    - lblPrTitle:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextPrimary")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Bold
+                                          Height: =24
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =15
+                                          Text: =If(gblLanguage = "Arabic", "كل طلبات الشراء", "All purchase requests")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblPrCount:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =20
+                                          LayoutMinHeight: =0
+                                          LayoutMinWidth: =0
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =gblTheme.Typography.BodySmall
+                                          Text: |-
+                                            =Concatenate(
+                                                Text(
+                                                    CountRows(
+                                                        Filter(
+                                                            colPurchaseRequests,
+                                                            And(
+                                                                Or(IsBlank(varPrStatus), varPrStatus = "All", Status.Value = varPrStatus),
+                                                                Or(Coalesce(varPrProjectID, 0) = 0, ProjectID = varPrProjectID),
+                                                                Or(Not(Coalesce(varPrMine, false)), RequesterID = gblCurrentEmployee.ID),
+                                                                Or(Or(IsBlank(varPrRequester), varPrRequester = "All"), Requester.Value = varPrRequester),
+                                                                Or(Or(IsBlank(varPrApprover), varPrApprover = "All"), CountRows(Filter(colPrApprovals, And(RequestNumber = PRNumber, Approver.Value = varPrApprover))) > 0),
+                                                                Or(Or(IsBlank(varPrPriority), varPrPriority = "All"), Priority.Value = varPrPriority),
+                                                                Or(
+                                                                    IsBlank(Trim(txtPrSearch.Text)),
+                                                                    Trim(txtPrSearch.Text) in Coalesce(PRNumber, ""),
+                                                                    Trim(txtPrSearch.Text) in Coalesce(ReasonRequired, ""),
+                                                                    Trim(txtPrSearch.Text) in Coalesce(Requester.Value, ""),
+                                                                    Trim(txtPrSearch.Text) in Coalesce(Project.Value, "")
+                                                                )
+                                                            )
+                                                        )
+                                                    )
+                                                ),
+                                                If(gblLanguage = "Arabic", " من ", " of "),
+                                                Text(CountRows(colPurchaseRequests)),
+                                                If(gblLanguage = "Arabic", " طلب", " requests")
+                                            )
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                              - btnPrNew:
+                                  Control: ModernButton@1.0.0
                                   Properties:
-                                    Color: =fxThemeColor("TextMuted")
-                                    Font: =gblTheme.Typography.FontFamily
-                                    Height: =20
+                                    Height: =36
+                                    Icon: ="Add"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =140
+                                    OnSelect: |-
+                                      =Set(varProcurementEntity, "PurchaseRequest");
+                                      Set(varProcurementMode, "New");
+                                      Set(varCurrentPR, Blank());
+                                      Set(varPrQuick, Blank());
+                                      Set(varPrPane, "Details");
+                                      Navigate(scrPREditor, ScreenTransition.Cover)
+                                    Text: =If(gblLanguage = "Arabic", "طلب شراء", "Purchase request")
+                                    Visible: =App.Width >= 700
+                                    Width: =160
+                        - conPrTools:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 96, 44)
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =12
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              LayoutWrap: =App.Width < 700
+                              Width: =Parent.Width
+                            Children:
+                              - txtPrSearch:
+                                  Control: ModernTextInput@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "بحث في طلبات الشراء", "Search purchase requests")
+                                    Height: =40
                                     LayoutMinHeight: =0
                                     LayoutMinWidth: =0
-                                    PaddingBottom: =0
-                                    PaddingLeft: =0
-                                    PaddingRight: =0
-                                    PaddingTop: =0
-                                    Size: =gblTheme.Typography.BodySmall
-                                    Text: |-
-                                      =Concatenate(
-                                          Text(
-                                              CountRows(
-                                                  Filter(
-                                                      colPurchaseRequests,
-                                                      And(
-                                                          Or(IsBlank(varPrStatus), varPrStatus = "All", Status.Value = varPrStatus),
-                                                          Or(Coalesce(varPrProjectID, 0) = 0, ProjectID = varPrProjectID),
-                                                          Or(Not(Coalesce(varPrMine, false)), RequesterID = gblCurrentEmployee.ID),
-                                                          Or(Or(IsBlank(varPrRequester), varPrRequester = "All"), Requester.Value = varPrRequester),
-                                                          Or(Or(IsBlank(varPrApprover), varPrApprover = "All"), CountRows(Filter(colPrApprovals, And(RequestNumber = PRNumber, Approver.Value = varPrApprover))) > 0),
-                                                          Or(Or(IsBlank(varPrPriority), varPrPriority = "All"), Priority.Value = varPrPriority),
-                                                          Or(
-                                                              IsBlank(Trim(txtPrSearch.Text)),
-                                                              Trim(txtPrSearch.Text) in Coalesce(PRNumber, ""),
-                                                              Trim(txtPrSearch.Text) in Coalesce(ReasonRequired, ""),
-                                                              Trim(txtPrSearch.Text) in Coalesce(Requester.Value, ""),
-                                                              Trim(txtPrSearch.Text) in Coalesce(Project.Value, "")
-                                                          )
-                                                      )
-                                                  )
-                                              )
-                                          ),
-                                          If(gblLanguage = "Arabic", " من ", " of "),
-                                          Text(CountRows(colPurchaseRequests)),
-                                          If(gblLanguage = "Arabic", " طلب", " requests")
+                                    Placeholder: =If(gblLanguage = "Arabic", "ابحث في الطلبات", "Search requests...")
+                                    Width: =If(App.Width < 700, Max(160, Parent.Width - 56), Max(200, Parent.Width - 378))
+                              - btnPrFilters:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =If(varPrFilters, ButtonAppearance.Primary, ButtonAppearance.Outline)
+                                    Height: =40
+                                    Icon: ="Filter"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Set(varPrFilters, Not(varPrFilters))
+                                    Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تصفية", "Filters"))
+                                    Width: =If(App.Width < 700, 44, 110)
+                              - btnPrRefresh:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Outline
+                                    Height: =40
+                                    Icon: ="ArrowSync"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: =Select(btnPrReload)
+                                    Text: =""
+                                    Tooltip: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                                    Width: =44
+                              - cmpPrView:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpSegmentedControl
+                                  Properties:
+                                    DefaultValue: =varPrView
+                                    Disabled: =
+                                    DisplayMode: ="Both"
+                                    EqualWidth: =true
+                                    Height: =40
+                                    IconPosition: ="Left"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnChange: =Set(varPrView, cmpPrView.SelectedValue)
+                                    Options: |-
+                                      =Table(
+                                          {Value: "table", Label: If(gblLanguage = "Arabic", "جدول", "Table"), Icon: "Table"},
+                                          {Value: "list", Label: If(gblLanguage = "Arabic", "قائمة", "List"), Icon: "List"}
                                       )
-                                    Width: =Parent.Width
-                                    Wrap: =false
-                        - btnPrNew:
-                            Control: ModernButton@1.0.0
+                                    Size: ="Medium"
+                                    Theme: =
+                                    Visible: =App.Width >= 700
+                                    Width: =188
+                        - conPrFilterRow:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =0
+                              Height: =If(App.Width < 700, 300, 96)
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
+                              LayoutGap: =8
+                              LayoutMinHeight: =44
+                              LayoutMinWidth: =0
+                              LayoutWrap: =App.Width >= 700
+                              Visible: =Or(App.Width >= 700, varPrFilters)
+                              Width: =Parent.Width
+                            Children:
+                              - cmbPrProject:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
+                                    DefaultSelectedItems: |-
+                                      =If(
+                                          Coalesce(varPrProjectID, 0) = 0,
+                                          Filter(colProjects, false),
+                                          Filter(colProjects, ID = varPrProjectID)
+                                      )
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
+                                    ItemDisplayText: =ThisItem.ProjectCode
+                                    Items: =colProjects
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =160
+                                    OnChange: |-
+                                      =If(
+                                          And(
+                                              IsBlank(Self.Selected.ID),
+                                              Not(Coalesce(LookUp(colUserPermissions, Module.Value = "Procurement").CanViewAll, true))
+                                          ),
+                                          Reset(cmbPrProject),
+                                          Set(varPrProjectID, Coalesce(Self.Selected.ID, 0))
+                                      )
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - cmbPrStatus:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
+                                    DefaultSelectedItems: |-
+                                      =Table({K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")})
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.L
+                                    Items: |-
+                                      =Table(
+                                          {K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")},
+                                          {K: "Draft", L: If(gblLanguage = "Arabic", "مسودة", "Draft")},
+                                          {K: "Submitted", L: If(gblLanguage = "Arabic", "مقدم", "Submitted")},
+                                          {K: "PendingApproval", L: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending approval")},
+                                          {K: "Approved", L: If(gblLanguage = "Arabic", "معتمد", "Approved")},
+                                          {K: "Rejected", L: If(gblLanguage = "Arabic", "مرفوض", "Rejected")},
+                                          {K: "PO Created", L: If(gblLanguage = "Arabic", "تم إنشاء أمر الشراء", "PO created")},
+                                          {K: "Completed", L: If(gblLanguage = "Arabic", "مكتمل", "Completed")},
+                                          {K: "Cancelled", L: If(gblLanguage = "Arabic", "ملغي", "Cancelled")}
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =160
+                                    OnChange: =Set(varPrStatus, Coalesce(Self.Selected.K, "All"))
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - cmbPrRequester:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "مقدم الطلب", "Requester")
+                                    DefaultSelectedItems: =Filter(colProcPeople, And(varPrRequester <> "All", FullName = varPrRequester))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل مقدمي الطلبات", "All requesters")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =colProcPeople
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =160
+                                    OnChange: =Set(varPrRequester, Coalesce(Self.Selected.FullName, "All"))
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - cmbPrApprover:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "المعتمد", "Approver")
+                                    DefaultSelectedItems: =Filter(colProcPeople, And(varPrApprover <> "All", FullName = varPrApprover))
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المعتمدين", "All approvers")
+                                    ItemDisplayText: =ThisItem.FullName
+                                    Items: =colProcPeople
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =160
+                                    OnChange: =Set(varPrApprover, Coalesce(Self.Selected.FullName, "All"))
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 180)
+                              - cmbPrPriority:
+                                  Control: ModernCombobox@1.1.2
+                                  Properties:
+                                    AccessibleLabel: =If(gblLanguage = "Arabic", "الأولوية", "Priority")
+                                    DefaultSelectedItems: |-
+                                      =Filter(
+                                          Table(
+                                              {K: "All", L: If(gblLanguage = "Arabic", "كل الأولويات", "All priorities")},
+                                              {K: "High", L: If(gblLanguage = "Arabic", "عالية", "High")},
+                                              {K: "Medium", L: If(gblLanguage = "Arabic", "متوسطة", "Medium")},
+                                              {K: "Low", L: If(gblLanguage = "Arabic", "منخفضة", "Low")}
+                                          ),
+                                          K = Coalesce(varPrPriority, "All")
+                                      )
+                                    Height: =40
+                                    InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأولويات", "All priorities")
+                                    IsSearchable: =false
+                                    ItemDisplayText: =ThisItem.L
+                                    Items: |-
+                                      =Table(
+                                          {K: "All", L: If(gblLanguage = "Arabic", "كل الأولويات", "All priorities")},
+                                          {K: "High", L: If(gblLanguage = "Arabic", "عالية", "High")},
+                                          {K: "Medium", L: If(gblLanguage = "Arabic", "متوسطة", "Medium")},
+                                          {K: "Low", L: If(gblLanguage = "Arabic", "منخفضة", "Low")}
+                                      )
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =140
+                                    OnChange: =Set(varPrPriority, Coalesce(Self.Selected.K, "All"))
+                                    SelectMultiple: =false
+                                    Width: =If(App.Width < 700, Parent.Width, 160)
+                              - btnPrClear:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Subtle
+                                    Height: =40
+                                    Icon: ="Dismiss"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =Reset(txtPrSearch);
+                                      Reset(cmbPrStatus);
+                                      Reset(cmbPrProject);
+                                      Reset(cmbPrRequester);
+                                      Reset(cmbPrApprover);
+                                      Reset(cmbPrPriority);
+                                      Set(varPrStatus, "All");
+                                      Set(varPrProjectID, 0);
+                                      Set(varPrRequester, "All");
+                                      Set(varPrApprover, "All");
+                                      Set(varPrPriority, "All");
+                                      Set(varPrMine, false)
+                                    Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
+                                    Width: =100
+                        - galPrChips:
+                            Control: Gallery@2.15.0
+                            Variant: Horizontal
+                            Properties:
+                              FillPortions: =0
                               Height: =36
-                              Icon: ="Add"
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =140
-                              OnSelect: |-
-                                =Set(varProcurementEntity, "PurchaseRequest");
-                                Set(varProcurementMode, "New");
-                                Set(varCurrentPR, Blank());
-                                Set(varPrQuick, Blank());
-                                Set(varPrPane, "Details");
-                                Navigate(scrPREditor, ScreenTransition.Cover)
-                              Text: =If(gblLanguage = "Arabic", "طلب شراء", "Purchase request")
-                              Visible: =App.Width >= 700
-                              Width: =160
-                  - conPrTools:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =0
-                        Height: =If(App.Width < 700, 96, 44)
-                        LayoutAlignItems: =LayoutAlignItems.Center
-                        LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutGap: =12
-                        LayoutMinHeight: =0
-                        LayoutMinWidth: =0
-                        LayoutWrap: =App.Width < 700
-                        Width: =Parent.Width
-                      Children:
-                        - txtPrSearch:
-                            Control: ModernTextInput@1.1.2
-                            Properties:
-                              AccessibleLabel: =If(gblLanguage = "Arabic", "بحث في طلبات الشراء", "Search purchase requests")
-                              Height: =40
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Placeholder: =If(gblLanguage = "Arabic", "ابحث في الطلبات", "Search requests...")
-                              Width: =If(App.Width < 700, Max(160, Parent.Width - 56), Max(200, Parent.Width - 378))
-                        - btnPrFilters:
-                            Control: ModernButton@1.0.0
-                            Properties:
-                              Appearance: =If(varPrFilters, ButtonAppearance.Primary, ButtonAppearance.Outline)
-                              Height: =40
-                              Icon: ="Filter"
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              OnSelect: =Set(varPrFilters, Not(varPrFilters))
-                              Text: =If(App.Width < 700, "", If(gblLanguage = "Arabic", "تصفية", "Filters"))
-                              Width: =If(App.Width < 700, 44, 110)
-                        - btnPrRefresh:
-                            Control: ModernButton@1.0.0
-                            Properties:
-                              Appearance: =ButtonAppearance.Outline
-                              Height: =40
-                              Icon: ="ArrowSync"
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              OnSelect: =Select(btnPrReload)
-                              Text: =""
-                              Tooltip: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
-                              Width: =44
-                        - cmpPrView:
-                            Control: CanvasComponent
-                            ComponentName: cmpSegmentedControl
-                            Properties:
-                              DefaultValue: =varPrView
-                              Disabled: =
-                              DisplayMode: ="Both"
-                              EqualWidth: =true
-                              Height: =40
-                              IconPosition: ="Left"
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              OnChange: =Set(varPrView, cmpPrView.SelectedValue)
-                              Options: |-
-                                =Table(
-                                    {Value: "table", Label: If(gblLanguage = "Arabic", "جدول", "Table"), Icon: "Table"},
-                                    {Value: "list", Label: If(gblLanguage = "Arabic", "قائمة", "List"), Icon: "List"}
-                                )
-                              Size: ="Medium"
-                              Theme: =
-                              Visible: =App.Width >= 700
-                              Width: =188
-                  - conPrFilterRow:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =0
-                        Height: =If(App.Width < 700, 300, 96)
-                        LayoutAlignItems: =LayoutAlignItems.Center
-                        LayoutDirection: =If(App.Width < 700, LayoutDirection.Vertical, LayoutDirection.Horizontal)
-                        LayoutGap: =8
-                        LayoutMinHeight: =44
-                        LayoutMinWidth: =0
-                        LayoutWrap: =App.Width >= 700
-                        Visible: =Or(App.Width >= 700, varPrFilters)
-                        Width: =Parent.Width
-                      Children:
-                        - cmbPrProject:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              AccessibleLabel: =If(gblLanguage = "Arabic", "المشروع", "Project")
-                              DefaultSelectedItems: |-
-                                =If(
-                                    Coalesce(varPrProjectID, 0) = 0,
-                                    Filter(colProjects, false),
-                                    Filter(colProjects, ID = varPrProjectID)
-                                )
-                              Height: =40
-                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المشاريع", "All projects")
-                              ItemDisplayText: =ThisItem.ProjectCode
-                              Items: =colProjects
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =160
-                              OnChange: |-
-                                =If(
-                                    And(
-                                        IsBlank(Self.Selected.ID),
-                                        Not(Coalesce(LookUp(colUserPermissions, Module.Value = "Procurement").CanViewAll, true))
-                                    ),
-                                    Reset(cmbPrProject),
-                                    Set(varPrProjectID, Coalesce(Self.Selected.ID, 0))
-                                )
-                              SelectMultiple: =false
-                              Width: =If(App.Width < 700, Parent.Width, 180)
-                        - cmbPrStatus:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              AccessibleLabel: =If(gblLanguage = "Arabic", "الحالة", "Status")
-                              DefaultSelectedItems: |-
-                                =Table({K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")})
-                              Height: =40
-                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الحالات", "All statuses")
-                              IsSearchable: =false
-                              ItemDisplayText: =ThisItem.L
                               Items: |-
                                 =Table(
+                                    {K: "Mine", L: If(gblLanguage = "Arabic", "طلباتي", "My requests")},
                                     {K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")},
-                                    {K: "Draft", L: If(gblLanguage = "Arabic", "مسودة", "Draft")},
                                     {K: "Submitted", L: If(gblLanguage = "Arabic", "مقدم", "Submitted")},
-                                    {K: "PendingApproval", L: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending approval")},
-                                    {K: "Approved", L: If(gblLanguage = "Arabic", "معتمد", "Approved")},
-                                    {K: "Rejected", L: If(gblLanguage = "Arabic", "مرفوض", "Rejected")},
-                                    {K: "PO Created", L: If(gblLanguage = "Arabic", "تم إنشاء أمر الشراء", "PO created")},
-                                    {K: "Completed", L: If(gblLanguage = "Arabic", "مكتمل", "Completed")},
-                                    {K: "Cancelled", L: If(gblLanguage = "Arabic", "ملغي", "Cancelled")}
+                                    {K: "PendingApproval", L: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending")},
+                                    {K: "Approved", L: If(gblLanguage = "Arabic", "معتمد", "Approved")}
                                 )
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =160
-                              OnChange: =Set(varPrStatus, Coalesce(Self.Selected.K, "All"))
-                              SelectMultiple: =false
-                              Width: =If(App.Width < 700, Parent.Width, 180)
-                        - cmbPrRequester:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              AccessibleLabel: =If(gblLanguage = "Arabic", "مقدم الطلب", "Requester")
-                              DefaultSelectedItems: =Filter(colProcPeople, And(varPrRequester <> "All", FullName = varPrRequester))
-                              Height: =40
-                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل مقدمي الطلبات", "All requesters")
-                              ItemDisplayText: =ThisItem.FullName
-                              Items: =colProcPeople
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =160
-                              OnChange: =Set(varPrRequester, Coalesce(Self.Selected.FullName, "All"))
-                              SelectMultiple: =false
-                              Width: =If(App.Width < 700, Parent.Width, 180)
-                        - cmbPrApprover:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              AccessibleLabel: =If(gblLanguage = "Arabic", "المعتمد", "Approver")
-                              DefaultSelectedItems: =Filter(colProcPeople, And(varPrApprover <> "All", FullName = varPrApprover))
-                              Height: =40
-                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل المعتمدين", "All approvers")
-                              ItemDisplayText: =ThisItem.FullName
-                              Items: =colProcPeople
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =160
-                              OnChange: =Set(varPrApprover, Coalesce(Self.Selected.FullName, "All"))
-                              SelectMultiple: =false
-                              Width: =If(App.Width < 700, Parent.Width, 180)
-                        - cmbPrPriority:
-                            Control: ModernCombobox@1.1.2
-                            Properties:
-                              AccessibleLabel: =If(gblLanguage = "Arabic", "الأولوية", "Priority")
-                              DefaultSelectedItems: |-
-                                =Filter(
-                                    Table(
-                                        {K: "All", L: If(gblLanguage = "Arabic", "كل الأولويات", "All priorities")},
-                                        {K: "High", L: If(gblLanguage = "Arabic", "عالية", "High")},
-                                        {K: "Medium", L: If(gblLanguage = "Arabic", "متوسطة", "Medium")},
-                                        {K: "Low", L: If(gblLanguage = "Arabic", "منخفضة", "Low")}
-                                    ),
-                                    K = Coalesce(varPrPriority, "All")
-                                )
-                              Height: =40
-                              InputTextPlaceholder: =If(gblLanguage = "Arabic", "كل الأولويات", "All priorities")
-                              IsSearchable: =false
-                              ItemDisplayText: =ThisItem.L
-                              Items: |-
-                                =Table(
-                                    {K: "All", L: If(gblLanguage = "Arabic", "كل الأولويات", "All priorities")},
-                                    {K: "High", L: If(gblLanguage = "Arabic", "عالية", "High")},
-                                    {K: "Medium", L: If(gblLanguage = "Arabic", "متوسطة", "Medium")},
-                                    {K: "Low", L: If(gblLanguage = "Arabic", "منخفضة", "Low")}
-                                )
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =140
-                              OnChange: =Set(varPrPriority, Coalesce(Self.Selected.K, "All"))
-                              SelectMultiple: =false
-                              Width: =If(App.Width < 700, Parent.Width, 160)
-                        - btnPrClear:
-                            Control: ModernButton@1.0.0
-                            Properties:
-                              Appearance: =ButtonAppearance.Subtle
-                              Height: =40
-                              Icon: ="Dismiss"
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              OnSelect: |-
-                                =Reset(txtPrSearch);
-                                Reset(cmbPrStatus);
-                                Reset(cmbPrProject);
-                                Reset(cmbPrRequester);
-                                Reset(cmbPrApprover);
-                                Reset(cmbPrPriority);
-                                Set(varPrStatus, "All");
-                                Set(varPrProjectID, 0);
-                                Set(varPrRequester, "All");
-                                Set(varPrApprover, "All");
-                                Set(varPrPriority, "All");
-                                Set(varPrMine, false)
-                              Text: =If(gblLanguage = "Arabic", "مسح", "Clear")
-                              Width: =100
-                  - galPrChips:
-                      Control: Gallery@2.15.0
-                      Variant: Horizontal
-                      Properties:
-                        FillPortions: =0
-                        Height: =36
-                        Items: |-
-                          =Table(
-                              {K: "Mine", L: If(gblLanguage = "Arabic", "طلباتي", "My requests")},
-                              {K: "All", L: If(gblLanguage = "Arabic", "كل الحالات", "All statuses")},
-                              {K: "Submitted", L: If(gblLanguage = "Arabic", "مقدم", "Submitted")},
-                              {K: "PendingApproval", L: If(gblLanguage = "Arabic", "بانتظار الاعتماد", "Pending")},
-                              {K: "Approved", L: If(gblLanguage = "Arabic", "معتمد", "Approved")}
-                          )
-                        LayoutMinHeight: =0
-                        LayoutMinWidth: =0
-                        ShowScrollbar: =false
-                        TemplatePadding: =8
-                        TemplateSize: =128
-                        Visible: =App.Width < 700
-                        Width: =Parent.Width
-                      Children:
-                        - btnPrChip:
-                            Control: ModernButton@1.0.0
-                            Properties:
-                              Appearance: |-
-                                =If(
-                                    If(
-                                        ThisItem.K = "Mine",
-                                        Coalesce(varPrMine, false),
-                                        Coalesce(varPrStatus, "All") = ThisItem.K
-                                    ),
-                                    ButtonAppearance.Primary,
-                                    ButtonAppearance.Outline
-                                )
-                              Height: =20
-                              OnSelect: |-
-                                =If(
-                                    ThisItem.K = "Mine",
-                                    Set(varPrMine, Not(Coalesce(varPrMine, false))),
-                                    Set(varPrStatus, ThisItem.K)
-                                )
-                              Text: =ThisItem.L
-                              Width: =120
+                              ShowScrollbar: =false
+                              TemplatePadding: =8
+                              TemplateSize: =128
+                              Visible: =App.Width < 700
+                              Width: =Parent.Width
+                            Children:
+                              - btnPrChip:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: |-
+                                      =If(
+                                          If(
+                                              ThisItem.K = "Mine",
+                                              Coalesce(varPrMine, false),
+                                              Coalesce(varPrStatus, "All") = ThisItem.K
+                                          ),
+                                          ButtonAppearance.Primary,
+                                          ButtonAppearance.Outline
+                                      )
+                                    Height: =20
+                                    OnSelect: |-
+                                      =If(
+                                          ThisItem.K = "Mine",
+                                          Set(varPrMine, Not(Coalesce(varPrMine, false))),
+                                          Set(varPrStatus, ThisItem.K)
+                                      )
+                                    Text: =ThisItem.L
+                                    Width: =120
                   - cmpPrTable:
                       Control: CanvasComponent
                       ComponentName: cmpMyTable
@@ -1101,13 +1114,26 @@ Screens:
                               LayoutMinWidth: =0
                               Width: =Parent.Width
                             Children:
+                              - cmpStatusPr:
+                                  Control: CanvasComponent
+                                  ComponentName: cmpStatusPill
+                                  Properties:
+                                    Compact: =false
+                                    Height: =If(cmpStatusPr.Compact, 22, 26)
+                                    Label: =Coalesce(varCurrentPR.Status.Value, "-")
+                                    Status: =Coalesce(varCurrentPR.Status.Value, "-")
+                                    Width: |-
+                                      =Max(
+                                          60,
+                                          Len(Coalesce(cmpStatusPr.Label, cmpStatusPr.Status, "-")) * 7.6 + 30
+                                      )
                               - lblPrDetailTitle:
                                   Control: Label@2.5.1
                                   Properties:
                                     Color: =fxThemeColor("TextPrimary")
                                     FillPortions: =1
                                     Font: =gblTheme.Typography.FontFamily
-                                    FontWeight: =gblTheme.FontWeights.Bold
+                                    FontWeight: =gblTheme.FontWeights.Medium
                                     Height: =28
                                     LayoutMinHeight: =0
                                     LayoutMinWidth: =0
@@ -1115,73 +1141,9 @@ Screens:
                                     PaddingLeft: =0
                                     PaddingRight: =0
                                     PaddingTop: =0
-                                    Size: =18
+                                    Size: =17
                                     Text: =Coalesce(varCurrentPR.ReasonRequired, Coalesce(varCurrentPR.PRNumber, "-"))
                                     Wrap: =false
-                              - conPrDetailStatus:
-                                  Control: GroupContainer@1.5.0
-                                  Variant: AutoLayout
-                                  Properties:
-                                    AlignInContainer: =AlignInContainer.Center
-                                    DropShadow: =DropShadow.None
-                                    Fill: |-
-                                      =fxToneFill(
-                                          Switch(
-                                              varCurrentPR.Status.Value,
-                                              "Approved", "approved",
-                                              "Completed", "completed",
-                                              "Rejected", "rejected",
-                                              "Cancelled", "danger",
-                                              "Submitted", "in progress",
-                                              "PO Created", "info",
-                                              "POcreated", "info",
-                                              "pending"
-                                          )
-                                      )
-                                    FillPortions: =0
-                                    Height: =28
-                                    LayoutAlignItems: =LayoutAlignItems.Center
-                                    LayoutDirection: =LayoutDirection.Horizontal
-                                    LayoutJustifyContent: =LayoutJustifyContent.Center
-                                    LayoutMinHeight: =0
-                                    LayoutMinWidth: =0
-                                    RadiusBottomLeft: =gblTheme.Radius.Round
-                                    RadiusBottomRight: =gblTheme.Radius.Round
-                                    RadiusTopLeft: =gblTheme.Radius.Round
-                                    RadiusTopRight: =gblTheme.Radius.Round
-                                    Width: =132
-                                  Children:
-                                    - lblPrDetailStatus:
-                                        Control: Label@2.5.1
-                                        Properties:
-                                          Align: =Align.Center
-                                          Color: |-
-                                            =fxToneInk(
-                                                Switch(
-                                                    varCurrentPR.Status.Value,
-                                                    "Approved", "approved",
-                                                    "Completed", "completed",
-                                                    "Rejected", "rejected",
-                                                    "Cancelled", "danger",
-                                                    "Submitted", "in progress",
-                                                    "PO Created", "info",
-                                                    "POcreated", "info",
-                                                    "pending"
-                                                )
-                                            )
-                                          Font: =gblTheme.Typography.FontFamily
-                                          FontWeight: =gblTheme.FontWeights.Medium
-                                          Height: =Parent.Height
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          PaddingBottom: =0
-                                          PaddingLeft: =8
-                                          PaddingRight: =8
-                                          PaddingTop: =0
-                                          Size: =12
-                                          Text: =Coalesce(varCurrentPR.Status.Value, "-")
-                                          Width: =Parent.Width
-                                          Wrap: =false
                         - lblPrMeta:
                             Control: Label@2.5.1
                             Properties:
@@ -1464,10 +1426,8 @@ Screens:
                                       =conPrFormHead.Height
                                       + conPrFormR1.Height
                                       + conPrFormR2.Height
-                                      + conPrFormR3.Height
                                       + conPrFormR4.Height
-                                      + conPrFormR5.Height
-                                      + 5 * Self.LayoutGap
+                                      + 3 * Self.LayoutGap
                                       + Self.PaddingTop
                                       + Self.PaddingBottom
                                     LayoutAlignItems: =LayoutAlignItems.Stretch
@@ -1577,6 +1537,52 @@ Screens:
                                           LayoutMinWidth: =0
                                           Width: =Parent.Width
                                         Children:
+                                          - conPrFNo:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                Fill: =Color.Transparent
+                                                Height: =52
+                                                LayoutDirection: =LayoutDirection.Vertical
+                                                LayoutGap: =2
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                Width: =Parent.Width
+                                              Children:
+                                                - conPrFNoK:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Color: =fxThemeColor("TextMuted")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      Height: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =0
+                                                      PaddingRight: =0
+                                                      PaddingTop: =0
+                                                      Size: =gblTheme.Typography.Caption
+                                                      Text: =If(gblLanguage = "Arabic", "رقم الطلب", "Request number")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
+                                                - conPrFNoV:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Color: =fxThemeColor("TextPrimary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =22
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =0
+                                                      PaddingRight: =0
+                                                      PaddingTop: =0
+                                                      Size: =gblTheme.Typography.BodySmall
+                                                      Text: =Coalesce(varCurrentPR.PRNumber, "-")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
                                           - conPrFProject:
                                               Control: GroupContainer@1.5.0
                                               Variant: AutoLayout
@@ -1667,66 +1673,6 @@ Screens:
                                                       PaddingTop: =0
                                                       Size: =gblTheme.Typography.BodySmall
                                                       Text: =Coalesce(varCurrentPR.Requester.Value, "-")
-                                                      Width: =Parent.Width
-                                                      Wrap: =false
-                                    - conPrFormR3:
-                                        Control: GroupContainer@1.5.0
-                                        Variant: AutoLayout
-                                        Properties:
-                                          DropShadow: =DropShadow.None
-                                          Fill: =Color.Transparent
-                                          FillPortions: =0
-                                          Height: =56
-                                          LayoutDirection: =LayoutDirection.Horizontal
-                                          LayoutGap: =16
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          Width: =Parent.Width
-                                        Children:
-                                          - conPrFRecv:
-                                              Control: GroupContainer@1.5.0
-                                              Variant: AutoLayout
-                                              Properties:
-                                                DropShadow: =DropShadow.None
-                                                Fill: =Color.Transparent
-                                                Height: =52
-                                                LayoutDirection: =LayoutDirection.Vertical
-                                                LayoutGap: =2
-                                                LayoutMinHeight: =0
-                                                LayoutMinWidth: =0
-                                                Width: =Parent.Width
-                                              Children:
-                                                - conPrFRecvK:
-                                                    Control: Label@2.5.1
-                                                    Properties:
-                                                      Color: =fxThemeColor("TextMuted")
-                                                      Font: =gblTheme.Typography.FontFamily
-                                                      Height: =16
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      PaddingBottom: =0
-                                                      PaddingLeft: =0
-                                                      PaddingRight: =0
-                                                      PaddingTop: =0
-                                                      Size: =gblTheme.Typography.Caption
-                                                      Text: =If(gblLanguage = "Arabic", "الاستلام", "Received by")
-                                                      Width: =Parent.Width
-                                                      Wrap: =false
-                                                - conPrFRecvV:
-                                                    Control: Label@2.5.1
-                                                    Properties:
-                                                      Color: =fxThemeColor("TextPrimary")
-                                                      Font: =gblTheme.Typography.FontFamily
-                                                      FontWeight: =gblTheme.FontWeights.Medium
-                                                      Height: =22
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      PaddingBottom: =0
-                                                      PaddingLeft: =0
-                                                      PaddingRight: =0
-                                                      PaddingTop: =0
-                                                      Size: =gblTheme.Typography.BodySmall
-                                                      Text: =Coalesce(varCurrentPR.ReceivedBy.Value, "-")
                                                       Width: =Parent.Width
                                                       Wrap: =false
                                           - conPrFPri:
@@ -1881,20 +1827,52 @@ Screens:
                                                       Text: =If(IsBlank(varCurrentPR.RequiredDate), "-", Text(varCurrentPR.RequiredDate, "dd mmm yyyy"))
                                                       Width: =Parent.Width
                                                       Wrap: =false
-                                    - conPrFormR5:
-                                        Control: GroupContainer@1.5.0
-                                        Variant: AutoLayout
-                                        Properties:
-                                          DropShadow: =DropShadow.None
-                                          Fill: =Color.Transparent
-                                          FillPortions: =0
-                                          Height: =56
-                                          LayoutDirection: =LayoutDirection.Horizontal
-                                          LayoutGap: =16
-                                          LayoutMinHeight: =0
-                                          LayoutMinWidth: =0
-                                          Width: =Parent.Width
-                                        Children:
+                                          - conPrFRecv:
+                                              Control: GroupContainer@1.5.0
+                                              Variant: AutoLayout
+                                              Properties:
+                                                DropShadow: =DropShadow.None
+                                                Fill: =Color.Transparent
+                                                Height: =52
+                                                LayoutDirection: =LayoutDirection.Vertical
+                                                LayoutGap: =2
+                                                LayoutMinHeight: =0
+                                                LayoutMinWidth: =0
+                                                Width: =Parent.Width
+                                              Children:
+                                                - conPrFRecvK:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Color: =fxThemeColor("TextMuted")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      Height: =16
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =0
+                                                      PaddingRight: =0
+                                                      PaddingTop: =0
+                                                      Size: =gblTheme.Typography.Caption
+                                                      Text: =If(gblLanguage = "Arabic", "الاستلام", "Received by")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
+                                                - conPrFRecvV:
+                                                    Control: Label@2.5.1
+                                                    Properties:
+                                                      Color: =fxThemeColor("TextPrimary")
+                                                      Font: =gblTheme.Typography.FontFamily
+                                                      FontWeight: =gblTheme.FontWeights.Medium
+                                                      Height: =22
+                                                      LayoutMinHeight: =0
+                                                      LayoutMinWidth: =0
+                                                      PaddingBottom: =0
+                                                      PaddingLeft: =0
+                                                      PaddingRight: =0
+                                                      PaddingTop: =0
+                                                      Size: =gblTheme.Typography.BodySmall
+                                                      Text: =Coalesce(varCurrentPR.ReceivedBy.Value, "-")
+                                                      Width: =Parent.Width
+                                                      Wrap: =false
                                           - conPrFTotal:
                                               Control: GroupContainer@1.5.0
                                               Variant: AutoLayout
@@ -1939,52 +1917,6 @@ Screens:
                                                       PaddingTop: =0
                                                       Size: =gblTheme.Typography.BodySmall
                                                       Text: =Concatenate(Text(Coalesce(varCurrentPR.TotalAmount, 0), "#,##0.00"), " $")
-                                                      Width: =Parent.Width
-                                                      Wrap: =false
-                                          - conPrFNo:
-                                              Control: GroupContainer@1.5.0
-                                              Variant: AutoLayout
-                                              Properties:
-                                                DropShadow: =DropShadow.None
-                                                Fill: =Color.Transparent
-                                                Height: =52
-                                                LayoutDirection: =LayoutDirection.Vertical
-                                                LayoutGap: =2
-                                                LayoutMinHeight: =0
-                                                LayoutMinWidth: =0
-                                                Width: =Parent.Width
-                                              Children:
-                                                - conPrFNoK:
-                                                    Control: Label@2.5.1
-                                                    Properties:
-                                                      Color: =fxThemeColor("TextMuted")
-                                                      Font: =gblTheme.Typography.FontFamily
-                                                      Height: =16
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      PaddingBottom: =0
-                                                      PaddingLeft: =0
-                                                      PaddingRight: =0
-                                                      PaddingTop: =0
-                                                      Size: =gblTheme.Typography.Caption
-                                                      Text: =If(gblLanguage = "Arabic", "رقم الطلب", "Request number")
-                                                      Width: =Parent.Width
-                                                      Wrap: =false
-                                                - conPrFNoV:
-                                                    Control: Label@2.5.1
-                                                    Properties:
-                                                      Color: =fxThemeColor("TextPrimary")
-                                                      Font: =gblTheme.Typography.FontFamily
-                                                      FontWeight: =gblTheme.FontWeights.Medium
-                                                      Height: =22
-                                                      LayoutMinHeight: =0
-                                                      LayoutMinWidth: =0
-                                                      PaddingBottom: =0
-                                                      PaddingLeft: =0
-                                                      PaddingRight: =0
-                                                      PaddingTop: =0
-                                                      Size: =gblTheme.Typography.BodySmall
-                                                      Text: =Coalesce(varCurrentPR.PRNumber, "-")
                                                       Width: =Parent.Width
                                                       Wrap: =false
                               - lblPrItemsEmpty:
@@ -3172,56 +3104,20 @@ Screens:
                   {ID: 32, Module: "PRs", Title: If(gblLanguage = "Arabic", "الطلبات", "Requests"), Icon: "Clipboard", Visible: true},
                   {ID: 33, Module: "POs", Title: If(gblLanguage = "Arabic", "الأوامر", "Orders"), Icon: "Receipt", Visible: true},
                   {ID: 34, Module: "GRN", Title: If(gblLanguage = "Arabic", "الاستلام", "Receipts"), Icon: "Truck", Visible: true},
-                  {ID: 35, Module: "Vendors", Title: If(gblLanguage = "Arabic", "الموردون", "Vendors"), Icon: "Users", Visible: true}
+                  {ID: 35, Module: "Vendors", Title: If(gblLanguage = "Arabic", "الموردون", "Vendors"), Icon: "Handshake", Visible: true}
               )
             ModuleBtnNav: =
             OnNavigateBtn: |-
               =Switch(
                   gblSelectedModule,
                   "Procurement",
-                      If(
-                          varProcurementTab <> "Main",
-                          Set(varProcurementTab, "Main");
-                          Set(varNavSelectedID, 31);
-                          Navigate(scrProcurement, ScreenTransition.None)
-                      ),
-                  "PRs",
-                      If(
-                          varProcurementTab <> "PRs",
-                          Set(varCurrentPR, Blank());
-                          Set(varProcurementTab, "PRs");
-                          Set(varProcurementMode, "View");
-                          Set(varNavSelectedID, 32);
-                          Navigate(scrPRs, ScreenTransition.None)
-                      ),
-                  "POs",
-                      If(
-                          varProcurementTab <> "POs",
-                          Set(varCurrentPO, Blank());
-                          Set(varProcurementTab, "POs");
-                          Set(varProcurementMode, "View");
-                          Set(varNavSelectedID, 33);
-                          Navigate(scrPOs, ScreenTransition.None)
-                      ),
-                  "GRN",
-                      If(
-                          varProcurementTab <> "GRNs",
-                          Set(varCurrentGRN, Blank());
-                          Set(varProcurementTab, "GRNs");
-                          Set(varProcurementMode, "View");
-                          Set(varNavSelectedID, 34);
-                          Navigate(ScrGRN, ScreenTransition.None)
-                      ),
-                  "Vendors",
-                      If(
-                          varProcurementTab <> "Vendors",
-                          Set(varCurrentVendor, Blank());
-                          Set(varaddvendor, false);
-                          Set(varProcurementTab, "Vendors");
-                          Set(varProcurementMode, "View");
-                          Set(varNavSelectedID, 35);
-                          Navigate(scrVendors, ScreenTransition.None)
-                      )
+                      Set(varProcurementTab, "Main");
+                      Set(varNavSelectedID, 31);
+                      Navigate(scrProcurement, ScreenTransition.None),
+                  "PRs", Navigate(scrPRs, ScreenTransition.None),
+                  "POs", Navigate(scrPOs, ScreenTransition.None),
+                  "GRN", Navigate(ScrGRN, ScreenTransition.None),
+                  "Vendors", Navigate(scrVendors, ScreenTransition.None)
               )
             SelectedID: =32
             Visible: =App.Width < 700
