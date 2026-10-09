@@ -20,17 +20,19 @@ ComponentDefinitions:
       Items:
         PropertyKind: Input
         DisplayName: Items
-        Description: One row per field. Dimension is What, When, Who, Whom, How, Why, or Description. Label is the caption, Value is the text, and Icon is an optional fxSvg name.
+        Description: One row per field. Dimension is What, When, Who, Whom, How, Why, Started, Completed, or Description. Label and Value are the caption and text. Label2 and Value2 put a second field in the same card. Icon is an optional fxSvg name, and Tone danger colors the value, or the second value when Label2 is set.
         DataType: Table
         Default: |-
           =Table(
-              {Dimension: "What", Label: "What", Value: "Purchase request PR-1042", Icon: "FileText"},
-              {Dimension: "When", Label: "When", Value: "12 Mar 2026 → 20 Mar 2026", Icon: "Calendar"},
-              {Dimension: "Who", Label: "Who", Value: "Amina Hassan", Icon: "User"},
-              {Dimension: "Whom", Label: "Whom", Value: "Operations team", Icon: "Users"},
-              {Dimension: "How", Label: "How", Value: "Standard approval, 2 of 3 steps", Icon: "Settings"},
-              {Dimension: "Why", Label: "Why", Value: "Field office supplies", Icon: "Flag"},
-              {Dimension: "Description", Label: "Description", Value: "Notebooks, toner, and printer paper for the field office.", Icon: "FileText"}
+              {Dimension: "What", Label: "What", Value: "Purchase request PR-1042", Icon: "FileText", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "When", Label: "When", Value: "12 Mar 2026 → 20 Mar 2026", Icon: "Calendar", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "Who", Label: "Who", Value: "Amina Hassan", Icon: "User", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "Whom", Label: "Whom", Value: "Operations team", Icon: "Users", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "How", Label: "How", Value: "Standard approval, 2 of 3 steps", Icon: "Settings", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "Why", Label: "Why", Value: "Field office supplies", Icon: "Flag", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "Started", Label: "Started", Value: "12 Mar 2026", Icon: "Calendar", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "Completed", Label: "Completed", Value: "20 Mar 2026", Icon: "Check", Tone: "", Label2: "", Value2: ""},
+              {Dimension: "Description", Label: "Description", Value: "Notebooks, toner, and printer paper for the field office.", Icon: "FileText", Tone: "", Label2: "", Value2: ""}
           )
       Title:
         PropertyKind: Input
@@ -40,7 +42,56 @@ ComponentDefinitions:
         Default: =""
     Properties:
       Fill: =Color.Transparent
-      Height: =If(Len(Trim(Coalesce(cmpRecordDetails.Title, ""))) > 0, 28, 0) + conRdFacts.Height + If(conRdDesc.Visible, 8 + conRdDesc.Height, 0)
+      Height: |-
+        =With(
+            {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+            With(
+                {cardW: If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)},
+                With(
+                    {
+                        hWhat: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")), 0, 40 + With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), cardW - 64, (cardW - 72) / 2)}, Max(Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18), If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), 0, Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value2, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18))))),
+                        hWhen: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")), 0, 40 + With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), cardW - 64, (cardW - 72) / 2)}, Max(Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18), If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), 0, Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value2, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18))))),
+                        hWho: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")), 0, 40 + With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), cardW - 64, (cardW - 72) / 2)}, Max(Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18), If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), 0, Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value2, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18))))),
+                        hWhom: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                        hHow: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                        hWhy: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                        hStarted: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Started")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                        hCompleted: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Completed")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                        hDesc: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Description")), 0, 40 + Max(36, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Description").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(12, (Max(cmpRecordDetails.Width, 280) - 72) / 6.6), 0))) * 18))
+                    },
+                    With(
+                        {rows: Filter(Table({H: hWhat}, {H: hWhen}, {H: hWho}, {H: hWhom}, {H: hHow}, {H: hWhy}, {H: hStarted}, {H: hCompleted}), H > 0)},
+                        With(
+                            {n: CountRows(rows), c: Max(1, colCount)},
+                            With(
+                                {r: RoundUp(n / c, 0)},
+                                If(Len(Trim(Coalesce(cmpRecordDetails.Title, ""))) > 0, 28, 0)
+                                + If(And(Len(Trim(Coalesce(cmpRecordDetails.Title, ""))) > 0, Or(n > 0, hDesc > 0)), 8, 0)
+                                + If(
+                                    n = 0,
+                                    0,
+                                    Sum(
+                                        Sequence(8),
+                                        If(
+                                            Value > r,
+                                            0,
+                                            Max(
+                                                If((Value - 1) * c + 1 <= n, Index(rows, (Value - 1) * c + 1).H, 0),
+                                                If(And(c >= 2, (Value - 1) * c + 2 <= n), Index(rows, (Value - 1) * c + 2).H, 0),
+                                                If(And(c >= 3, (Value - 1) * c + 3 <= n), Index(rows, (Value - 1) * c + 3).H, 0),
+                                                If(And(c >= 4, (Value - 1) * c + 4 <= n), Index(rows, (Value - 1) * c + 4).H, 0)
+                                            ) + If(Value > 1, 8, 0)
+                                        )
+                                    )
+                                )
+                                + If(And(n > 0, hDesc > 0), 8, 0)
+                                + hDesc
+                            )
+                        )
+                    )
+                )
+            )
+        )
       Width: =360
     Children:
       - conRd:
@@ -81,36 +132,44 @@ ComponentDefinitions:
                   Fill: =Color.Transparent
                   Height: |-
                     =With(
-                        {
-                            cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                            rows: Filter(
-                                Table(
-                                    {H: conRdWhat.Height},
-                                    {H: conRdWhen.Height},
-                                    {H: conRdWho.Height},
-                                    {H: conRdWhom.Height},
-                                    {H: conRdHow.Height},
-                                    {H: conRdWhy.Height}
-                                ),
-                                H > 0
-                            )
-                        },
-                        If(
-                            CountRows(rows) = 0,
-                            0,
+                        {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                        With(
+                            {cardW: If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)},
                             With(
-                                {n: CountRows(rows), c: Max(1, cols), r: RoundUp(CountRows(rows) / Max(1, cols), 0)},
-                                Sum(
-                                    Sequence(6),
-                                    If(
-                                        Value > r,
-                                        0,
-                                        Max(
-                                            If((Value - 1) * c + 1 <= n, Index(rows, (Value - 1) * c + 1).H, 0),
-                                            If(And(c >= 2, (Value - 1) * c + 2 <= n), Index(rows, (Value - 1) * c + 2).H, 0),
-                                            If(And(c >= 3, (Value - 1) * c + 3 <= n), Index(rows, (Value - 1) * c + 3).H, 0),
-                                            If(And(c >= 4, (Value - 1) * c + 4 <= n), Index(rows, (Value - 1) * c + 4).H, 0)
-                                        ) + If(Value > 1, 8, 0)
+                                {
+                                    hWhat: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")), 0, 40 + With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), cardW - 64, (cardW - 72) / 2)}, Max(Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18), If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), 0, Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value2, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18))))),
+                                    hWhen: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")), 0, 40 + With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), cardW - 64, (cardW - 72) / 2)}, Max(Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18), If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), 0, Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value2, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18))))),
+                                    hWho: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")), 0, 40 + With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), cardW - 64, (cardW - 72) / 2)}, Max(Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18), If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), 0, Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value2, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18))))),
+                                    hWhom: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                                    hHow: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)),
+                                    hWhy: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18))
+                                    hStarted: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Started")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18))
+                                    hCompleted: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Completed")), 0, 40 + Max(20, Sum(Split(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Value, "—"), Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18))
+                                },
+                                With(
+                                    {rows: Filter(Table({H: hWhat}, {H: hWhen}, {H: hWho}, {H: hWhom}, {H: hHow}, {H: hWhy}, {H: hStarted}, {H: hCompleted}), H > 0)},
+                                    With(
+                                        {n: CountRows(rows), c: Max(1, colCount)},
+                                        With(
+                                            {r: RoundUp(n / c, 0)},
+                                            If(
+                                                n = 0,
+                                                0,
+                                                Sum(
+                                                    Sequence(8),
+                                                    If(
+                                                        Value > r,
+                                                        0,
+                                                        Max(
+                                                            If((Value - 1) * c + 1 <= n, Index(rows, (Value - 1) * c + 1).H, 0),
+                                                            If(And(c >= 2, (Value - 1) * c + 2 <= n), Index(rows, (Value - 1) * c + 2).H, 0),
+                                                            If(And(c >= 3, (Value - 1) * c + 3 <= n), Index(rows, (Value - 1) * c + 3).H, 0),
+                                                            If(And(c >= 4, (Value - 1) * c + 4 <= n), Index(rows, (Value - 1) * c + 4).H, 0)
+                                                        ) + If(Value > 1, 8, 0)
+                                                    )
+                                                )
+                                            )
+                                        )
                                     )
                                 )
                             )
@@ -124,653 +183,1040 @@ ComponentDefinitions:
                   LayoutWrap: =true
                   Width: =Parent.Width
                 Children:
-            - conRdWhat:
-                Control: GroupContainer@1.5.0
-                Variant: AutoLayout
-                Properties:
-                  BorderColor: =fxThemeColor("Border")
-                  BorderThickness: =1
-                  DropShadow: =DropShadow.None
-                  Fill: =fxThemeColor("Surface")
-                  Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")), 0, 12 + 16 + lblRdWhatV.Height + 12)
-                  LayoutAlignItems: =LayoutAlignItems.Center
-                  LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =10
-                  LayoutMinHeight: =0
-                  LayoutMinWidth: =0
-                  PaddingBottom: =10
-                  PaddingLeft: =10
-                  PaddingRight: =10
-                  PaddingTop: =10
-                  RadiusBottomLeft: =gblTheme.Radius.Medium
-                  RadiusBottomRight: =gblTheme.Radius.Medium
-                  RadiusTopLeft: =gblTheme.Radius.Medium
-                  RadiusTopRight: =gblTheme.Radius.Medium
-                  Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")))
-                  Width: |-
-                    =If(
-                        IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")),
-                        0,
-                        With(
-                            {cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
-                            If(cols <= 1, Parent.Width, (Parent.Width - (cols - 1) * 8) / cols)
-                        )
-                    )
-                Children:
-                  - conRdWhatIcon:
+                  - conRdWhat:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
-                        AlignInContainer: =AlignInContainer.Start
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("PrimaryLight")
-                        Height: =32
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")), 0, 12 + 16 + Max(lblRdWhatV.Height, If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), 0, lblRdWhatV2.Height)) + 12)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
                         RadiusBottomLeft: =gblTheme.Radius.Medium
                         RadiusBottomRight: =gblTheme.Radius.Medium
                         RadiusTopLeft: =gblTheme.Radius.Medium
                         RadiusTopRight: =gblTheme.Radius.Medium
-                        Width: =32
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - imgRdWhat:
-                            Control: Image@2.2.3
+                        - conRdWhatIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              BorderStyle: =BorderStyle.None
-                              Height: =16
-                              Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Icon, "FileText"), fxThemeInk("Primary"))
-                              Width: =16
-                  - conRdWhatText:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =1
-                        Height: =16 + lblRdWhatV.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =2
-                        LayoutMinWidth: =0
-                      Children:
-                        - lblRdWhatK:
-                            Control: Label@2.5.1
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdWhat:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Icon, "FileText"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdWhatText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =16
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =11
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Label, If(gblLanguage = "Arabic", "ماذا", "What"))
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRdWhatV:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: |-
-                                =With(
-                                    {
-                                        txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—"),
-                                        cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                                        cardW: If(cmpRecordDetails.Width < 560, cmpRecordDetails.Width, (Max(cmpRecordDetails.Width, 280) - (cols - 1) * 8) / cols)
-                                    },
-                                    Max(20, RoundUp(Len(txt) / Max(8, (cardW - 64) / 6.6), 0) * 18)
-                                )
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =12
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—")
-                              VerticalAlign: =VerticalAlign.Top
-                              Width: =Parent.Width
-                              Wrap: =true
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + Max(lblRdWhatV.Height, If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), 0, lblRdWhatV2.Height))
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - conRdWhatA:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =16 + lblRdWhatV.Height
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutMinWidth: =0
+                                    Width: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), Parent.Width, (Parent.Width - 8) / 2)
+                                  Children:
+                                    - lblRdWhatK:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Label, If(gblLanguage = "Arabic", "ماذا", "What"))
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblRdWhatV:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =If(And(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Tone, "") = "danger"), fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: |-
+                                            =With({txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—"), cardW: With({colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))}, If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount))}, With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), cardW - 64, (cardW - 72) / 2)}, Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18)))
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value, "—")
+                                          VerticalAlign: =VerticalAlign.Top
+                                          Width: =Parent.Width
+                                          Wrap: =true
+                              - conRdWhatB:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), 0, 16 + lblRdWhatV2.Height)
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutMinWidth: =0
+                                    Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2))
+                                    Width: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), 0, (Parent.Width - 8) / 2)
+                                  Children:
+                                    - lblRdWhatK2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2, "")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblRdWhatV2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: |-
+                                            =With({txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value2, "—"), cardW: With({colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))}, If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount))}, With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "What").Label2), cardW - 64, (cardW - 72) / 2)}, Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18)))
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "What").Value2, "—")
+                                          VerticalAlign: =VerticalAlign.Top
+                                          Width: =Parent.Width
+                                          Wrap: =true
 
-            - conRdWhen:
-                Control: GroupContainer@1.5.0
-                Variant: AutoLayout
-                Properties:
-                  BorderColor: =fxThemeColor("Border")
-                  BorderThickness: =1
-                  DropShadow: =DropShadow.None
-                  Fill: =fxThemeColor("Surface")
-                  Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")), 0, 12 + 16 + lblRdWhenV.Height + 12)
-                  LayoutAlignItems: =LayoutAlignItems.Center
-                  LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =10
-                  LayoutMinHeight: =0
-                  LayoutMinWidth: =0
-                  PaddingBottom: =10
-                  PaddingLeft: =10
-                  PaddingRight: =10
-                  PaddingTop: =10
-                  RadiusBottomLeft: =gblTheme.Radius.Medium
-                  RadiusBottomRight: =gblTheme.Radius.Medium
-                  RadiusTopLeft: =gblTheme.Radius.Medium
-                  RadiusTopRight: =gblTheme.Radius.Medium
-                  Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")))
-                  Width: |-
-                    =If(
-                        IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")),
-                        0,
-                        With(
-                            {cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
-                            If(cols <= 1, Parent.Width, (Parent.Width - (cols - 1) * 8) / cols)
-                        )
-                    )
-                Children:
-                  - conRdWhenIcon:
+                  - conRdWhen:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
-                        AlignInContainer: =AlignInContainer.Start
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("PrimaryLight")
-                        Height: =32
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")), 0, 12 + 16 + Max(lblRdWhenV.Height, If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), 0, lblRdWhenV2.Height)) + 12)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
                         RadiusBottomLeft: =gblTheme.Radius.Medium
                         RadiusBottomRight: =gblTheme.Radius.Medium
                         RadiusTopLeft: =gblTheme.Radius.Medium
                         RadiusTopRight: =gblTheme.Radius.Medium
-                        Width: =32
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - imgRdWhen:
-                            Control: Image@2.2.3
+                        - conRdWhenIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              BorderStyle: =BorderStyle.None
-                              Height: =16
-                              Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Icon, "Calendar"), fxThemeInk("Primary"))
-                              Width: =16
-                  - conRdWhenText:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =1
-                        Height: =16 + lblRdWhenV.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =2
-                        LayoutMinWidth: =0
-                      Children:
-                        - lblRdWhenK:
-                            Control: Label@2.5.1
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdWhen:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Icon, "Calendar"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdWhenText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =16
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =11
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Label, If(gblLanguage = "Arabic", "متى", "When"))
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRdWhenV:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: |-
-                                =With(
-                                    {
-                                        txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—"),
-                                        cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                                        cardW: If(cmpRecordDetails.Width < 560, cmpRecordDetails.Width, (Max(cmpRecordDetails.Width, 280) - (cols - 1) * 8) / cols)
-                                    },
-                                    Max(20, RoundUp(Len(txt) / Max(8, (cardW - 64) / 6.6), 0) * 18)
-                                )
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =12
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—")
-                              VerticalAlign: =VerticalAlign.Top
-                              Width: =Parent.Width
-                              Wrap: =true
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + Max(lblRdWhenV.Height, If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), 0, lblRdWhenV2.Height))
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - conRdWhenA:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =16 + lblRdWhenV.Height
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutMinWidth: =0
+                                    Width: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), Parent.Width, (Parent.Width - 8) / 2)
+                                  Children:
+                                    - lblRdWhenK:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Label, If(gblLanguage = "Arabic", "متى", "When"))
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblRdWhenV:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =If(And(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Tone, "") = "danger"), fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: |-
+                                            =With({txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—"), cardW: With({colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))}, If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount))}, With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), cardW - 64, (cardW - 72) / 2)}, Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18)))
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value, "—")
+                                          VerticalAlign: =VerticalAlign.Top
+                                          Width: =Parent.Width
+                                          Wrap: =true
+                              - conRdWhenB:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), 0, 16 + lblRdWhenV2.Height)
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutMinWidth: =0
+                                    Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2))
+                                    Width: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), 0, (Parent.Width - 8) / 2)
+                                  Children:
+                                    - lblRdWhenK2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2, "")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblRdWhenV2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: |-
+                                            =With({txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value2, "—"), cardW: With({colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))}, If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount))}, With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "When").Label2), cardW - 64, (cardW - 72) / 2)}, Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18)))
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "When").Value2, "—")
+                                          VerticalAlign: =VerticalAlign.Top
+                                          Width: =Parent.Width
+                                          Wrap: =true
 
-            - conRdWho:
-                Control: GroupContainer@1.5.0
-                Variant: AutoLayout
-                Properties:
-                  BorderColor: =fxThemeColor("Border")
-                  BorderThickness: =1
-                  DropShadow: =DropShadow.None
-                  Fill: =fxThemeColor("Surface")
-                  Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")), 0, 12 + 16 + lblRdWhoV.Height + 12)
-                  LayoutAlignItems: =LayoutAlignItems.Center
-                  LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =10
-                  LayoutMinHeight: =0
-                  LayoutMinWidth: =0
-                  PaddingBottom: =10
-                  PaddingLeft: =10
-                  PaddingRight: =10
-                  PaddingTop: =10
-                  RadiusBottomLeft: =gblTheme.Radius.Medium
-                  RadiusBottomRight: =gblTheme.Radius.Medium
-                  RadiusTopLeft: =gblTheme.Radius.Medium
-                  RadiusTopRight: =gblTheme.Radius.Medium
-                  Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")))
-                  Width: |-
-                    =If(
-                        IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")),
-                        0,
-                        With(
-                            {cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
-                            If(cols <= 1, Parent.Width, (Parent.Width - (cols - 1) * 8) / cols)
-                        )
-                    )
-                Children:
-                  - conRdWhoIcon:
+                  - conRdWho:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
-                        AlignInContainer: =AlignInContainer.Start
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("PrimaryLight")
-                        Height: =32
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")), 0, 12 + 16 + Max(lblRdWhoV.Height, If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), 0, lblRdWhoV2.Height)) + 12)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
                         RadiusBottomLeft: =gblTheme.Radius.Medium
                         RadiusBottomRight: =gblTheme.Radius.Medium
                         RadiusTopLeft: =gblTheme.Radius.Medium
                         RadiusTopRight: =gblTheme.Radius.Medium
-                        Width: =32
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - imgRdWho:
-                            Control: Image@2.2.3
+                        - conRdWhoIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              BorderStyle: =BorderStyle.None
-                              Height: =16
-                              Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Icon, "User"), fxThemeInk("Primary"))
-                              Width: =16
-                  - conRdWhoText:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =1
-                        Height: =16 + lblRdWhoV.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =2
-                        LayoutMinWidth: =0
-                      Children:
-                        - lblRdWhoK:
-                            Control: Label@2.5.1
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdWho:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Icon, "User"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdWhoText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =16
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =11
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label, If(gblLanguage = "Arabic", "من", "Who"))
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRdWhoV:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: |-
-                                =With(
-                                    {
-                                        txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—"),
-                                        cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                                        cardW: If(cmpRecordDetails.Width < 560, cmpRecordDetails.Width, (Max(cmpRecordDetails.Width, 280) - (cols - 1) * 8) / cols)
-                                    },
-                                    Max(20, RoundUp(Len(txt) / Max(8, (cardW - 64) / 6.6), 0) * 18)
-                                )
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =12
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—")
-                              VerticalAlign: =VerticalAlign.Top
-                              Width: =Parent.Width
-                              Wrap: =true
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + Max(lblRdWhoV.Height, If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), 0, lblRdWhoV2.Height))
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutGap: =8
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - conRdWhoA:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =16 + lblRdWhoV.Height
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutMinWidth: =0
+                                    Width: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), Parent.Width, (Parent.Width - 8) / 2)
+                                  Children:
+                                    - lblRdWhoK:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label, If(gblLanguage = "Arabic", "من", "Who"))
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblRdWhoV:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =If(And(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Tone, "") = "danger"), fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: |-
+                                            =With({txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—"), cardW: With({colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))}, If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount))}, With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), cardW - 64, (cardW - 72) / 2)}, Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18)))
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value, "—")
+                                          VerticalAlign: =VerticalAlign.Top
+                                          Width: =Parent.Width
+                                          Wrap: =true
+                              - conRdWhoB:
+                                  Control: GroupContainer@1.5.0
+                                  Variant: AutoLayout
+                                  Properties:
+                                    DropShadow: =DropShadow.None
+                                    Fill: =Color.Transparent
+                                    FillPortions: =0
+                                    Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), 0, 16 + lblRdWhoV2.Height)
+                                    LayoutDirection: =LayoutDirection.Vertical
+                                    LayoutGap: =2
+                                    LayoutMinWidth: =0
+                                    Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2))
+                                    Width: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), 0, (Parent.Width - 8) / 2)
+                                  Children:
+                                    - lblRdWhoK2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =fxThemeColor("TextMuted")
+                                          Font: =gblTheme.Typography.FontFamily
+                                          Height: =16
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =11
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2, "")
+                                          Width: =Parent.Width
+                                          Wrap: =false
+                                    - lblRdWhoV2:
+                                        Control: Label@2.5.1
+                                        Properties:
+                                          Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                          Font: =gblTheme.Typography.FontFamily
+                                          FontWeight: =gblTheme.FontWeights.Medium
+                                          Height: |-
+                                            =With({txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value2, "—"), cardW: With({colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))}, If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount))}, With({w: If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Who").Label2), cardW - 64, (cardW - 72) / 2)}, Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, w / 6.6), 0))) * 18)))
+                                          PaddingBottom: =0
+                                          PaddingLeft: =0
+                                          PaddingRight: =0
+                                          PaddingTop: =0
+                                          Size: =12
+                                          Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Who").Value2, "—")
+                                          VerticalAlign: =VerticalAlign.Top
+                                          Width: =Parent.Width
+                                          Wrap: =true
 
-            - conRdWhom:
-                Control: GroupContainer@1.5.0
-                Variant: AutoLayout
-                Properties:
-                  BorderColor: =fxThemeColor("Border")
-                  BorderThickness: =1
-                  DropShadow: =DropShadow.None
-                  Fill: =fxThemeColor("Surface")
-                  Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")), 0, 12 + 16 + lblRdWhomV.Height + 12)
-                  LayoutAlignItems: =LayoutAlignItems.Center
-                  LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =10
-                  LayoutMinHeight: =0
-                  LayoutMinWidth: =0
-                  PaddingBottom: =10
-                  PaddingLeft: =10
-                  PaddingRight: =10
-                  PaddingTop: =10
-                  RadiusBottomLeft: =gblTheme.Radius.Medium
-                  RadiusBottomRight: =gblTheme.Radius.Medium
-                  RadiusTopLeft: =gblTheme.Radius.Medium
-                  RadiusTopRight: =gblTheme.Radius.Medium
-                  Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")))
-                  Width: |-
-                    =If(
-                        IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")),
-                        0,
-                        With(
-                            {cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
-                            If(cols <= 1, Parent.Width, (Parent.Width - (cols - 1) * 8) / cols)
-                        )
-                    )
-                Children:
-                  - conRdWhomIcon:
+                  - conRdWhom:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
-                        AlignInContainer: =AlignInContainer.Start
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("PrimaryLight")
-                        Height: =32
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")), 0, 12 + 16 + lblRdWhomV.Height + 12)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
                         RadiusBottomLeft: =gblTheme.Radius.Medium
                         RadiusBottomRight: =gblTheme.Radius.Medium
                         RadiusTopLeft: =gblTheme.Radius.Medium
                         RadiusTopRight: =gblTheme.Radius.Medium
-                        Width: =32
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Whom")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - imgRdWhom:
-                            Control: Image@2.2.3
+                        - conRdWhomIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              BorderStyle: =BorderStyle.None
-                              Height: =16
-                              Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Icon, "Users"), fxThemeInk("Primary"))
-                              Width: =16
-                  - conRdWhomText:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =1
-                        Height: =16 + lblRdWhomV.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =2
-                        LayoutMinWidth: =0
-                      Children:
-                        - lblRdWhomK:
-                            Control: Label@2.5.1
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdWhom:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Icon, "Users"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdWhomText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =16
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =11
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Label, If(gblLanguage = "Arabic", "لمن", "Whom"))
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRdWhomV:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: |-
-                                =With(
-                                    {
-                                        txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—"),
-                                        cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                                        cardW: If(cmpRecordDetails.Width < 560, cmpRecordDetails.Width, (Max(cmpRecordDetails.Width, 280) - (cols - 1) * 8) / cols)
-                                    },
-                                    Max(20, RoundUp(Len(txt) / Max(8, (cardW - 64) / 6.6), 0) * 18)
-                                )
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =12
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—")
-                              VerticalAlign: =VerticalAlign.Top
-                              Width: =Parent.Width
-                              Wrap: =true
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + lblRdWhomV.Height
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - lblRdWhomK:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Label, If(gblLanguage = "Arabic", "لمن", "Whom"))
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblRdWhomV:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: |-
+                                      =With(
+                                          {
+                                              txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—"),
+                                              cardW: With(
+                                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                                  If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)
+                                              )
+                                          },
+                                          Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)
+                                      )
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =12
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Whom").Value, "—")
+                                    VerticalAlign: =VerticalAlign.Top
+                                    Width: =Parent.Width
+                                    Wrap: =true
 
-            - conRdHow:
-                Control: GroupContainer@1.5.0
-                Variant: AutoLayout
-                Properties:
-                  BorderColor: =fxThemeColor("Border")
-                  BorderThickness: =1
-                  DropShadow: =DropShadow.None
-                  Fill: =fxThemeColor("Surface")
-                  Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")), 0, 12 + 16 + lblRdHowV.Height + 12)
-                  LayoutAlignItems: =LayoutAlignItems.Center
-                  LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =10
-                  LayoutMinHeight: =0
-                  LayoutMinWidth: =0
-                  PaddingBottom: =10
-                  PaddingLeft: =10
-                  PaddingRight: =10
-                  PaddingTop: =10
-                  RadiusBottomLeft: =gblTheme.Radius.Medium
-                  RadiusBottomRight: =gblTheme.Radius.Medium
-                  RadiusTopLeft: =gblTheme.Radius.Medium
-                  RadiusTopRight: =gblTheme.Radius.Medium
-                  Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")))
-                  Width: |-
-                    =If(
-                        IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")),
-                        0,
-                        With(
-                            {cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
-                            If(cols <= 1, Parent.Width, (Parent.Width - (cols - 1) * 8) / cols)
-                        )
-                    )
-                Children:
-                  - conRdHowIcon:
+                  - conRdHow:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
-                        AlignInContainer: =AlignInContainer.Start
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("PrimaryLight")
-                        Height: =32
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")), 0, 12 + 16 + lblRdHowV.Height + 12)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
                         RadiusBottomLeft: =gblTheme.Radius.Medium
                         RadiusBottomRight: =gblTheme.Radius.Medium
                         RadiusTopLeft: =gblTheme.Radius.Medium
                         RadiusTopRight: =gblTheme.Radius.Medium
-                        Width: =32
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "How")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - imgRdHow:
-                            Control: Image@2.2.3
+                        - conRdHowIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              BorderStyle: =BorderStyle.None
-                              Height: =16
-                              Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Icon, "Settings"), fxThemeInk("Primary"))
-                              Width: =16
-                  - conRdHowText:
-                      Control: GroupContainer@1.5.0
-                      Variant: AutoLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =1
-                        Height: =16 + lblRdHowV.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =2
-                        LayoutMinWidth: =0
-                      Children:
-                        - lblRdHowK:
-                            Control: Label@2.5.1
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdHow:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Icon, "Settings"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdHowText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =16
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =11
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Label, If(gblLanguage = "Arabic", "كيف", "How"))
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRdHowV:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: |-
-                                =With(
-                                    {
-                                        txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—"),
-                                        cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                                        cardW: If(cmpRecordDetails.Width < 560, cmpRecordDetails.Width, (Max(cmpRecordDetails.Width, 280) - (cols - 1) * 8) / cols)
-                                    },
-                                    Max(20, RoundUp(Len(txt) / Max(8, (cardW - 64) / 6.6), 0) * 18)
-                                )
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =12
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—")
-                              VerticalAlign: =VerticalAlign.Top
-                              Width: =Parent.Width
-                              Wrap: =true
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + lblRdHowV.Height
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - lblRdHowK:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Label, If(gblLanguage = "Arabic", "كيف", "How"))
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblRdHowV:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: |-
+                                      =With(
+                                          {
+                                              txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—"),
+                                              cardW: With(
+                                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                                  If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)
+                                              )
+                                          },
+                                          Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)
+                                      )
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =12
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "How").Value, "—")
+                                    VerticalAlign: =VerticalAlign.Top
+                                    Width: =Parent.Width
+                                    Wrap: =true
 
-            - conRdWhy:
-                Control: GroupContainer@1.5.0
-                Variant: AutoLayout
-                Properties:
-                  BorderColor: =fxThemeColor("Border")
-                  BorderThickness: =1
-                  DropShadow: =DropShadow.None
-                  Fill: =fxThemeColor("Surface")
-                  Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")), 0, 12 + 16 + lblRdWhyV.Height + 12)
-                  LayoutAlignItems: =LayoutAlignItems.Center
-                  LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =10
-                  LayoutMinHeight: =0
-                  LayoutMinWidth: =0
-                  PaddingBottom: =10
-                  PaddingLeft: =10
-                  PaddingRight: =10
-                  PaddingTop: =10
-                  RadiusBottomLeft: =gblTheme.Radius.Medium
-                  RadiusBottomRight: =gblTheme.Radius.Medium
-                  RadiusTopLeft: =gblTheme.Radius.Medium
-                  RadiusTopRight: =gblTheme.Radius.Medium
-                  Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")))
-                  Width: |-
-                    =If(
-                        IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")),
-                        0,
-                        With(
-                            {cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
-                            If(cols <= 1, Parent.Width, (Parent.Width - (cols - 1) * 8) / cols)
-                        )
-                    )
-                Children:
-                  - conRdWhyIcon:
+                  - conRdWhy:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
-                        AlignInContainer: =AlignInContainer.Start
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =fxThemeColor("PrimaryLight")
-                        Height: =32
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")), 0, 12 + 16 + lblRdWhyV.Height + 12)
                         LayoutAlignItems: =LayoutAlignItems.Center
                         LayoutDirection: =LayoutDirection.Horizontal
-                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
                         RadiusBottomLeft: =gblTheme.Radius.Medium
                         RadiusBottomRight: =gblTheme.Radius.Medium
                         RadiusTopLeft: =gblTheme.Radius.Medium
                         RadiusTopRight: =gblTheme.Radius.Medium
-                        Width: =32
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Why")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - imgRdWhy:
-                            Control: Image@2.2.3
+                        - conRdWhyIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              BorderStyle: =BorderStyle.None
-                              Height: =16
-                              Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Icon, "Flag"), fxThemeInk("Primary"))
-                              Width: =16
-                  - conRdWhyText:
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdWhy:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Icon, "Flag"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdWhyText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + lblRdWhyV.Height
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - lblRdWhyK:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Label, If(gblLanguage = "Arabic", "لماذا", "Why"))
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblRdWhyV:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: |-
+                                      =With(
+                                          {
+                                              txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—"),
+                                              cardW: With(
+                                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                                  If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)
+                                              )
+                                          },
+                                          Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)
+                                      )
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =12
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—")
+                                    VerticalAlign: =VerticalAlign.Top
+                                    Width: =Parent.Width
+                                    Wrap: =true
+
+                  - conRdStarted:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
                       Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
                         DropShadow: =DropShadow.None
-                        Fill: =Color.Transparent
-                        FillPortions: =1
-                        Height: =16 + lblRdWhyV.Height
-                        LayoutDirection: =LayoutDirection.Vertical
-                        LayoutGap: =2
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Started")), 0, 12 + 16 + lblRdStartedV.Height + 12)
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
                         LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Started")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Started")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
                       Children:
-                        - lblRdWhyK:
-                            Control: Label@2.5.1
+                        - conRdStartedIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextMuted")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =16
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =11
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Label, If(gblLanguage = "Arabic", "لماذا", "Why"))
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRdWhyV:
-                            Control: Label@2.5.1
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdStarted:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Icon, "Calendar"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdStartedText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
                             Properties:
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Medium
-                              Height: |-
-                                =With(
-                                    {
-                                        txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—"),
-                                        cols: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3))))),
-                                        cardW: If(cmpRecordDetails.Width < 560, cmpRecordDetails.Width, (Max(cmpRecordDetails.Width, 280) - (cols - 1) * 8) / cols)
-                                    },
-                                    Max(20, RoundUp(Len(txt) / Max(8, (cardW - 64) / 6.6), 0) * 18)
-                                )
-                              PaddingBottom: =0
-                              PaddingLeft: =0
-                              PaddingRight: =0
-                              PaddingTop: =0
-                              Size: =12
-                              Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Why").Value, "—")
-                              VerticalAlign: =VerticalAlign.Top
-                              Width: =Parent.Width
-                              Wrap: =true
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + lblRdStartedV.Height
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - lblRdStartedK:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Label, If(gblLanguage = "Arabic", "البداية", "Started"))
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblRdStartedV:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: |-
+                                      =With(
+                                          {
+                                              txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Value, "—"),
+                                              cardW: With(
+                                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                                  If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)
+                                              )
+                                          },
+                                          Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)
+                                      )
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =12
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Started").Value, "—")
+                                    VerticalAlign: =VerticalAlign.Top
+                                    Width: =Parent.Width
+                                    Wrap: =true
+
+                  - conRdCompleted:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("Border")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =fxThemeColor("Surface")
+                        Height: =If(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Completed")), 0, 12 + 16 + lblRdCompletedV.Height + 12)
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =10
+                        PaddingLeft: =10
+                        PaddingRight: =10
+                        PaddingTop: =10
+                        RadiusBottomLeft: =gblTheme.Radius.Medium
+                        RadiusBottomRight: =gblTheme.Radius.Medium
+                        RadiusTopLeft: =gblTheme.Radius.Medium
+                        RadiusTopRight: =gblTheme.Radius.Medium
+                        Visible: =Not(IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Completed")))
+                        Width: |-
+                          =If(
+                              IsBlank(LookUp(cmpRecordDetails.Items, Dimension = "Completed")),
+                              0,
+                              With(
+                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                  If(colCount <= 1, Parent.Width, (Parent.Width - (colCount - 1) * 8) / colCount)
+                              )
+                          )
+                      Children:
+                        - conRdCompletedIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Start
+                              DropShadow: =DropShadow.None
+                              Fill: =fxThemeColor("PrimaryLight")
+                              Height: =32
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutDirection: =LayoutDirection.Horizontal
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              RadiusBottomLeft: =gblTheme.Radius.Medium
+                              RadiusBottomRight: =gblTheme.Radius.Medium
+                              RadiusTopLeft: =gblTheme.Radius.Medium
+                              RadiusTopRight: =gblTheme.Radius.Medium
+                              Width: =32
+                            Children:
+                              - imgRdCompleted:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: =fxSvg(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Icon, "Check"), fxThemeInk("Primary"))
+                                    Width: =16
+                        - conRdCompletedText:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: =Color.Transparent
+                              FillPortions: =1
+                              Height: =16 + lblRdCompletedV.Height
+                              LayoutDirection: =LayoutDirection.Vertical
+                              LayoutGap: =2
+                              LayoutMinWidth: =0
+                              Width: =Parent.Width - 62
+                            Children:
+                              - lblRdCompletedK:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =fxThemeColor("TextMuted")
+                                    Font: =gblTheme.Typography.FontFamily
+                                    Height: =16
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =11
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Label, If(gblLanguage = "Arabic", "الإكمال", "Completed"))
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                              - lblRdCompletedV:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Color: =If(Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Tone, "") = "danger", fxThemeColor("Danger"), fxThemeColor("TextPrimary"))
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: |-
+                                      =With(
+                                          {
+                                              txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Value, "—"),
+                                              cardW: With(
+                                                  {colCount: If(cmpRecordDetails.Width < 560, 1, If(cmpRecordDetails.Width < 960, 2, Min(4, Max(1, Coalesce(cmpRecordDetails.Columns, 3)))))},
+                                                  If(colCount <= 1, Max(cmpRecordDetails.Width, 280), (Max(cmpRecordDetails.Width, 280) - (colCount - 1) * 8) / colCount)
+                                              )
+                                          },
+                                          Max(20, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(8, (cardW - 64) / 6.6), 0))) * 18)
+                                      )
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =12
+                                    Text: =Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Completed").Value, "—")
+                                    VerticalAlign: =VerticalAlign.Top
+                                    Width: =Parent.Width
+                                    Wrap: =true
 
             - conRdDesc:
                 Control: GroupContainer@1.5.0
@@ -832,6 +1278,7 @@ ComponentDefinitions:
                         LayoutDirection: =LayoutDirection.Vertical
                         LayoutGap: =2
                         LayoutMinWidth: =0
+                        Width: =Parent.Width - 62
                       Children:
                         - lblRdDescK:
                             Control: Label@2.5.1
@@ -859,7 +1306,7 @@ ComponentDefinitions:
                                         txt: Coalesce(LookUp(cmpRecordDetails.Items, Dimension = "Description").Value, "—"),
                                         cardW: Max(cmpRecordDetails.Width, 280)
                                     },
-                                    Max(36, RoundUp(Len(txt) / Max(12, (cardW - 72) / 6.6), 0) * 18)
+                                    Max(36, Sum(Split(txt, Char(10)), Max(1, RoundUp(Len(Value) / Max(12, (cardW - 72) / 6.6), 0))) * 18)
                                 )
                               PaddingBottom: =0
                               PaddingLeft: =0

@@ -786,7 +786,7 @@ Screens:
                         BorderThickness: =1
                         DropShadow: =DropShadow.None
                         Fill: =fxThemeColor("Surface")
-                        Height: =36 + 36 + 22 + 32
+                        Height: =36 + 36 + 96 + 24 + 32
                         LayoutAlignItems: =LayoutAlignItems.Stretch
                         LayoutDirection: =LayoutDirection.Vertical
                         LayoutGap: =12
@@ -910,10 +910,45 @@ Screens:
                               PaddingRight: =0
                               PaddingTop: =0
                               Size: =12
-                              Text: |-
-                                =Coalesce(varMtSel.ProjectText, "-") & "   •   " & If(IsBlank(varMtSel.ActivityText), "-", varMtSel.ActivityText) & "   •   " & If(IsBlank(varMtSel.AssigneeText), "-", varMtSel.AssigneeText)
+                              Text: =""
+                              Visible: =false
                               Width: =Parent.Width
                               Wrap: =false
+                        - cmpMtStep:
+                            Control: CanvasComponent
+                            ComponentName: cmpStepper
+                            Properties:
+                              ClickableSteps: ="None"
+                              CurrentStep: |-
+                                =If(
+                                    Or(varMtSel.StatusText = "Completed", Not(IsBlank(varMtSel.CompletedDate))),
+                                    4,
+                                    If(
+                                        Or(Not(IsBlank(varMtSel.ActualStart)), varMtSel.StatusText in ["In Progress", "On Hold", "Pending Approval", "In Review", "Reopened"]),
+                                        3,
+                                        2
+                                    )
+                                )
+                              Density: ="Full"
+                              Height: =96
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              Size: ="Small"
+                              StepLabels: |-
+                                =Table(
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "أُنشئت", "Created") & Char(10) & Coalesce(LookUp(colMtPeople, ID = varMtSel.AssignedByID).FullName, "—") & Char(10) & If(IsBlank(varMtSel.Created), "—", Text(varMtSel.Created, "dd mmm yyyy"))
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "بدأت", "Started") & Char(10) & Coalesce(varMtSel.AssigneeText, "—") & Char(10) & If(IsBlank(varMtSel.ActualStart), "—", Text(varMtSel.ActualStart, "dd mmm yyyy"))
+                                    },
+                                    {
+                                        Label: If(gblLanguage = "Arabic", "اكتملت", "Completed") & Char(10) & If(IsBlank(varMtSel.CompletedDate), "—", Text(varMtSel.CompletedDate, "dd mmm yyyy")) & Char(10) & Coalesce(LookUp(colMtLog, ActionType.Value = "Completed").PerformedByName, "—")
+                                    }
+                                )
+                              Theme: =gblTheme.Mode
+                              Type: ="Step"
+                              Width: =Parent.Width
                   - conMtBody:
                       Control: GroupContainer@1.5.0
                       Variant: AutoLayout
@@ -1039,45 +1074,66 @@ Screens:
                                             =Table(
                                                 {
                                                     Dimension: "What",
-                                                    Label: If(gblLanguage = "Arabic", "النشاط", "What"),
-                                                    Value: If(IsBlank(varMtSel.ActivityText), "-", varMtSel.ActivityText),
-                                                    Icon: "Activity"
+                                                    Label: If(gblLanguage = "Arabic", "أسندها", "Assigned by"),
+                                                    Value: Coalesce(LookUp(colMtPeople, ID = varMtSel.AssignedByID).FullName, "—"),
+                                                    Label2: If(gblLanguage = "Arabic", "المكلّف", "Assigned to"),
+                                                    Value2: Coalesce(varMtSel.AssigneeText, "—"),
+                                                    Icon: "User",
+                                                    Tone: ""
                                                 },
                                                 {
                                                     Dimension: "When",
-                                                    Label: If(gblLanguage = "Arabic", "الموعد", "When"),
-                                                    Value: If(gblLanguage = "Arabic", "الاستحقاق: ", "Due: ") & If(IsBlank(varMtSel.DueDate), "-", Text(varMtSel.DueDate, "dd mmm yyyy")) & Char(10) & If(gblLanguage = "Arabic", "البداية: ", "Started: ") & If(IsBlank(varMtSel.ActualStart), "-", Text(varMtSel.ActualStart, "dd mmm yyyy")) & " · " & If(gblLanguage = "Arabic", "الإكمال: ", "Completed: ") & If(IsBlank(varMtSel.CompletedDate), "-", Text(varMtSel.CompletedDate, "dd mmm yyyy")),
-                                                    Icon: "Calendar"
+                                                    Label: If(gblLanguage = "Arabic", "تاريخ الإنشاء", "Created"),
+                                                    Value: If(IsBlank(varMtSel.Created), "—", Text(varMtSel.Created, "dd mmm yyyy")),
+                                                    Label2: If(gblLanguage = "Arabic", "الاستحقاق", "Due"),
+                                                    Value2: If(IsBlank(varMtSel.DueDate), "—", Text(varMtSel.DueDate, "dd mmm yyyy")),
+                                                    Icon: "Calendar",
+                                                    Tone: If(varMtSel.IsOverdue, "danger", "")
                                                 },
                                                 {
                                                     Dimension: "Who",
-                                                    Label: If(gblLanguage = "Arabic", "أسندها", "Who"),
-                                                    Value: Coalesce(LookUp(colMtPeople, ID = varMtSel.AssignedByID).FullName, "-"),
-                                                    Icon: "User"
+                                                    Label: If(gblLanguage = "Arabic", "البداية", "Started"),
+                                                    Value: If(IsBlank(varMtSel.ActualStart), "—", Text(varMtSel.ActualStart, "dd mmm yyyy")),
+                                                    Label2: If(gblLanguage = "Arabic", "النهاية", "End"),
+                                                    Value2: If(IsBlank(varMtSel.CompletedDate), "—", Text(varMtSel.CompletedDate, "dd mmm yyyy")),
+                                                    Icon: "Calendar",
+                                                    Tone: ""
                                                 },
                                                 {
                                                     Dimension: "Whom",
-                                                    Label: If(gblLanguage = "Arabic", "المكلّف", "Whom"),
-                                                    Value: Coalesce(varMtSel.AssigneeText, "-"),
-                                                    Icon: "Users"
+                                                    Label: If(gblLanguage = "Arabic", "المشروع", "Project"),
+                                                    Value: Coalesce(varMtSel.ProjectText, "—"),
+                                                    Label2: "",
+                                                    Value2: "",
+                                                    Icon: "Flag",
+                                                    Tone: ""
                                                 },
                                                 {
                                                     Dimension: "How",
-                                                    Label: If(gblLanguage = "Arabic", "التنفيذ", "How"),
-                                                    Value: Text(Coalesce(varMtSel.ProgressPct, 0)) & "%" & If(IsBlank(varMtSel.EstimatedHours), "", Char(10) & If(gblLanguage = "Arabic", "ساعات: ", "Hours: ") & Text(varMtSel.EstimatedHours)) & Char(10) & If(gblLanguage = "Arabic", "إرجاع: ", "Returned: ") & Text(Coalesce(varMtSel.ReturnCount, 0)),
-                                                    Icon: "Settings"
+                                                    Label: If(gblLanguage = "Arabic", "النشاط", "Activity"),
+                                                    Value: If(IsBlank(varMtSel.ActivityText), "—", varMtSel.ActivityText),
+                                                    Label2: "",
+                                                    Value2: "",
+                                                    Icon: "Activity",
+                                                    Tone: ""
                                                 },
                                                 {
                                                     Dimension: "Why",
-                                                    Label: If(gblLanguage = "Arabic", "ملاحظات", "Why"),
-                                                    Value: Coalesce(varMtSel.Remarks, "-"),
-                                                    Icon: "Flag"
+                                                    Label: If(gblLanguage = "Arabic", "الإنجاز", "Progress"),
+                                                    Value: Text(Coalesce(varMtSel.ProgressPct, 0)) & "%",
+                                                    Label2: "",
+                                                    Value2: "",
+                                                    Icon: "Settings",
+                                                    Tone: ""
                                                 },
                                                 {
                                                     Dimension: "Description",
                                                     Label: If(gblLanguage = "Arabic", "الوصف", "Description"),
                                                     Value: Coalesce(varMtSel.TaskDescription, If(gblLanguage = "Arabic", "لا يوجد وصف.", "No description.")),
-                                                    Icon: "FileText"
+                                                    Label2: "",
+                                                    Value2: "",
+                                                    Icon: "FileText",
+                                                    Tone: ""
                                                 }
                                             )
                                           LayoutMinHeight: =0
