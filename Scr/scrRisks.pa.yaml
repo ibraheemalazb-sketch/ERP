@@ -1196,152 +1196,67 @@ Screens:
                                     Text: =If(gblLanguage = "Arabic", "حذف", "Delete")
                                     Visible: =Or(varSelectedRisk.ApproverID = varMeID, varSelectedRisk.'Created By'.Email = User().Email)
                                     Width: =90
-                        - lblRkInfoT:
-                            Control: Label@2.5.1
+                        - cmpRkForm:
+                            Control: CanvasComponent
+                            ComponentName: cmpRecordDetails
                             Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "معلومات المخاطرة", "Risk information")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkInfo:
-                            Control: Label@2.5.1
-                            Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =120
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: |-
+                              Columns: =4
+                              Items: |-
                                 =With(
-                                    {ar: gblLanguage = "Arabic", t: varSelectedRisk, loc: If(gblLanguage = "Arabic", "ar-EG", "en-US")},
-                                    If(ar, "المعتمِد: ", "Approver: ") & Coalesce(LookUp(Employees, ID = t.ApproverID, FullName), "-") & Char(10) &
-                                    If(ar, "تاريخ المخاطرة: ", "Risk date: ") & If(IsBlank(t.RiskDate), "--", Text(t.RiskDate, "dd mmm yyyy", loc)) & Char(10) &
-                                    If(ar, "المراجعة: ", "Review: ") & If(IsBlank(t.ReviewDate), "--", Text(t.ReviewDate, "dd mmm yyyy", loc)) & Char(10) &
-                                    If(ar, "الإغلاق: ", "Closing: ") & If(IsBlank(t.ClosingDate), "--", Text(t.ClosingDate, "dd mmm yyyy", loc)) & Char(10) &
-                                    If(ar, "الاتجاه: ", "Trend: ") & Coalesce(t.Trend.Value, "-") & " · " & If(ar, "تكلفة: ", "Cost: ") & Coalesce(Text(t.EstimatedCost), "-") & Char(10) &
-                                    If(ar, "مؤشر التحفيز: ", "Trigger: ") & Coalesce(t.TriggerIndicator, "-")
+                                    {
+                                        ar: gblLanguage = "Arabic",
+                                        t: varSelectedRisk,
+                                        loc: If(gblLanguage = "Arabic", "ar-EG", "en-US"),
+                                        revOver: And(Not(IsBlank(varSelectedRisk.ReviewDate)), varSelectedRisk.ReviewDate < Today(), varSelectedRisk.Status.Value <> "Closed")
+                                    },
+                                    Table(
+                                        {
+                                            Dimension: "What",
+                                            Label: If(ar, "ماذا", "What"),
+                                            Value: If(ar, "الفئة: ", "Category: ") & Coalesce(t.Category.Value, "-") & " · " & If(ar, "المشروع: ", "Project: ") & Coalesce(t.Project.Value, "-"),
+                                            Icon: "Tag"
+                                        },
+                                        {
+                                            Dimension: "When",
+                                            Label: If(ar, "متى", "When"),
+                                            Value: If(ar, "تاريخ التحديد: ", "Identified on: ") & If(IsBlank(t.RiskDate), "-", Text(t.RiskDate, "dd mmm yyyy", loc)) & Char(10) & If(ar, "المراجعة القادمة: ", "Next review: ") & If(IsBlank(t.ReviewDate), "-", Text(t.ReviewDate, "dd mmm yyyy", loc)) & If(revOver, If(ar, " · متأخرة", " · overdue"), "") & Char(10) & If(ar, "تاريخ الإغلاق: ", "Closing date: ") & If(IsBlank(t.ClosingDate), "-", Text(t.ClosingDate, "dd mmm yyyy", loc)) & Char(10) & If(ar, "أيام الفتح: ", "Days open: ") & If(IsBlank(t.RiskDate), "-", Text(DateDiff(t.RiskDate, Coalesce(t.ClosingDate, Today()), TimeUnit.Days)) & If(ar, " يوم", " days")),
+                                            Icon: "Calendar"
+                                        },
+                                        {
+                                            Dimension: "Who",
+                                            Label: If(ar, "من", "Who"),
+                                            Value: If(ar, "مسؤول المخاطرة: ", "Risk owner: ") & Coalesce(t.Owner.Value, "-") & Char(10) & If(ar, "أنشأها: ", "Created by: ") & Coalesce(t.'Created By'.DisplayName, "-") & " · " & If(IsBlank(t.Created), "-", Text(t.Created, "dd mmm yyyy", loc)),
+                                            Icon: "User"
+                                        },
+                                        {
+                                            Dimension: "Whom",
+                                            Label: If(ar, "لمن", "Whom"),
+                                            Value: If(ar, "المعتمِد: ", "Approver: ") & Coalesce(LookUp(Employees, ID = t.ApproverID, FullName), "-"),
+                                            Icon: "Users"
+                                        },
+                                        {
+                                            Dimension: "How",
+                                            Label: If(ar, "كيف", "How"),
+                                            Value: If(ar, "الاتجاه: ", "Trend: ") & Coalesce(t.Trend.Value, "-") & Char(10) & If(ar, "التكلفة التقديرية: ", "Estimated cost: ") & If(IsBlank(t.EstimatedCost), "-", Text(t.EstimatedCost, "#,##0.00")),
+                                            Icon: "Settings"
+                                        },
+                                        {
+                                            Dimension: "Why",
+                                            Label: If(ar, "لماذا", "Why"),
+                                            Value: If(IsBlank(Trim(Coalesce(t.TriggerIndicator, ""))), "-", t.TriggerIndicator),
+                                            Icon: "Flag"
+                                        },
+                                        {
+                                            Dimension: "Description",
+                                            Label: If(ar, "الوصف", "Description"),
+                                            Value: If(IsBlank(Trim(Coalesce(t.RiskDescription, ""))), "-", t.RiskDescription) & Char(10) & Char(10) & If(ar, "خطة المعالجة", "Mitigation plan") & Char(10) & If(IsBlank(Trim(Coalesce(t.Mitigation, ""))), "-", t.Mitigation) & Char(10) & Char(10) & If(ar, "خطة الطوارئ", "Contingency plan") & Char(10) & If(IsBlank(Trim(Coalesce(t.ContingencyPlan, ""))), "-", t.ContingencyPlan) & Char(10) & Char(10) & If(ar, "الاستجابة", "Response") & Char(10) & If(IsBlank(Trim(Coalesce(t.Response, ""))), "-", t.Response),
+                                            Icon: "FileText"
+                                        }
+                                    )
                                 )
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                        - lblRkDescT:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
                               LayoutMinHeight: =0
                               LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "الوصف", "Description")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkDesc:
-                            Control: Label@2.5.1
-                            Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Fill: =fxThemeColor("Background")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =80
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: =Coalesce(varSelectedRisk.RiskDescription, "-")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                        - lblRkMitT:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "خطة المعالجة", "Mitigation plan")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkMit:
-                            Control: Label@2.5.1
-                            Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Fill: =fxThemeColor("Background")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =80
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: =Coalesce(varSelectedRisk.Mitigation, "-")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                        - lblRkContT:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "خطة الطوارئ", "Contingency plan")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkCont:
-                            Control: Label@2.5.1
-                            Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Fill: =fxThemeColor("Background")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =80
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: =Coalesce(varSelectedRisk.ContingencyPlan, "-")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                        - lblRkRespT:
-                            Control: Label@2.5.1
-                            Properties:
-                              Color: =fxThemeColor("Primary")
-                              Font: =gblTheme.Typography.FontFamily
-                              FontWeight: =gblTheme.FontWeights.Bold
-                              Height: =24
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.Body
-                              Text: =If(gblLanguage = "Arabic", "الاستجابة", "Response")
-                              Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
-                              Width: =Parent.Width
-                              Wrap: =false
-                        - lblRkResp:
-                            Control: Label@2.5.1
-                            Properties:
-                              AutoHeight: =true
-                              Color: =fxThemeColor("TextPrimary")
-                              Fill: =fxThemeColor("Background")
-                              Font: =gblTheme.Typography.FontFamily
-                              Height: =80
-                              LayoutMinHeight: =0
-                              LayoutMinWidth: =0
-                              Size: =gblTheme.Typography.BodySmall
-                              Text: =Coalesce(varSelectedRisk.Response, "-")
+                              Title: =If(gblLanguage = "Arabic", "تفاصيل المخاطرة", "Risk details")
                               Visible: =And(Not(IsBlank(varSelectedRisk)), varRkPane = "Details")
                               Width: =Parent.Width
                         - lblRkHistT:
