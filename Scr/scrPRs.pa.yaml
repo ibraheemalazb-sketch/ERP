@@ -13,6 +13,7 @@ Screens:
       LoadingSpinnerColor: =fxThemeColor("Primary")
       OnVisible: |-
         =If(IsBlank(gblMenuExpanded), Set(gblMenuExpanded, true));
+        Set(varCurrentPR, Blank());
         Set(gblSelectedModule, "PRs");
         Set(varCurrentScreen, "Procurement");
         Set(VarScreen, "Procurement");
@@ -441,9 +442,9 @@ Screens:
             LayoutDirection: =LayoutDirection.Vertical
             LayoutGap: =12
             LayoutOverflowY: =LayoutOverflow.Scroll
-            PaddingBottom: =If(App.Width < 700, cmpPrPhone.Height, 0) + If(IsBlank(varCurrentPR), 80, 16)
+            PaddingBottom: =If(And(App.Width < 700, IsBlank(varCurrentPR)), cmpPrPhone.Height, 0) + If(IsBlank(varCurrentPR), 80, 16)
             PaddingLeft: =If(App.Width < 700, 15, If(gblMenuExpanded, gblTheme.Controls.SideNavWidth+12, gblTheme.Controls.SideNavCollapsedWidth+12))
-            PaddingRight: =If(App.Width < 700, 0, 8)
+            PaddingRight: =8
             PaddingTop: =cmpPrTop.Height + 12
             Width: =Parent.Width
           Children:
@@ -454,7 +455,7 @@ Screens:
                   DropShadow: =DropShadow.None
                   Fill: =Color.Transparent
                   FillPortions: =0
-                  Height: =Parent.Height-60
+                  Height: =Parent.Height-100
                   LayoutAlignItems: =LayoutAlignItems.Stretch
                   LayoutDirection: =LayoutDirection.Vertical
                   LayoutGap: =16
@@ -578,9 +579,11 @@ Screens:
                                       Set(varPrQuick, Blank());
                                       Set(varPrPane, "Details");
                                       Navigate(scrPREditor, ScreenTransition.Cover)
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
                                     Text: =If(gblLanguage = "Arabic", "طلب شراء", "Purchase request")
                                     Visible: =App.Width >= 700
-                                    Width: =160
+                                    Width: =180
                         - conPrTools:
                             Control: GroupContainer@1.5.0
                             Variant: AutoLayout
@@ -874,7 +877,7 @@ Screens:
                         HeaderSubtitle: =If(gblLanguage = "Arabic", "الإجمالي", "Total")
                         HeaderTitle: =If(gblLanguage = "Arabic", "رقم الطلب", "PR number")
                         HeaderWhen: =If(gblLanguage = "Arabic", "التاريخ المطلوب", "Required date")
-                        Height: =Max(420, App.Height - cmpPrTop.Height - If(App.Width < 700, cmpPrPhone.Height, 0) - 240)
+                        Height: =Max(480, App.Height - cmpPrTop.Height - If(App.Width < 700, cmpPrPhone.Height, 0) - 240)
                         Items: |-
                           =ForAll(
                               Filter(
@@ -1144,6 +1147,174 @@ Screens:
                                     Size: =17
                                     Text: =Coalesce(varCurrentPR.ReasonRequired, Coalesce(varCurrentPR.PRNumber, "-"))
                                     Wrap: =false
+                              - btnPrTitleApprove:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Primary
+                                    BasePaletteColor: =fxThemeColor("Success")
+                                    Height: =36
+                                    Icon: ="Checkmark"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =With(
+                                          {
+                                              step: LookUp(
+                                                  colPrApprovals,
+                                                  And(
+                                                      RequestNumber = varCurrentPR.PRNumber,
+                                                      Decision.Value = "Pending",
+                                                      ApproverID = gblCurrentEmployee.ID
+                                                  )
+                                              )
+                                          },
+                                          If(
+                                              IsBlank(step),
+                                              Navigate(ScrApprovalCenter, ScreenTransition.None),
+                                              IfError(
+                                                  Patch(
+                                                      ApprovalHistory,
+                                                      LookUp(ApprovalHistory, ID = step.ID),
+                                                      {Decision: {Value: "Approved"}, DecisionDate: Now()}
+                                                  );
+                                                  If(
+                                                      CountRows(
+                                                          Filter(
+                                                              colPrApprovals,
+                                                              And(
+                                                                  RequestNumber = varCurrentPR.PRNumber,
+                                                                  Decision.Value = "Pending",
+                                                                  ID <> step.ID
+                                                              )
+                                                          )
+                                                      ) = 0,
+                                                      Patch(
+                                                          PurchaseRequests,
+                                                          LookUp(PurchaseRequests, ID = varCurrentPR.ID),
+                                                          {Status: {Value: "Approved"}}
+                                                      )
+                                                  );
+                                                  fnWriteLog(
+                                                      "Purchase Request",
+                                                      varCurrentPR.ID,
+                                                      varCurrentPR.PRNumber,
+                                                      "Approved",
+                                                      "Important",
+                                                      Coalesce(varCurrentPR.ProjectID, 0),
+                                                      Coalesce(varCurrentPR.Project.Value, ""),
+                                                      Coalesce(varCurrentPR.TotalAmount, 0),
+                                                      Coalesce(varCurrentPR.Currency.Value, ""),
+                                                      "Decision",
+                                                      "Pending",
+                                                      "Approved",
+                                                      "",
+                                                      "",
+                                                      Coalesce(step.Sequence, 0)
+                                                  );
+                                                  ClearCollect(
+                                                      colProcNotice,
+                                                      Filter(
+                                                          Table(
+                                                              {UserID: Coalesce(varCurrentPR.RequesterID, 0), UserName: Coalesce(varCurrentPR.Requester.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.SupervisorID, 0), UserName: Coalesce(varCurrentPR.Supervisor.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.ApproverID, 0), UserName: Coalesce(varCurrentPR.Approver.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.FinancialApproverID, 0), UserName: Coalesce(varCurrentPR.FinancialApprover.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.ReceivedByID, 0), UserName: Coalesce(varCurrentPR.ReceivedBy.Value, "")}
+                                                          ),
+                                                          And(UserID > 0, UserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0))
+                                                      )
+                                                  );
+                                                  ForAll(
+                                                      ForAll(Distinct(colProcNotice, UserID), LookUp(colProcNotice, UserID = Value)) As person,
+                                                      fnProcNotify(person.UserID, person.UserName, varCurrentPR.PRNumber & " approved", Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "") & " approved " & varCurrentPR.PRNumber & ".", "PurchaseRequest", varCurrentPR.ID, "PurchaseRequest")
+                                                  );
+                                                  Select(btnPrReload);
+                                                  Notify(If(gblLanguage = "Arabic", "تم اعتماد الطلب.", "Request approved."), NotificationType.Success),
+                                                  Notify(If(gblLanguage = "Arabic", "تعذر حفظ الاعتماد.", "The decision could not be saved."), NotificationType.Error)
+                                              )
+                                          )
+                                      )
+                                    Text: =If(Parent.Width < 560, "", If(gblLanguage = "Arabic", "اعتماد", "Approve"))
+                                    Visible: =Not(IsBlank(LookUp(colPrApprovals, And(RequestNumber = varCurrentPR.PRNumber, Decision.Value = "Pending", ApproverID = gblCurrentEmployee.ID))))
+                                    Width: =If(Parent.Width < 560, 44, 120)
+                              - btnPrTitleReject:
+                                  Control: ModernButton@1.0.0
+                                  Properties:
+                                    Appearance: =ButtonAppearance.Secondary
+                                    BasePaletteColor: =fxThemeColor("Danger")
+                                    Height: =36
+                                    Icon: ="Dismiss"
+                                    LayoutMinHeight: =0
+                                    LayoutMinWidth: =0
+                                    OnSelect: |-
+                                      =With(
+                                          {
+                                              step: LookUp(
+                                                  colPrApprovals,
+                                                  And(
+                                                      RequestNumber = varCurrentPR.PRNumber,
+                                                      Decision.Value = "Pending",
+                                                      ApproverID = gblCurrentEmployee.ID
+                                                  )
+                                              )
+                                          },
+                                          If(
+                                              IsBlank(step),
+                                              Navigate(ScrApprovalCenter, ScreenTransition.None),
+                                              IfError(
+                                                  Patch(
+                                                      ApprovalHistory,
+                                                      LookUp(ApprovalHistory, ID = step.ID),
+                                                      {Decision: {Value: "Rejected"}, DecisionDate: Now()}
+                                                  );
+                                                  Patch(
+                                                      PurchaseRequests,
+                                                      LookUp(PurchaseRequests, ID = varCurrentPR.ID),
+                                                      {Status: {Value: "Rejected"}}
+                                                  );
+                                                  fnWriteLog(
+                                                      "Purchase Request",
+                                                      varCurrentPR.ID,
+                                                      varCurrentPR.PRNumber,
+                                                      "Rejected",
+                                                      "Important",
+                                                      Coalesce(varCurrentPR.ProjectID, 0),
+                                                      Coalesce(varCurrentPR.Project.Value, ""),
+                                                      Coalesce(varCurrentPR.TotalAmount, 0),
+                                                      Coalesce(varCurrentPR.Currency.Value, ""),
+                                                      "Decision",
+                                                      "Pending",
+                                                      "Rejected",
+                                                      "",
+                                                      "",
+                                                      Coalesce(step.Sequence, 0)
+                                                  );
+                                                  ClearCollect(
+                                                      colProcNotice,
+                                                      Filter(
+                                                          Table(
+                                                              {UserID: Coalesce(varCurrentPR.RequesterID, 0), UserName: Coalesce(varCurrentPR.Requester.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.SupervisorID, 0), UserName: Coalesce(varCurrentPR.Supervisor.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.ApproverID, 0), UserName: Coalesce(varCurrentPR.Approver.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.FinancialApproverID, 0), UserName: Coalesce(varCurrentPR.FinancialApprover.Value, "")},
+                                                              {UserID: Coalesce(varCurrentPR.ReceivedByID, 0), UserName: Coalesce(varCurrentPR.ReceivedBy.Value, "")}
+                                                          ),
+                                                          And(UserID > 0, UserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0))
+                                                      )
+                                                  );
+                                                  ForAll(
+                                                      ForAll(Distinct(colProcNotice, UserID), LookUp(colProcNotice, UserID = Value)) As person,
+                                                      fnProcNotify(person.UserID, person.UserName, varCurrentPR.PRNumber & " rejected", Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "") & " rejected " & varCurrentPR.PRNumber & ".", "PurchaseRequest", varCurrentPR.ID, "PurchaseRequest")
+                                                  );
+                                                  Select(btnPrReload);
+                                                  Notify(If(gblLanguage = "Arabic", "تم رفض الطلب.", "Request rejected."), NotificationType.Success),
+                                                  Notify(If(gblLanguage = "Arabic", "تعذر حفظ الرفض.", "The decision could not be saved."), NotificationType.Error)
+                                              )
+                                          )
+                                      )
+                                    Text: =If(Parent.Width < 560, "", If(gblLanguage = "Arabic", "رفض", "Reject"))
+                                    Visible: =Not(IsBlank(LookUp(colPrApprovals, And(RequestNumber = varCurrentPR.PRNumber, Decision.Value = "Pending", ApproverID = gblCurrentEmployee.ID))))
+                                    Width: =If(Parent.Width < 560, 44, 110)
                         - lblPrMeta:
                             Control: Label@2.5.1
                             Properties:
@@ -2391,149 +2562,9 @@ Screens:
                                           Set(varProcurementMode, "Edit");
                                           Navigate(scrPREditor, ScreenTransition.Cover),
                                           "Approve",
-                                          With(
-                                              {
-                                                  step: LookUp(
-                                                      colPrApprovals,
-                                                      And(
-                                                          RequestNumber = varCurrentPR.PRNumber,
-                                                          Decision.Value = "Pending",
-                                                          ApproverID = gblCurrentEmployee.ID
-                                                      )
-                                                  )
-                                              },
-                                              If(
-                                                  IsBlank(step),
-                                                  Navigate(ScrApprovalCenter, ScreenTransition.None),
-                                                  IfError(
-                                                      Patch(
-                                                          ApprovalHistory,
-                                                          LookUp(ApprovalHistory, ID = step.ID),
-                                                          {Decision: {Value: "Approved"}, DecisionDate: Now()}
-                                                      );
-                                                      If(
-                                                          CountRows(
-                                                              Filter(
-                                                                  colPrApprovals,
-                                                                  And(
-                                                                      RequestNumber = varCurrentPR.PRNumber,
-                                                                      Decision.Value = "Pending",
-                                                                      ID <> step.ID
-                                                                  )
-                                                              )
-                                                          ) = 0,
-                                                          Patch(
-                                                              PurchaseRequests,
-                                                              LookUp(PurchaseRequests, ID = varCurrentPR.ID),
-                                                              {Status: {Value: "Approved"}}
-                                                          )
-                                                      );
-                                                      fnWriteLog(
-                                                          "Purchase Request",
-                                                          varCurrentPR.ID,
-                                                          varCurrentPR.PRNumber,
-                                                          "Approved",
-                                                          "Important",
-                                                          Coalesce(varCurrentPR.ProjectID, 0),
-                                                          Coalesce(varCurrentPR.Project.Value, ""),
-                                                          Coalesce(varCurrentPR.TotalAmount, 0),
-                                                          Coalesce(varCurrentPR.Currency.Value, ""),
-                                                          "Decision",
-                                                          "Pending",
-                                                          "Approved",
-                                                          "",
-                                                          "",
-                                                          Coalesce(step.Sequence, 0)
-                                                      );
-                                                      ClearCollect(
-                                                          colProcNotice,
-                                                          Filter(
-                                                              Table(
-                                                                  {UserID: Coalesce(varCurrentPR.RequesterID, 0), UserName: Coalesce(varCurrentPR.Requester.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.SupervisorID, 0), UserName: Coalesce(varCurrentPR.Supervisor.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.ApproverID, 0), UserName: Coalesce(varCurrentPR.Approver.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.FinancialApproverID, 0), UserName: Coalesce(varCurrentPR.FinancialApprover.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.ReceivedByID, 0), UserName: Coalesce(varCurrentPR.ReceivedBy.Value, "")}
-                                                              ),
-                                                              And(UserID > 0, UserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0))
-                                                          )
-                                                      );
-                                                      ForAll(
-                                                          ForAll(Distinct(colProcNotice, UserID), LookUp(colProcNotice, UserID = Value)) As person,
-                                                          fnProcNotify(person.UserID, person.UserName, varCurrentPR.PRNumber & " approved", Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "") & " approved " & varCurrentPR.PRNumber & ".", "PurchaseRequest", varCurrentPR.ID, "PurchaseRequest")
-                                                      );
-                                                      Select(btnPrReload);
-                                                      Notify(If(gblLanguage = "Arabic", "تم اعتماد الطلب.", "Request approved."), NotificationType.Success),
-                                                      Notify(If(gblLanguage = "Arabic", "تعذر حفظ الاعتماد.", "The decision could not be saved."), NotificationType.Error)
-                                                  )
-                                              )
-                                          ),
+                                          Select(btnPrTitleApprove),
                                           "Reject",
-                                          With(
-                                              {
-                                                  step: LookUp(
-                                                      colPrApprovals,
-                                                      And(
-                                                          RequestNumber = varCurrentPR.PRNumber,
-                                                          Decision.Value = "Pending",
-                                                          ApproverID = gblCurrentEmployee.ID
-                                                      )
-                                                  )
-                                              },
-                                              If(
-                                                  IsBlank(step),
-                                                  Navigate(ScrApprovalCenter, ScreenTransition.None),
-                                                  IfError(
-                                                      Patch(
-                                                          ApprovalHistory,
-                                                          LookUp(ApprovalHistory, ID = step.ID),
-                                                          {Decision: {Value: "Rejected"}, DecisionDate: Now()}
-                                                      );
-                                                      Patch(
-                                                          PurchaseRequests,
-                                                          LookUp(PurchaseRequests, ID = varCurrentPR.ID),
-                                                          {Status: {Value: "Rejected"}}
-                                                      );
-                                                      fnWriteLog(
-                                                          "Purchase Request",
-                                                          varCurrentPR.ID,
-                                                          varCurrentPR.PRNumber,
-                                                          "Rejected",
-                                                          "Important",
-                                                          Coalesce(varCurrentPR.ProjectID, 0),
-                                                          Coalesce(varCurrentPR.Project.Value, ""),
-                                                          Coalesce(varCurrentPR.TotalAmount, 0),
-                                                          Coalesce(varCurrentPR.Currency.Value, ""),
-                                                          "Decision",
-                                                          "Pending",
-                                                          "Rejected",
-                                                          "",
-                                                          "",
-                                                          Coalesce(step.Sequence, 0)
-                                                      );
-                                                      ClearCollect(
-                                                          colProcNotice,
-                                                          Filter(
-                                                              Table(
-                                                                  {UserID: Coalesce(varCurrentPR.RequesterID, 0), UserName: Coalesce(varCurrentPR.Requester.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.SupervisorID, 0), UserName: Coalesce(varCurrentPR.Supervisor.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.ApproverID, 0), UserName: Coalesce(varCurrentPR.Approver.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.FinancialApproverID, 0), UserName: Coalesce(varCurrentPR.FinancialApprover.Value, "")},
-                                                                  {UserID: Coalesce(varCurrentPR.ReceivedByID, 0), UserName: Coalesce(varCurrentPR.ReceivedBy.Value, "")}
-                                                              ),
-                                                              And(UserID > 0, UserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0))
-                                                          )
-                                                      );
-                                                      ForAll(
-                                                          ForAll(Distinct(colProcNotice, UserID), LookUp(colProcNotice, UserID = Value)) As person,
-                                                          fnProcNotify(person.UserID, person.UserName, varCurrentPR.PRNumber & " rejected", Coalesce(gblCurrentEmployee.FullName, gblUser.FullName, "") & " rejected " & varCurrentPR.PRNumber & ".", "PurchaseRequest", varCurrentPR.ID, "PurchaseRequest")
-                                                      );
-                                                      Select(btnPrReload);
-                                                      Notify(If(gblLanguage = "Arabic", "تم رفض الطلب.", "Request rejected."), NotificationType.Success),
-                                                      Notify(If(gblLanguage = "Arabic", "تعذر حفظ الرفض.", "The decision could not be saved."), NotificationType.Error)
-                                                  )
-                                              )
-                                          ),
+                                          Select(btnPrTitleReject),
                                           "CreatePO",
                                           Set(varSourcePR, varCurrentPR);
                                           Set(varSelectedPR, varCurrentPR);
@@ -3050,8 +3081,8 @@ Screens:
               =Set(varProcurementTab, "Main");
               Set(varNavSelectedID, 31);
               Navigate(scrProcurement, ScreenTransition.None)
-            ScreenSubtitle: =If(gblLanguage = "Arabic", "المشتريات", "Procurement")
-            ScreenTitle: =If(gblLanguage = "Arabic", "طلبات الشراء", "Purchase requests")
+            ScreenSubtitle: =If(IsBlank(varCurrentPR), "", varCurrentPR.PRNumber)
+            ScreenTitle: =If(IsBlank(varCurrentPR), If(gblLanguage = "Arabic", "طلبات الشراء", "Purchase requests"), "")
             ShowBreadcrumb: =true
             ShowLanguage: =true
             ShowNotifications: =true
@@ -3120,6 +3151,6 @@ Screens:
                   "Vendors", Navigate(scrVendors, ScreenTransition.None)
               )
             SelectedID: =32
-            Visible: =App.Width < 700
+            Visible: =And(App.Width < 700, IsBlank(varCurrentPR))
             Width: =Parent.Width
             Y: =Parent.Height - Self.Height
