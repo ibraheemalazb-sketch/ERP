@@ -188,6 +188,7 @@ ComponentDefinitions:
         Default: ="Light"
     Properties:
       Fill: =Color.Transparent
+      OnReset: =Set(_modNavOpen, false)
       Height: |-
         =IfError(
             With(
@@ -237,10 +238,29 @@ ComponentDefinitions:
                             rows: If(
                                 And(cmpModuleNav.IsLoading, cardCount = 0),
                                 1,
-                                RoundUp(cardCount / cols, 0)
+                                RoundUp(
+                                    If(
+                                        Or(
+                                            _modNavOpen,
+                                            w >= bp.TabletBreakpoint,
+                                            cardCount <= cols
+                                        ),
+                                        cardCount,
+                                        cols
+                                    ) / cols,
+                                    0
+                                )
+                            ),
+                            more: If(
+                                And(
+                                    w < bp.TabletBreakpoint,
+                                    cardCount > cols
+                                ),
+                                40,
+                                0
                             )
                         },
-                        rows * (cardH + gap)
+                        rows * (cardH + gap) + more
                     )
                 )
             ),
@@ -261,12 +281,53 @@ ComponentDefinitions:
             BorderStyle: =BorderStyle.None
             DelayItemLoading: =false
             Fill: =Color.Transparent
-            Height: =cmpModuleNav.Height
+            Height: |-
+              =cmpModuleNav.Height - If(
+                  And(
+                      cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.TabletBreakpoint,
+                      CountRows(Filter(cmpModuleNav.Data, !IfError(isHidden, false))) > Max(
+                          1,
+                          If(
+                              cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.MobileBreakpoint,
+                              cmpModuleNav.ColumnsLayout.Mobile,
+                              If(
+                                  cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.TabletBreakpoint,
+                                  cmpModuleNav.ColumnsLayout.Tablet,
+                                  cmpModuleNav.ColumnsLayout.Desktop
+                              )
+                          )
+                      )
+                  ),
+                  40,
+                  0
+              )
             ItemAccessibleLabel: =Coalesce(ThisItem.Label, "") & " " & Coalesce(ThisItem.Descripation, "")
             Items: |-
-              =Filter(
-                  cmpModuleNav.Data,
-                  !IfError(isHidden, false)
+              =With(
+                  {
+                      rows: Filter(cmpModuleNav.Data, !IfError(isHidden, false)),
+                      cols: Max(
+                          1,
+                          If(
+                              cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.MobileBreakpoint,
+                              cmpModuleNav.ColumnsLayout.Mobile,
+                              If(
+                                  cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.TabletBreakpoint,
+                                  cmpModuleNav.ColumnsLayout.Tablet,
+                                  cmpModuleNav.ColumnsLayout.Desktop
+                              )
+                          )
+                      )
+                  },
+                  If(
+                      Or(
+                          _modNavOpen,
+                          cmpModuleNav.Width >= cmpModuleNav.ColumnsLayout.TabletBreakpoint,
+                          CountRows(rows) <= cols
+                      ),
+                      rows,
+                      FirstN(rows, cols)
+                  )
               )
             Selectable: =false
             ShowScrollbar: =false
@@ -314,8 +375,15 @@ ComponentDefinitions:
           Children:
             - conModuleCard:
                 Control: GroupContainer@1.5.0
-                Variant: ManualLayout
+                Variant: AutoLayout
                 Properties:
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =12
+                  PaddingBottom: =8
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
                   BorderColor: |-
                     =If(
                         gblTheme.Mode = "Dark",
@@ -384,8 +452,12 @@ ComponentDefinitions:
                 Children:
                   - conModuleIcon:
                       Control: GroupContainer@1.5.0
-                      Variant: ManualLayout
+                      Variant: AutoLayout
                       Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutJustifyContent: =LayoutJustifyContent.Center
                         DropShadow: =DropShadow.None
                         Fill: |-
                           =IfError(
@@ -396,7 +468,6 @@ ComponentDefinitions:
                                   gblTheme.Light.Colors.PrimaryLight
                               )
                           )
-                        Height: =40
                         RadiusBottomLeft: =gblTheme.Radius.Large
                         RadiusBottomRight: =gblTheme.Radius.Large
                         RadiusTopLeft: =gblTheme.Radius.Large
@@ -409,21 +480,15 @@ ComponentDefinitions:
                                   cmpModuleNav.Style = "Chart"
                               )
                           )
-                        Width: =40
-                        X: |-
-                          =If(
-                              gblLanguage = "Arabic",
-                              Parent.Width - 16 - Self.Width,
-                              16
-                          )
-                        Y: =(Parent.Height - Self.Height) / 2
+                        Width: =36
+                        Height: =36
                       Children:
                         - imgModule:
                             Control: Image@2.2.3
                             Properties:
                               AccessibleLabel: =Coalesce(ThisItem.Label, "")
                               BorderStyle: =BorderStyle.None
-                              Height: =22
+                              Height: =16
                               Image: |-
                                 =With(
                                     {
@@ -504,31 +569,76 @@ ComponentDefinitions:
                                         )
                                     )
                                 )
-                              Width: =22
-                              X: =(Parent.Width - Self.Width) / 2
-                              Y: =(Parent.Height - Self.Height) / 2
+                              Width: =16
+                  - conModuleCopy:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        FillPortions: =1
+                        Height: =40
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =2
+                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - txtModuleLabel:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              AccessibleLabel: =Self.Text
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextPrimary")
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =18
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =Coalesce(ThisItem.Label, "")
+                              Width: =Parent.Width
+                              Wrap: =false
+                        - txtModuleDesc:
+                            Control: ModernText@1.0.0
+                            Properties:
+                              AccessibleLabel: =Self.Text
+                              Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =16
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =Coalesce(ThisItem.Descripation, "")
+                              Visible: =Len(Trim(Coalesce(ThisItem.Descripation, ""))) > 0
+                              Width: =Parent.Width
+                              Wrap: =false
                   - txtModuleCount:
                       Control: ModernText@1.0.0
                       Properties:
                         AccessibleLabel: =Self.Text
-                        Align: =If(gblLanguage = "Arabic", Align.Left, Align.Right)
+                        Align: =If(gblIsRTL, Align.Left, Align.Right)
+                        AlignInContainer: =AlignInContainer.Center
                         Color: |-
                           =IfError(
                               ColorValue(ThisItem.IconColor),
-                              If(
-                                  gblTheme.Mode = "Dark",
-                                  gblTheme.Dark.Colors.TextPrimary,
-                                  gblTheme.Light.Colors.TextPrimary
-                              )
+                              fxThemeColor("TextPrimary")
                           )
                         Font: =gblTheme.Typography.FontFamily
-                        FontWeight: =gblTheme.FontWeights.Bold
-                        Height: =22
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =18
                         PaddingBottom: =0
                         PaddingLeft: =0
                         PaddingRight: =0
                         PaddingTop: =0
-                        Size: =gblTheme.Typography.CardTitle
+                        Size: =gblTheme.Typography.Caption
                         Text: |-
                           =IfError(
                               With(
@@ -551,134 +661,59 @@ ComponentDefinitions:
                               ""
                           )
                         Visible: =!IsBlank(Self.Text)
-                        Width: =56
+                        Width: =48
                         Wrap: =false
-                        X: |-
-                          =If(
-                              gblLanguage = "Arabic",
-                              12,
-                              Parent.Width - 12 - Self.Width
-                          )
-                        Y: =txtModuleLabel.Y
-                  - txtModuleLabel:
-                      Control: ModernText@1.0.0
-                      Properties:
-                        AccessibleLabel: =Self.Text
-                        Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                        Color: |-
-                          =If(
-                              gblTheme.Mode = "Dark",
-                              gblTheme.Dark.Colors.TextPrimary,
-                              gblTheme.Light.Colors.TextPrimary
-                          )
-                        Font: =gblTheme.Typography.FontFamily
-                        FontWeight: =gblTheme.FontWeights.Medium
-                        Height: =22
-                        PaddingBottom: =0
-                        PaddingLeft: =0
-                        PaddingRight: =0
-                        PaddingTop: =0
-                        Size: =gblTheme.Typography.Navigation
-                        Text: =Coalesce(ThisItem.Label, "")
-                        Width: |-
-                          =With(
-                              {
-                                  startX: If(
-                                      gblLanguage = "Arabic",
-                                      12 + If(txtModuleCount.Visible, txtModuleCount.Width + 8, 0),
-                                      If(conModuleIcon.Visible, 68, 16)
-                                  ),
-                                  endPad: If(
-                                      gblLanguage = "Arabic",
-                                      If(conModuleIcon.Visible, 68, 16),
-                                      If(txtModuleCount.Visible, txtModuleCount.Width + 20, 16)
-                                  )
-                              },
-                              Max(0, Parent.Width - startX - endPad)
-                          )
-                        Wrap: =false
-                        X: |-
-                          =If(
-                              gblLanguage = "Arabic",
-                              12 + If(txtModuleCount.Visible, txtModuleCount.Width + 8, 0),
-                              If(conModuleIcon.Visible, conModuleIcon.X + conModuleIcon.Width + 12, 16)
-                          )
-                        Y: |-
-                          =If(
-                              Or(
-                                  cmpModuleNav.Style = "Compact",
-                                  cmpModuleNav.Style = "Minimal"
-                              ),
-                              (Parent.Height - 46) / 2,
-                              20
-                          )
-                  - txtModuleDesc:
-                      Control: ModernText@1.0.0
-                      Properties:
-                        AccessibleLabel: =Self.Text
-                        Align: =If(gblLanguage = "Arabic", Align.Right, Align.Left)
-                        Color: |-
-                          =If(
-                              gblTheme.Mode = "Dark",
-                              gblTheme.Dark.Colors.TextMuted,
-                              gblTheme.Light.Colors.TextMuted
-                          )
-                        Font: =gblTheme.Typography.FontFamily
-                        Height: |-
-                          =If(
-                              Or(
-                                  cmpModuleNav.Style = "Compact",
-                                  cmpModuleNav.Style = "Minimal"
-                              ),
-                              18,
-                              36
-                          )
-                        PaddingBottom: =0
-                        PaddingLeft: =0
-                        PaddingRight: =0
-                        PaddingTop: =0
-                        Size: =gblTheme.Typography.Caption
-                        Text: =Coalesce(ThisItem.Descripation, "")
-                        Width: =txtModuleLabel.Width
-                        Wrap: |-
-                          =Not(
-                              Or(
-                                  cmpModuleNav.Style = "Compact",
-                                  cmpModuleNav.Style = "Minimal"
+            - btnModuleOpen:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: |-
+                    =Coalesce(ThisItem.Label, "") & If(
+                        IsBlank(ThisItem.Descripation),
+                        "",
+                        " " & ThisItem.Descripation
+                    )
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =galModules.TemplateHeight
+                  OnSelect: |-
+                    =Set(varSelectedScreen, ThisItem.Screen);
+                    cmpModuleNav.CardClick()
+                  Text: =""
+                  Tooltip: |-
+                    =Coalesce(ThisItem.Label, "") & If(
+                        IsBlank(ThisItem.Descripation),
+                        "",
+                        " · " & ThisItem.Descripation
+                    )
+                  Width: =galModules.TemplateWidth
+      - btnModuleMore:
+          Control: ModernButton@1.0.0
+          Properties:
+            AccessibleLabel: =If(Coalesce(_modNavOpen, false), If(gblLanguage = "Arabic", "عرض أقل", "Show less"), If(gblLanguage = "Arabic", "عرض الكل", "View all"))
+            Appearance: =ButtonAppearance.Transparent
+            Height: =32
+            OnSelect: =Set(_modNavOpen, !Coalesce(_modNavOpen, false))
+            Text: =If(Coalesce(_modNavOpen, false), If(gblLanguage = "Arabic", "عرض أقل", "Show less"), If(gblLanguage = "Arabic", "عرض الكل", "View all"))
+            Visible: |-
+              =With(
+                  {
+                      total: CountRows(Filter(cmpModuleNav.Data, !IfError(isHidden, false))),
+                      cols: Max(
+                          1,
+                          If(
+                              cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.MobileBreakpoint,
+                              cmpModuleNav.ColumnsLayout.Mobile,
+                              If(
+                                  cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.TabletBreakpoint,
+                                  cmpModuleNav.ColumnsLayout.Tablet,
+                                  cmpModuleNav.ColumnsLayout.Desktop
                               )
                           )
-                        X: =txtModuleLabel.X
-                        Y: =txtModuleLabel.Y + 24
-                  - btnModuleOpen:
-                      Control: ModernButton@1.0.0
-                      Properties:
-                        AccessibleLabel: |-
-                          =Coalesce(ThisItem.Label, "") & If(
-                              IsBlank(txtModuleCount.Text),
-                              "",
-                              " " & txtModuleCount.Text
-                          ) & If(
-                              IsBlank(txtModuleDesc.Text),
-                              "",
-                              " " & txtModuleDesc.Text
-                          )
-                        Appearance: =ButtonAppearance.Transparent
-                        Height: =Parent.Height
-                        OnSelect: |-
-                          =Set(varSelectedScreen, ThisItem.Screen);
-                          cmpModuleNav.CardClick()
-                        Text: =""
-                        Tooltip: |-
-                          =Coalesce(ThisItem.Label, "") & If(
-                              IsBlank(txtModuleCount.Text),
-                              "",
-                              " · " & txtModuleCount.Text
-                          ) & If(
-                              IsBlank(txtModuleDesc.Text),
-                              "",
-                              " · " & txtModuleDesc.Text
-                          )
-                        Width: =Parent.Width
+                      )
+                  },
+                  And(cmpModuleNav.Width < cmpModuleNav.ColumnsLayout.TabletBreakpoint, total > cols)
+              )
+            Width: =120
+            Y: =galModules.Height + 4
       - galModuleSkeleton:
           Control: Gallery@2.15.0
           Variant: Vertical
@@ -766,8 +801,15 @@ ComponentDefinitions:
           Children:
             - conModuleSkeleton:
                 Control: GroupContainer@1.5.0
-                Variant: ManualLayout
+                Variant: AutoLayout
                 Properties:
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =12
+                  PaddingBottom: =8
+                  PaddingLeft: =12
+                  PaddingRight: =12
+                  PaddingTop: =8
                   BorderColor: |-
                     =If(
                         gblTheme.Mode = "Dark",
@@ -825,8 +867,9 @@ ComponentDefinitions:
                 Children:
                   - shpModuleSkIcon:
                       Control: GroupContainer@1.5.0
-                      Variant: ManualLayout
+                      Variant: AutoLayout
                       Properties:
+                        AlignInContainer: =AlignInContainer.Center
                         DropShadow: =DropShadow.None
                         Fill: |-
                           =If(
@@ -834,7 +877,7 @@ ComponentDefinitions:
                               gblTheme.Dark.Colors.SurfaceHover,
                               gblTheme.Light.Colors.Border
                           )
-                        Height: =40
+                        Height: =36
                         RadiusBottomLeft: =gblTheme.Radius.Large
                         RadiusBottomRight: =gblTheme.Radius.Large
                         RadiusTopLeft: =gblTheme.Radius.Large
@@ -847,49 +890,54 @@ ComponentDefinitions:
                                   cmpModuleNav.Style = "Chart"
                               )
                           )
-                        Width: =40
-                        X: =If(gblLanguage = "Arabic", Parent.Width - 56, 16)
-                        Y: =(Parent.Height - Self.Height) / 2
-                  - shpModuleSkLabel:
+                        Width: =36
+                  - conModuleSkCopy:
                       Control: GroupContainer@1.5.0
-                      Variant: ManualLayout
+                      Variant: AutoLayout
                       Properties:
+                        AlignInContainer: =AlignInContainer.Center
                         DropShadow: =DropShadow.None
-                        Fill: |-
-                          =If(
-                              gblTheme.Mode = "Dark",
-                              gblTheme.Dark.Colors.SurfaceHover,
-                              gblTheme.Light.Colors.Border
-                          )
-                        Height: =12
-                        RadiusBottomLeft: =gblTheme.Radius.Small
-                        RadiusBottomRight: =gblTheme.Radius.Small
-                        RadiusTopLeft: =gblTheme.Radius.Small
-                        RadiusTopRight: =gblTheme.Radius.Small
-                        Width: =Min(120, Parent.Width * 0.42)
-                        X: |-
-                          =If(
-                              shpModuleSkIcon.Visible,
-                              If(gblLanguage = "Arabic", 16, 68),
-                              16
-                          )
-                        Y: =(Parent.Height - 36) / 2
-                  - shpModuleSkDesc:
-                      Control: GroupContainer@1.5.0
-                      Variant: ManualLayout
-                      Properties:
-                        DropShadow: =DropShadow.None
-                        Fill: |-
-                          =If(
-                              gblTheme.Mode = "Dark",
-                              gblTheme.Dark.Colors.TextDisabled,
-                              gblTheme.Light.Colors.BorderLight
-                          )
-                        Height: =8
-                        RadiusBottomLeft: =gblTheme.Radius.Small
-                        RadiusBottomRight: =gblTheme.Radius.Small
-                        RadiusTopLeft: =gblTheme.Radius.Small
-                        RadiusTopRight: =gblTheme.Radius.Small
-                        Width: =Min(160, Parent.Width * 0.5)
-                        X: =shpModuleSkLabel.X
-                        Y: =shpModuleSkLabel.Y + 20
+                        Fill: =Color.Transparent
+                        FillPortions: =1
+                        Height: =36
+                        LayoutAlignItems: =LayoutAlignItems.Stretch
+                        LayoutDirection: =LayoutDirection.Vertical
+                        LayoutGap: =8
+                        LayoutJustifyContent: =LayoutJustifyContent.Center
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                      Children:
+                        - shpModuleSkLabel:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =If(
+                                    gblTheme.Mode = "Dark",
+                                    gblTheme.Dark.Colors.SurfaceHover,
+                                    gblTheme.Light.Colors.Border
+                                )
+                              Height: =12
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =120
+                        - shpModuleSkDesc:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =If(
+                                    gblTheme.Mode = "Dark",
+                                    gblTheme.Dark.Colors.TextDisabled,
+                                    gblTheme.Light.Colors.BorderLight
+                                )
+                              Height: =8
+                              RadiusBottomLeft: =gblTheme.Radius.Small
+                              RadiusBottomRight: =gblTheme.Radius.Small
+                              RadiusTopLeft: =gblTheme.Radius.Small
+                              RadiusTopRight: =gblTheme.Radius.Small
+                              Width: =160

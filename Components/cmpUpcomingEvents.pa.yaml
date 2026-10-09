@@ -44,6 +44,12 @@ ComponentDefinitions:
               ),
               false
           )
+      Layout:
+        PropertyKind: Input
+        DisplayName: Layout
+        Description: Auto uses a table when the card is at least 720 wide, otherwise a list. List or Table forces that format.
+        DataType: Text
+        Default: ="Auto"
       MaxItems:
         PropertyKind: Input
         DisplayName: MaxItems
@@ -54,6 +60,12 @@ ComponentDefinitions:
         PropertyKind: Event
         DisplayName: OnSelect
         Description: Fires after the clicked row is stored in SelectedEvent.
+        ReturnType: None
+        Default: =false
+      OnRefresh:
+        PropertyKind: Event
+        DisplayName: OnRefresh
+        Description: Fires when refresh is pressed.
         ReturnType: None
         Default: =false
       OnViewAll:
@@ -67,11 +79,21 @@ ComponentDefinitions:
         DisplayName: Palette
         Description: Active gblTheme color record.
         DataType: Record
+      Rows:
+        PropertyKind: Output
+        DisplayName: Rows
+        Description: Events trimmed to MaxItems, soonest first.
+        DataType: Table
       SelectedEvent:
         PropertyKind: Output
         DisplayName: SelectedEvent
         Description: Last clicked event. Read it in OnSelect.
         DataType: Record
+      ShowAsTable:
+        PropertyKind: Output
+        DisplayName: ShowAsTable
+        Description: True when the table layout is showing.
+        DataType: Boolean
       ShowOverdue:
         PropertyKind: Input
         DisplayName: ShowOverdue
@@ -113,7 +135,29 @@ ComponentDefinitions:
       Height: =420
       IsCompact: =cmpUpcomingEvents.Width < 420 || App.Width < 700
       Palette: =If(gblTheme.Mode = "Dark", gblTheme.Dark.Colors, gblTheme.Light.Colors)
+      Rows: |-
+        =FirstN(
+            SortByColumns(
+                Filter(
+                    cmpUpcomingEvents.Items,
+                    cmpUpcomingEvents.ShowOverdue || DateDiff(Today(), EventDate, TimeUnit.Days) >= 0
+                ),
+                "EventDate",
+                SortOrder.Ascending
+            ),
+            Max(1, Coalesce(cmpUpcomingEvents.MaxItems, 8))
+        )
       SelectedEvent: =_selEvent
+      ShowAsTable: |-
+        =If(
+            cmpUpcomingEvents.Layout = "Table",
+            true,
+            If(
+                cmpUpcomingEvents.Layout = "List",
+                false,
+                And(cmpUpcomingEvents.Width >= 720, App.Width >= 700)
+            )
+        )
       Width: =360
     Children:
       - conEventCard:
@@ -147,7 +191,7 @@ ComponentDefinitions:
                   Height: =36
                   LayoutAlignItems: =LayoutAlignItems.Center
                   LayoutDirection: =LayoutDirection.Horizontal
-                  LayoutGap: =8
+                  LayoutGap: =4
                   LayoutMinHeight: =36
                   LayoutMinWidth: =0
                 Children:
@@ -182,20 +226,34 @@ ComponentDefinitions:
                         Text: =Coalesce(cmpUpcomingEvents.Title, "")
                         Tooltip: =Self.Text
                         Wrap: =false
+                  - btnEventRefresh:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =If(gblLanguage = "Arabic", "تحديث", "Refresh")
+                        AlignInContainer: =AlignInContainer.Center
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =24
+                        Icon: ="ArrowSync"
+                        LayoutMinHeight: =24
+                        LayoutMinWidth: =24
+                        OnSelect: =cmpUpcomingEvents.OnRefresh()
+                        Text: =""
+                        Tooltip: =If(gblLanguage = "Arabic", "تحديث الأحداث", "Refresh events")
+                        Width: =24
                   - btnEventAll:
                       Control: ModernButton@1.0.0
                       Properties:
                         AccessibleLabel: =If(gblLanguage = "Arabic", "عرض الكل", "View all")
                         AlignInContainer: =AlignInContainer.Center
                         Appearance: =ButtonAppearance.Transparent
-                        Height: =28
-                        LayoutMinHeight: =28
-                        LayoutMinWidth: =72
+                        Height: =24
+                        LayoutMinHeight: =24
+                        LayoutMinWidth: =52
                         OnSelect: =cmpUpcomingEvents.OnViewAll()
                         Text: =If(gblLanguage = "Arabic", "عرض الكل", "View all")
                         Tooltip: =If(gblLanguage = "Arabic", "عرض كل الأحداث", "View all events")
                         Visible: =cmpUpcomingEvents.ShowViewAll
-                        Width: =72
+                        Width: =56
             - lblEventSummary:
                 Control: Label@2.5.1
                 Properties:
@@ -234,7 +292,7 @@ ComponentDefinitions:
                             urgentCount & " urgent  ·  " & soonCount & " within " & cmpUpcomingEvents.SoonDays & " days"
                         )
                     )
-                  Visible: =cmpUpcomingEvents.ShowSummary && !IsEmpty(cmpUpcomingEvents.Items)
+                  Visible: =And(cmpUpcomingEvents.ShowSummary, CountRows(cmpUpcomingEvents.Rows) > 0)
                   Wrap: =false
             - conEventEmpty:
                 Control: GroupContainer@1.5.0
@@ -248,7 +306,7 @@ ComponentDefinitions:
                   LayoutJustifyContent: =LayoutJustifyContent.Center
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
-                  Visible: =IsEmpty(cmpUpcomingEvents.Items)
+                  Visible: =CountRows(cmpUpcomingEvents.Rows) = 0
                 Children:
                   - imgEventEmpty:
                       Control: Image@2.2.3
@@ -293,6 +351,284 @@ ComponentDefinitions:
                               "Scheduled items will appear here."
                           )
                         Width: =240
+            - conEventTableHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
+                Properties:
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =28
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  Visible: =And(cmpUpcomingEvents.ShowAsTable, CountRows(cmpUpcomingEvents.Rows) > 0)
+                Children:
+                  - lblEventHeadWhat:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =36
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "الحدث", "EVENT")
+                        Wrap: =false
+                  - lblEventHeadOwner:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "المسؤول", "OWNER")
+                        Width: =120
+                        Wrap: =false
+                  - lblEventHeadWhen:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "التاريخ", "DATE")
+                        Width: =108
+                        Wrap: =false
+                  - lblEventHeadLevel:
+                      Control: Label@2.5.1
+                      Properties:
+                        Color: =fxThemeColor("TextMuted")
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =If(gblLanguage = "Arabic", "الموعد", "WHEN")
+                        Width: =96
+                        Wrap: =false
+            - galEventTable:
+                Control: Gallery@2.15.0
+                Variant: Vertical
+                Properties:
+                  AccessibleLabel: =If(gblLanguage = "Arabic", "جدول الأحداث", "Event table")
+                  BorderStyle: =BorderStyle.None
+                  DelayItemLoading: =false
+                  Fill: =Color.Transparent
+                  Items: =cmpUpcomingEvents.Rows
+                  LayoutMinHeight: =0
+                  LayoutMinWidth: =0
+                  ShowScrollbar: =false
+                  TemplatePadding: =0
+                  TemplateSize: =48
+                  Visible: =And(cmpUpcomingEvents.ShowAsTable, CountRows(cmpUpcomingEvents.Rows) > 0)
+                Children:
+                  - conEventTableRow:
+                      Control: GroupContainer@1.5.0
+                      Variant: AutoLayout
+                      Properties:
+                        BorderColor: =fxThemeColor("BorderLight")
+                        BorderThickness: =1
+                        DropShadow: =DropShadow.None
+                        Fill: =Color.Transparent
+                        Height: =galEventTable.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =8
+                        Width: =galEventTable.TemplateWidth
+                      Children:
+                        - conEventTableIcon:
+                            Control: GroupContainer@1.5.0
+                            Variant: ManualLayout
+                            Properties:
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =With(
+                                    {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                    If(
+                                        days <= cmpUpcomingEvents.UrgentDays,
+                                        fxThemeColor("DangerLight"),
+                                        If(
+                                            days <= cmpUpcomingEvents.SoonDays,
+                                            fxThemeColor("WarningLight"),
+                                            fxThemeColor("PrimaryLight")
+                                        )
+                                    )
+                                )
+                              Height: =28
+                              RadiusBottomLeft: =8
+                              RadiusBottomRight: =8
+                              RadiusTopLeft: =8
+                              RadiusTopRight: =8
+                              Width: =28
+                            Children:
+                              - imgEventTableIcon:
+                                  Control: Image@2.2.3
+                                  Properties:
+                                    BorderStyle: =BorderStyle.None
+                                    Height: =16
+                                    Image: |-
+                                      =fxSvg(
+                                          fxActivityIcon(Coalesce(ThisItem.Icon, ThisItem.EventType)),
+                                          fxUrgencyInk(
+                                              DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days),
+                                              cmpUpcomingEvents.UrgentDays,
+                                              cmpUpcomingEvents.SoonDays
+                                          )
+                                      )
+                                    Width: =16
+                                    X: =6
+                                    Y: =6
+                        - lblEventTableTitle:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =1
+                              Font: =gblTheme.Typography.FontFamily
+                              FontWeight: =gblTheme.FontWeights.Medium
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.BodySmall
+                              Text: =Coalesce(ThisItem.Title, "-")
+                              Tooltip: =Coalesce(ThisItem.Description, ThisItem.Title, "")
+                              Wrap: =false
+                        - lblEventTableOwner:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextSecondary")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: =If(IsBlank(ThisItem.OwnerName), "-", ThisItem.OwnerName)
+                              Tooltip: =Self.Text
+                              Width: =120
+                              Wrap: =false
+                        - lblEventTableDate:
+                            Control: Label@2.5.1
+                            Properties:
+                              Color: =fxThemeColor("TextMuted")
+                              Font: =gblTheme.Typography.FontFamily
+                              Height: =20
+                              PaddingBottom: =0
+                              PaddingLeft: =0
+                              PaddingRight: =0
+                              PaddingTop: =0
+                              Size: =gblTheme.Typography.Caption
+                              Text: |-
+                                =If(
+                                    IsBlank(ThisItem.EventDate),
+                                    "-",
+                                    Text(ThisItem.EventDate, "dd mmm yyyy", If(gblLanguage = "Arabic", "ar-EG", "en-US"))
+                                )
+                              Width: =108
+                              Wrap: =false
+                        - conEventTableWhen:
+                            Control: GroupContainer@1.5.0
+                            Variant: AutoLayout
+                            Properties:
+                              AlignInContainer: =AlignInContainer.Center
+                              DropShadow: =DropShadow.None
+                              Fill: |-
+                                =With(
+                                    {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                    If(
+                                        days <= cmpUpcomingEvents.UrgentDays,
+                                        fxThemeColor("DangerLight"),
+                                        If(
+                                            days <= cmpUpcomingEvents.SoonDays,
+                                            fxThemeColor("WarningLight"),
+                                            fxThemeColor("PrimaryLight")
+                                        )
+                                    )
+                                )
+                              Height: =22
+                              LayoutAlignItems: =LayoutAlignItems.Center
+                              LayoutJustifyContent: =LayoutJustifyContent.Center
+                              LayoutMinHeight: =0
+                              LayoutMinWidth: =0
+                              RadiusBottomLeft: =11
+                              RadiusBottomRight: =11
+                              RadiusTopLeft: =11
+                              RadiusTopRight: =11
+                              Width: =96
+                            Children:
+                              - lblEventTableWhen:
+                                  Control: Label@2.5.1
+                                  Properties:
+                                    Align: =Align.Center
+                                    BorderStyle: =BorderStyle.None
+                                    Color: |-
+                                      =With(
+                                          {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                          If(
+                                              days <= cmpUpcomingEvents.UrgentDays,
+                                              fxThemeColor("Danger"),
+                                              If(
+                                                  days <= cmpUpcomingEvents.SoonDays,
+                                                  fxThemeColor("Warning"),
+                                                  fxThemeColor("Primary")
+                                              )
+                                          )
+                                      )
+                                    Fill: =Color.Transparent
+                                    Font: =gblTheme.Typography.FontFamily
+                                    FontWeight: =gblTheme.FontWeights.Medium
+                                    Height: =22
+                                    PaddingBottom: =0
+                                    PaddingLeft: =0
+                                    PaddingRight: =0
+                                    PaddingTop: =0
+                                    Size: =gblTheme.Typography.Caption
+                                    Text: |-
+                                      =With(
+                                          {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                          If(
+                                              days < 0,
+                                              If(gblLanguage = "Arabic", "متأخر", "Overdue"),
+                                              days = 0,
+                                              If(gblLanguage = "Arabic", "اليوم", "Today"),
+                                              days = 1,
+                                              If(gblLanguage = "Arabic", "غدًا", "Tomorrow"),
+                                              If(gblLanguage = "Arabic", "بعد " & days & " ي", "In " & days & " d")
+                                          )
+                                      )
+                                    Width: =Parent.Width
+                                    Wrap: =false
+                  - btnEventTableOpen:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =galEventTable.TemplateHeight
+                        OnSelect: |-
+                          =Set(_selEvent, ThisItem);
+                          cmpUpcomingEvents.OnSelect()
+                        Text: =""
+                        Tooltip: =Coalesce(ThisItem.Title, "")
+                        Width: =galEventTable.TemplateWidth
             - galEvents:
                 Control: Gallery@2.15.0
                 Variant: Vertical
@@ -301,28 +637,13 @@ ComponentDefinitions:
                   BorderStyle: =BorderStyle.None
                   DelayItemLoading: =false
                   Fill: =Color.Transparent
-                  Items: |-
-                    =AddColumns(
-                        FirstN(
-                            SortByColumns(
-                                Filter(
-                                    cmpUpcomingEvents.Items,
-                                    cmpUpcomingEvents.ShowOverdue || DateDiff(Today(), EventDate, TimeUnit.Days) >= 0
-                                ),
-                                "EventDate",
-                                SortOrder.Ascending
-                            ),
-                            Max(1, Coalesce(cmpUpcomingEvents.MaxItems, 8))
-                        ),
-                        "DaysLeft",
-                        DateDiff(Today(), EventDate, TimeUnit.Days)
-                    )
+                  Items: =cmpUpcomingEvents.Rows
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
                   LoadingSpinner: =LoadingSpinner.None
                   TemplatePadding: =0
                   TemplateSize: =68
-                  Visible: =!IsEmpty(cmpUpcomingEvents.Items)
+                  Visible: =And(Not(cmpUpcomingEvents.ShowAsTable), CountRows(cmpUpcomingEvents.Rows) > 0)
                 Children:
                   - conEventRow:
                       Control: GroupContainer@1.5.0
@@ -345,17 +666,20 @@ ComponentDefinitions:
                               AlignInContainer: =AlignInContainer.Center
                               DropShadow: =DropShadow.None
                               Fill: |-
-                                =ColorFade(
-                                    If(
-                                        ThisItem.DaysLeft <= cmpUpcomingEvents.UrgentDays,
-                                        cmpUpcomingEvents.Palette.Danger,
+                                =With(
+                                    {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                    ColorFade(
                                         If(
-                                            ThisItem.DaysLeft <= cmpUpcomingEvents.SoonDays,
-                                            cmpUpcomingEvents.Palette.Warning,
-                                            cmpUpcomingEvents.Palette.Primary
-                                        )
-                                    ),
-                                    If(gblTheme.Mode = "Dark", -0.75, 0.86)
+                                            days <= cmpUpcomingEvents.UrgentDays,
+                                            cmpUpcomingEvents.Palette.Danger,
+                                            If(
+                                                days <= cmpUpcomingEvents.SoonDays,
+                                                cmpUpcomingEvents.Palette.Warning,
+                                                cmpUpcomingEvents.Palette.Primary
+                                            )
+                                        ),
+                                        If(gblTheme.Mode = "Dark", -0.75, 0.86)
+                                    )
                                 )
                               FillPortions: =0
                               Height: =44
@@ -376,13 +700,16 @@ ComponentDefinitions:
                                     Align: =Align.Center
                                     BorderStyle: =BorderStyle.None
                                     Color: |-
-                                      =If(
-                                          ThisItem.DaysLeft <= cmpUpcomingEvents.UrgentDays,
-                                          cmpUpcomingEvents.Palette.Danger,
+                                      =With(
+                                          {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
                                           If(
-                                              ThisItem.DaysLeft <= cmpUpcomingEvents.SoonDays,
-                                              cmpUpcomingEvents.Palette.Warning,
-                                              cmpUpcomingEvents.Palette.Primary
+                                              days <= cmpUpcomingEvents.UrgentDays,
+                                              cmpUpcomingEvents.Palette.Danger,
+                                              If(
+                                                  days <= cmpUpcomingEvents.SoonDays,
+                                                  cmpUpcomingEvents.Palette.Warning,
+                                                  cmpUpcomingEvents.Palette.Primary
+                                              )
                                           )
                                       )
                                     Font: =gblTheme.Typography.FontFamily
@@ -480,7 +807,7 @@ ComponentDefinitions:
                                             =fxSvg(
                                                 fxActivityIcon(Coalesce(ThisItem.Icon, ThisItem.EventType)),
                                                 fxUrgencyInk(
-                                                    ThisItem.DaysLeft,
+                                                    DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days),
                                                     cmpUpcomingEvents.UrgentDays,
                                                     cmpUpcomingEvents.SoonDays
                                                 )
@@ -507,23 +834,20 @@ ComponentDefinitions:
                                           Size: =gblTheme.Typography.Caption
                                           Text: |-
                                             =With(
-                                                {
-                                                    days: ThisItem.DaysLeft,
-                                                    when: If(
-                                                        days < 0,
-                                                        If(gblLanguage = "Arabic", "متأخر", "Overdue"),
-                                                        days = 0,
-                                                        If(gblLanguage = "Arabic", "اليوم", "Today"),
-                                                        days = 1,
-                                                        If(gblLanguage = "Arabic", "غدًا", "Tomorrow"),
-                                                        If(
-                                                            gblLanguage = "Arabic",
-                                                            "بعد " & days & " يوم",
-                                                            "In " & days & " days"
-                                                        )
+                                                {days: DateDiff(Today(), ThisItem.EventDate, TimeUnit.Days)},
+                                                If(
+                                                    days < 0,
+                                                    If(gblLanguage = "Arabic", "متأخر", "Overdue"),
+                                                    days = 0,
+                                                    If(gblLanguage = "Arabic", "اليوم", "Today"),
+                                                    days = 1,
+                                                    If(gblLanguage = "Arabic", "غدًا", "Tomorrow"),
+                                                    If(
+                                                        gblLanguage = "Arabic",
+                                                        "بعد " & days & " يوم",
+                                                        "In " & days & " days"
                                                     )
-                                                },
-                                                when & If(
+                                                ) & If(
                                                     IsBlank(ThisItem.OwnerName),
                                                     "",
                                                     "  ·  " & ThisItem.OwnerName

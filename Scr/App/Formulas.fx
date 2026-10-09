@@ -105,6 +105,8 @@ fxSvg(IconName: Text, Stroke: Text): Text =
             "Print", "<polyline points='6 9 6 2 18 2 18 9'/><path d='M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2'/><rect x='6' y='14' width='12' height='8'/>",
             "Paperclip", "<path d='M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'/>",
             "Message", "<path d='M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'/>",
+            "Droplet", "<path d='M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z'/>",
+            "Apple", "<path d='M12 20a6 6 0 0 1-6-6c0-4 3-7 6-10 3 3 6 6 6 10a6 6 0 0 1-6 6z'/><path d='M12 5c1.2-1.6 3-2.4 4.6-2'/>",
             "<circle cx='12' cy='12' r='8'/>"
         ) &
         "</svg>"
@@ -326,6 +328,66 @@ fxToneInk(Tone: Text): Color =
         fxThemeColor("TextMuted")
     );
 
+// Tone word for a status or priority pill. fxToneFill and fxToneInk color the chip.
+fxStatusPillTone(Status: Text): Text =
+    With(
+        {s: Lower(Trim(Coalesce(Status, "")))},
+        If(
+            Or(
+                StartsWith(s, "critical"),
+                s = "sensitive"
+            ),
+            "danger",
+            Or(
+                s = "high", s = "heigh", StartsWith(s, "high ")
+            ),
+            "high",
+            Or(
+                s = "medium", StartsWith(s, "medium ")
+            ),
+            "medium",
+            Or(
+                s = "low", StartsWith(s, "low ")
+            ),
+            "low",
+            StartsWith(s, "backlog"),
+            "muted",
+            Or(
+                s = "closed", s = "completed", s = "approved", s = "present", s = "active",
+                s = "synced", s = "finished", s = "accepted", s = "selected", s = "received",
+                s = "posted", s = "paid", s = "achieved", s = "verified", s = "report approved",
+                s = "goals approved", s = "agreed", s = "success"
+            ),
+            "completed",
+            Or(
+                s = "overdue", s = "dropped", s = "rejected", s = "cancelled", s = "canceled",
+                s = "absent", s = "terminated", s = "not achieved", s = "reversed"
+            ),
+            "danger",
+            Or(
+                StartsWith(s, "pending"),
+                s = "pendding", s = "pended", s = "under review", s = "under assessment",
+                s = "underinspection", s = "on hold", s = "half day", s = "on leave",
+                s = "due soon", s = "partiallyreceived", s = "partiallyaccepted",
+                s = "partially paid", s = "partially achieved", s = "unpaid", s = "not paid",
+                s = "waived", s = "in preparation", s = "delayed", s = "late",
+                s = "returned", s = "returned for revision", s = "not verified", s = "approval"
+            ),
+            "warning",
+            Or(
+                s = "inactive", s = "archived", s = "not applicable", s = "skipped", s = ""
+            ),
+            "muted",
+            Or(
+                s = "in progress", s = "inprogress", s = "ongoing", s = "data collection",
+                s = "analysis", s = "reporting", s = "in review", s = "mitigation in progress",
+                s = "self-assessment", s = "manager review", s = "calibration", s = "delegated"
+            ),
+            "in progress",
+            "info"
+        )
+    );
+
 // Procurement activity log. These are not finance formulas.
 
 fnProcNotify(
@@ -340,7 +402,7 @@ fnProcNotify(
             {
                 Title: pTitle,
                 Message: pMessage,
-                IsRead: "false",
+                IsRead: "No",
                 Createddate: Now(),
                 RecipientID: pUserID,
                 Recipient: {Id: pUserID, Value: pUserName},
@@ -415,12 +477,232 @@ fnWriteLog(
                         CorrelationID: Text(GUID())
                     }
                 )
-            ),
+            );
+            false,
             Trace("ProcurementActivityLog write failed: " & FirstError.Message, TraceSeverity.Error),
             IfError(
                 Refresh(ProcurementActivityLog),
                 Trace("ProcurementActivityLog refresh failed: " & FirstError.Message, TraceSeverity.Warning)
             )
+        )
+    )
+};
+
+// HR activity log. Training screens already call fnLogHR with this argument order.
+// Now(), GUID(), and the actor are applied here so each row gets a fresh correlation id.
+
+fnLogHR(
+    pEntityType: Text, pEntityID: Number, pEntityNumber: Text, pAction: Text, pSeverity: Text,
+    pProjectID: Number, pAmount: Number, pCurrency: Text,
+    pField: Text, pOld: Text, pNew: Text, pDetails: Text, pReason: Text, pSensitive: Boolean
+): Void = {
+    With(
+        {
+            actor: If(
+                Coalesce(gblCurrentEmployee.ID, 0) > 0,
+                gblCurrentEmployee,
+                LookUp(Employees, Email = User().Email)
+            )
+        },
+        IfError(
+            Patch(
+                HRActivityLog,
+                Defaults(HRActivityLog),
+                {
+                    Title: Left(pAction & " - " & pEntityType & " " & Coalesce(pEntityNumber, ""), 255),
+                    Module: {Value: "HR"},
+                    EntityType: {Value: pEntityType},
+                    EntityID: pEntityID,
+                    EntityNumber: pEntityNumber,
+                    ActionType: {Value: pAction},
+                    FieldChanged: pField,
+                    OldValue: pOld,
+                    NewValue: pNew,
+                    Details: pDetails,
+                    ReasonComment: pReason,
+                    Severity: {Value: pSeverity},
+                    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID, Blank()),
+                    ProjectCode: If(
+                        Coalesce(pProjectID, 0) > 0,
+                        Coalesce(LookUp(Projects, ID = pProjectID, ProjectCode), ""),
+                        ""
+                    ),
+                    Amount: pAmount,
+                    Currency: If(
+                        Or(pCurrency = "USD", pCurrency = "YER", pCurrency = "SAR"),
+                        {Value: pCurrency},
+                        Blank()
+                    ),
+                    ActionDate: Now(),
+                    PeriodKey: Year(Now()) * 100 + Month(Now()),
+                    PerformedByID: Coalesce(actor.ID, 0),
+                    PerformedByName: Coalesce(actor.FullName, gblUser.FullName, ""),
+                    PerformedByEmail: Coalesce(actor.Email, User().Email),
+                    PerformedByRole: Coalesce(actor.Role.Value, ""),
+                    Source: {Value: "Power Apps"},
+                    IsSystemAction: false,
+                    ApprovalLevel: Blank(),
+                    CorrelationID: Text(GUID()),
+                    IsSensitive: Coalesce(pSensitive, false)
+                }
+            );
+            false,
+            Trace("HRActivityLog write failed: " & FirstError.Message, TraceSeverity.Error),
+            IfError(
+                Refresh(HRActivityLog),
+                Trace("HRActivityLog refresh failed: " & FirstError.Message, TraceSeverity.Warning)
+            )
+        )
+    )
+};
+
+// One ApprovalHistory row for a leave request. Choice labels match the list:
+// Action Submitted / Approved / Rejected, ApprovalLevel "Level 1",
+// ApprovalType "Manager", Priority "Normal".
+
+fnLeaveApproval(
+    pDecision: Text, pAction: Text, pComments: Text, pItemID: Number,
+    pRequesterID: Number, pRequesterName: Text,
+    pApproverID: Number, pApproverName: Text, pApproverEmail: Text, pApproverNo: Text,
+    pLeaveType: Text, pProjectID: Number, pAssigned: DateTime
+): Void = {
+    IfError(
+        Patch(
+            ApprovalHistory,
+            Defaults(ApprovalHistory),
+            {
+                Title: Left(Coalesce(pRequesterName, "") & " - " & Coalesce(pLeaveType, "Leave"), 255),
+                RequestItemID: Text(pItemID),
+                RequestType: {Value: "Leave Request"},
+                Decision: {Value: pDecision},
+                Comments: pComments,
+                DecisionDate: If(pDecision <> "Pending", Now()),
+                Approver: {Id: pApproverID, Value: Coalesce(pApproverName, "")},
+                Requester: {Id: pRequesterID, Value: Coalesce(pRequesterName, "")},
+                ApprovalLevel: {Value: "Level 1"},
+                Sequence: 1,
+                AssignedDate: Coalesce(pAssigned, Now()),
+                RequestNumber: "LV-" & Text(pItemID, "000"),
+                ApprovalInstanceID: "LV-" & Text(pItemID, "000") & "-1",
+                Module: {Value: "HR"},
+                EntityType: {Value: "LeaveRequest"},
+                Action: {Value: pAction},
+                ApprovalType: {Value: "Manager"},
+                ActionDate: Now(),
+                ApproverEmail: pApproverEmail,
+                ApproverNo: pApproverNo,
+                ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID),
+                ApproverID: If(Coalesce(pApproverID, 0) > 0, pApproverID),
+                RequesterID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID),
+                Month: Text(Now(), "yyyy-MM"),
+                Priority: {Value: "Normal"},
+                RequestorID: If(Coalesce(pRequesterID, 0) > 0, pRequesterID)
+            }
+        ),
+        Trace("Leave approval log failed: " & FirstError.Message, TraceSeverity.Error)
+    )
+};
+// In-app notification for someone other than the person who performed the HR action.
+
+fnHRNotify(
+    pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
+    pEntity: Text, pItemID: Number, pRecordType: Text
+): Void = {
+    If(
+        And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
+        IfError(
+            Patch(
+                Notifications,
+                Defaults(Notifications),
+                {
+                    Title: Left(pTitle, 255),
+                    Message: Left(pMessage, 500),
+                    IsRead: "No",
+                    Createddate: Now(),
+                    RecipientID: pUserID,
+                    Recipient: {Id: pUserID, Value: pUserName},
+                    RecipientNo: LookUp(Employees, ID = pUserID, EmployeeNumber),
+                    RelatedEntity: {Value: pEntity},
+                    RelatedItemID: pItemID,
+                    RecordType: pRecordType,
+                    Module: {Value: "HR"},
+                    Status: {Value: "Unread"},
+                    Duration: 0,
+                    ReadDate: Blank()
+                }
+            );
+            false,
+            Trace("HR notification failed: " & FirstError.Message, TraceSeverity.Warning)
+        )
+    )
+};// Project activity log.
+fnProjLog(
+    pTitle: Text, pProjectID: Number, pProjectName: Text,
+    pEntity: Text, pItemID: Number, pAction: Text, pDetails: Text
+): Void = {
+    With(
+        {
+            actor: If(
+                Coalesce(gblCurrentEmployee.ID, 0) > 0,
+                gblCurrentEmployee,
+                LookUp(Employees, Email = User().Email)
+            )
+        },
+        IfError(
+            Patch(
+                ProjectActivityLog,
+                Defaults(ProjectActivityLog),
+                {
+                    Title: Left(pTitle, 255),
+                    Date: Now(),
+                    ProjectID: If(Coalesce(pProjectID, 0) > 0, pProjectID, Blank()),
+                    PerformedByID: Coalesce(actor.ID, 0),
+                    PerformedBy: {Id: Coalesce(actor.ID, 0), Value: Coalesce(actor.FullName, gblUser.FullName, "")},
+                    RelatedEntity: {Value: pEntity},
+                    RelatedItemId: pItemID,
+                    ActionType: {Value: pAction},
+                    Details: Left(
+                        Coalesce(pProjectName, "") & If(Len(Trim(Coalesce(pDetails, ""))) > 0, " · " & pDetails, ""),
+                        500
+                    )
+                }
+            );
+            false,
+            Trace("ProjectActivityLog write failed: " & FirstError.Message, TraceSeverity.Warning)
+        )
+    )
+};
+
+// In-app notice for a project assignment.
+fnProjNotify(
+    pUserID: Number, pUserName: Text, pTitle: Text, pMessage: Text,
+    pEntity: Text, pItemID: Number, pRecordType: Text
+): Void = {
+    If(
+        And(pUserID > 0, pUserID <> Coalesce(gblCurrentEmployee.ID, gblUser.ID, 0)),
+        IfError(
+            Patch(
+                Notifications,
+                Defaults(Notifications),
+                {
+                    Title: Left(pTitle, 255),
+                    Message: Left(pMessage, 500),
+                    IsRead: "No",
+                    Createddate: Now(),
+                    RecipientID: pUserID,
+                    Recipient: {Id: pUserID, Value: pUserName},
+                    RecipientNo: LookUp(Employees, ID = pUserID, EmployeeNumber),
+                    RelatedEntity: {Value: pEntity},
+                    RelatedItemID: pItemID,
+                    RecordType: pRecordType,
+                    Module: {Value: "Projects"},
+                    Status: {Value: "Unread"},
+                    Duration: 0,
+                    ReadDate: Blank()
+                }
+            );
+            false,
+            Trace("Project notification failed: " & FirstError.Message, TraceSeverity.Warning)
         )
     )
 };

@@ -62,6 +62,7 @@ ComponentDefinitions:
         Default: =If(gblLanguage = "Arabic", "إجراءات سريعة", "Quick Actions")
     Properties:
       Height: =320
+      OnReset: =Set(_qaOpen, false)
       SelectedAction: =_selQuickAction
       Width: =320
     Children:
@@ -77,36 +78,62 @@ ComponentDefinitions:
             LayoutAlignItems: =LayoutAlignItems.Stretch
             LayoutDirection: =LayoutDirection.Vertical
             LayoutGap: =8
-            PaddingBottom: =16
-            PaddingLeft: =16
-            PaddingRight: =16
-            PaddingTop: =16
+            LayoutOverflowY: =LayoutOverflow.Scroll
+            PaddingBottom: =8
+            PaddingLeft: =8
+            PaddingRight: =8
+            PaddingTop: =8
             RadiusBottomLeft: =gblTheme.Radius.XL
             RadiusBottomRight: =gblTheme.Radius.XL
             RadiusTopLeft: =gblTheme.Radius.XL
             RadiusTopRight: =gblTheme.Radius.XL
             Width: =cmpQuickActions.Width
           Children:
-            - lblQaTitle:
-                Control: Label@2.5.1
+            - conQaHead:
+                Control: GroupContainer@1.5.0
+                Variant: AutoLayout
                 Properties:
-                  Align: =If(gblIsRTL, Align.Right, Align.Left)
-                  BorderStyle: =BorderStyle.None
-                  Color: =fxThemeColor("TextPrimary")
-                  Font: =gblTheme.Typography.FontFamily
-                  FontWeight: =gblTheme.FontWeights.Bold
-                  Height: =24
-                  LayoutMinHeight: =24
+                  DropShadow: =DropShadow.None
+                  Fill: =Color.Transparent
+                  FillPortions: =0
+                  Height: =28
+                  LayoutAlignItems: =LayoutAlignItems.Center
+                  LayoutDirection: =LayoutDirection.Horizontal
+                  LayoutGap: =8
+                  LayoutMinHeight: =28
                   LayoutMinWidth: =0
-                  PaddingBottom: =0
-                  PaddingLeft: =0
-                  PaddingRight: =0
-                  PaddingTop: =0
-                  Size: =gblTheme.Typography.Body
-                  Text: =Coalesce(cmpQuickActions.Title, "")
-                  Tooltip: =Self.Text
-                  Width: =Parent.Width
-                  Wrap: =false
+                Children:
+                  - imgQaHead:
+                      Control: Image@2.2.3
+                      Properties:
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Height: =16
+                        Image: =fxSvg("List", fxThemeInk("Primary"))
+                        LayoutMinHeight: =16
+                        LayoutMinWidth: =16
+                        Width: =16
+                  - lblQaTitle:
+                      Control: Label@2.5.1
+                      Properties:
+                        Align: =If(gblIsRTL, Align.Right, Align.Left)
+                        AlignInContainer: =AlignInContainer.Center
+                        BorderStyle: =BorderStyle.None
+                        Color: =fxThemeColor("TextPrimary")
+                        FillPortions: =1
+                        Font: =gblTheme.Typography.FontFamily
+                        FontWeight: =gblTheme.FontWeights.Medium
+                        Height: =20
+                        LayoutMinHeight: =0
+                        LayoutMinWidth: =0
+                        PaddingBottom: =0
+                        PaddingLeft: =0
+                        PaddingRight: =0
+                        PaddingTop: =0
+                        Size: =gblTheme.Typography.Caption
+                        Text: =Coalesce(cmpQuickActions.Title, "")
+                        Tooltip: =Self.Text
+                        Wrap: =false
             - galQaActions:
                 Control: Gallery@2.15.0
                 Variant: Vertical
@@ -114,76 +141,112 @@ ComponentDefinitions:
                   AccessibleLabel: =Coalesce(cmpQuickActions.Title, "")
                   DelayItemLoading: =false
                   Fill: =Color.Transparent
-                  Height: =Max(52, cmpQuickActions.Height - 64)
+                  Height: |-
+                    =With(
+                        {
+                            total: CountRows(Filter(cmpQuickActions.Items, Coalesce(Visible, true) = true)),
+                            fit: Max(1, RoundDown((cmpQuickActions.Height - 92) / 48, 0))
+                        },
+                        If(
+                            Or(Coalesce(_qaOpen, false), total <= fit),
+                            total,
+                            fit
+                        ) * 48
+                    )
                   Items: |-
-                    =Filter(
-                        cmpQuickActions.Items,
-                        Coalesce(Visible, true) = true
+                    =With(
+                        {
+                            rows: Filter(cmpQuickActions.Items, Coalesce(Visible, true) = true),
+                            fit: Max(1, RoundDown((cmpQuickActions.Height - 92) / 48, 0))
+                        },
+                        If(
+                            Or(Coalesce(_qaOpen, false), CountRows(rows) <= fit),
+                            rows,
+                            FirstN(rows, fit)
+                        )
                     )
                   LayoutMinHeight: =0
                   LayoutMinWidth: =0
                   LoadingSpinner: =LoadingSpinner.None
                   ShowScrollbar: =false
-                  TemplatePadding: =8
-                  TemplateSize: =52
+                  TemplatePadding: =4
+                  TemplateSize: =44
                   Width: =Parent.Width
                 Children:
                   - conQaRow:
                       Control: GroupContainer@1.5.0
-                      Variant: ManualLayout
+                      Variant: AutoLayout
                       Properties:
                         BorderColor: =fxThemeColor("Border")
                         BorderThickness: =1
                         DropShadow: =DropShadow.None
                         Fill: =fxThemeColor("Surface")
-                        Height: =Parent.TemplateHeight
-                        RadiusBottomLeft: =gblTheme.Radius.XL
-                        RadiusBottomRight: =gblTheme.Radius.XL
-                        RadiusTopLeft: =gblTheme.Radius.XL
-                        RadiusTopRight: =gblTheme.Radius.XL
-                        Width: =Parent.TemplateWidth
+                        Height: =galQaActions.TemplateHeight
+                        LayoutAlignItems: =LayoutAlignItems.Center
+                        LayoutDirection: =LayoutDirection.Horizontal
+                        LayoutGap: =10
+                        PaddingLeft: =12
+                        PaddingRight: =12
+                        RadiusBottomLeft: =gblTheme.Radius.Large
+                        RadiusBottomRight: =gblTheme.Radius.Large
+                        RadiusTopLeft: =gblTheme.Radius.Large
+                        RadiusTopRight: =gblTheme.Radius.Large
+                        Width: =galQaActions.TemplateWidth
                       Children:
                         - imgQaIcon:
                             Control: Image@2.2.3
                             Properties:
                               AccessibleLabel: =Coalesce(ThisItem.Label, "")
+                              AlignInContainer: =AlignInContainer.Center
                               BorderStyle: =BorderStyle.None
-                              Height: =18
+                              Height: =16
                               Image: |-
                                 =fxSvg(
                                     Coalesce(ThisItem.Icon, "Info"),
-                                    fxThemeInk("Text")
+                                    fxThemeInk("Primary")
                                 )
-                              Width: =30
-                              X: =If(gblIsRTL, Parent.Width - 34, 16)
-                              Y: =(Parent.Height - Self.Height) / 2
+                              Width: =16
                         - lblQaLabel:
                             Control: Label@2.5.1
                             Properties:
                               Align: =If(gblIsRTL, Align.Right, Align.Left)
+                              AlignInContainer: =AlignInContainer.Center
                               BorderStyle: =BorderStyle.None
                               Color: =fxThemeColor("TextPrimary")
+                              FillPortions: =1
                               Font: =gblTheme.Typography.FontFamily
                               FontWeight: =gblTheme.FontWeights.Medium
-                              Height: =Parent.Height
+                              Height: =18
                               PaddingBottom: =0
                               PaddingLeft: =0
                               PaddingRight: =0
                               PaddingTop: =0
-                              Size: =gblTheme.Typography.BodySmall
+                              Size: =gblTheme.Typography.Caption
                               Text: =Coalesce(ThisItem.Label, "")
-                              Width: =Parent.Width - 60
                               Wrap: =false
-                              X: =60
-                        - btnQaHit:
-                            Control: ModernButton@1.0.0
-                            Properties:
-                              AccessibleLabel: =Coalesce(ThisItem.Label, "")
-                              Appearance: =ButtonAppearance.Transparent
-                              Height: =Parent.Height
-                              OnSelect: |-
-                                =Set(_selQuickAction, ThisItem);
-                                cmpQuickActions.OnSelect()
-                              Text: =""
-                              Tooltip: =Coalesce(ThisItem.Label, "")
-                              Width: =Parent.Width
+                  - btnQaHit:
+                      Control: ModernButton@1.0.0
+                      Properties:
+                        AccessibleLabel: =Coalesce(ThisItem.Label, "")
+                        Appearance: =ButtonAppearance.Transparent
+                        Height: =galQaActions.TemplateHeight
+                        OnSelect: |-
+                          =Set(_selQuickAction, ThisItem);
+                          cmpQuickActions.OnSelect()
+                        Text: =""
+                        Tooltip: =Coalesce(ThisItem.Label, "")
+                        Width: =galQaActions.TemplateWidth
+            - btnQaMore:
+                Control: ModernButton@1.0.0
+                Properties:
+                  AccessibleLabel: =If(Coalesce(_qaOpen, false), If(gblLanguage = "Arabic", "عرض أقل", "Show less"), If(gblLanguage = "Arabic", "عرض الكل", "View all"))
+                  AlignInContainer: =AlignInContainer.Center
+                  Appearance: =ButtonAppearance.Transparent
+                  Height: =28
+                  LayoutMinHeight: =28
+                  LayoutMinWidth: =72
+                  OnSelect: =Set(_qaOpen, !Coalesce(_qaOpen, false))
+                  Text: =If(Coalesce(_qaOpen, false), If(gblLanguage = "Arabic", "عرض أقل", "Show less"), If(gblLanguage = "Arabic", "عرض الكل", "View all"))
+                  Visible: |-
+                    =CountRows(Filter(cmpQuickActions.Items, Coalesce(Visible, true) = true)) > Max(1, RoundDown((cmpQuickActions.Height - 92) / 48, 0))
+                  Width: =88
